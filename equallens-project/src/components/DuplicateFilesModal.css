@@ -1,0 +1,847 @@
+.duplicate-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1100; /* Above other modals */
+}
+
+.duplicate-modal-content {
+  background-color: #f8fafc;
+  border-radius: 12px; /* Increased from 8px */
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), 
+              0 2px 8px rgba(0, 0, 0, 0.1); /* Multi-layered shadow for depth */
+  animation: slideInDuplicate 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.05); /* Subtle border */
+}
+
+@keyframes slideInDuplicate {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.duplicate-modal-header {
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background-color: #fff;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02); /* Subtle shadow for depth */
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.duplicate-modal-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.duplicate-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #666;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.duplicate-modal-close:hover {
+  background-color: #f1f1f1;
+  color: #333;
+}
+
+.duplicate-modal-body {
+  padding: 1rem 1.5rem;
+  padding-bottom: 3rem;
+  margin-top: 0; /* Ensure no gap after sticky header */
+}
+
+/* Redesigned warning box - remove the vertical line and improve appearance */
+.duplicate-modal-warning {
+  background-color: #fffdf7;
+  padding: 1.25rem;
+  margin-bottom: 1.75rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 5px rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.duplicate-modal-warning-title {
+  color: #92400e;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.duplicate-modal-warning-icon {
+  color: #f59e0b;
+}
+
+.duplicate-modal-warning-text {
+  color: #78350f;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.duplicate-files-list {
+  margin-top: 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.duplicate-file-item {
+  display: flex;
+  padding: 1.25rem; /* Increased padding */
+  background-color: white;
+  border: none;
+  margin-bottom: 0;
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+  transition: all 0.2s ease; /* Smoother transition */
+  align-items: flex-start; /* Change to flex-start for better alignment */
+  gap: 1rem;
+  border-radius: 4px; /* Subtle rounding */
+}
+
+.duplicate-file-item:last-child {
+  border-bottom: none;
+}
+
+.duplicate-file-item:hover {
+  background-color: #f9fafb;
+  transform: none;
+  box-shadow: none;
+}
+
+.duplicate-file-checkbox {
+  margin-top: 10px; /* Add margin to align with file name */
+  margin-bottom: 0; /* Remove the excessive bottom margin */
+  margin-right:15px;
+  margin-left:5px;
+  transform: scale(1.2);
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  align-self: flex-start; /* Align to top of content */
+}
+
+/* Styling for file names with and without checkboxes */
+.duplicate-file-name {
+  font-weight: 500;
+  color: #374151;
+  margin: 0;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Special styling for filenames without checkboxes - they should be flush left */
+.duplicate-file-name.no-checkbox {
+  padding-left: 5px; /* Add a small padding for visual balance */
+}
+
+/* Remove the placeholder indicator class as it's no longer needed */
+.duplicate-file-nonselectable-indicator {
+  display: none;
+}
+
+.duplicate-file-content {
+  flex: 1;
+}
+
+.duplicate-file-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  width: 100%; /* Ensure it takes full width */
+}
+
+.duplicate-file-name-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0; /* Ensures the container can shrink */
+}
+
+/* Move match percentage badge next to filename - soften color */
+.duplicate-confidence {
+  display: inline-flex;
+  align-items: center;
+  background-color: rgba(249, 100, 95, 0.85); /* Soften the red color with opacity */
+  background-image: linear-gradient(to right, #F9645F, #fa877f); /* Add subtle gradient */
+  color: white;
+  border-radius: 2rem;
+  padding: 0.2rem 0.8rem;
+  margin-top:5px;
+  font-size: 0.75rem;
+  font-weight: 500; /* Reduce from 600 to 500 for softer appearance */
+  line-height: 1.2;
+  box-shadow: 0 1px 3px rgba(249, 100, 95, 0.25); /* Softer shadow */
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.2); /* Add subtle border */
+  transition: all 0.2s ease;
+}
+
+/* Hide the original file info now that we moved the badge */
+.duplicate-file-info {
+  display: none;
+}
+
+/* Update duplicate type badges */
+.duplicate-file-type {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  border-radius: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(4px); /* Modern frosted glass effect */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.duplicate-type-exact {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.duplicate-type-copied {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.duplicate-type-updated {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.duplicate-type-similar {
+  background-color: #e0e7ff;
+  color: #4338ca;
+}
+
+/* Update file info styling */
+.duplicate-file-details {
+  margin-top: 1.5rem; /* Increased margin for better separation */
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.duplicate-details-item {
+  background-color: #f9fafb;
+  padding: 0.75rem;
+  border-radius: 0.25rem;
+  border: 1px solid #e5e7eb;
+}
+
+/* Fix candidate summary label spacing - remove any left margins or padding */
+.duplicate-details-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0 0 0.25rem; /* Keep top/bottom margin, remove left margin */
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  padding: 0; /* Remove all padding */
+  white-space: nowrap; 
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.duplicate-details-value {
+  font-size: 0.875rem;
+  color: #374151;
+  margin: 0;
+  word-break: break-all;
+  line-height: 1.4;
+  padding-left: 0; /* Remove any left padding */
+}
+
+/* Add this to your existing CSS */
+.duplicate-details-item.full-width {
+  grid-column: span 2; /* Make summary span entire width */
+}
+
+/* Ensure summary doesn't overflow */
+.duplicate-details-item.full-width .duplicate-details-value {
+  max-height: 120px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+/* Add scrollbar styling for summary */
+.duplicate-details-item.full-width .duplicate-details-value::-webkit-scrollbar {
+  width: 4px;
+}
+
+.duplicate-details-item.full-width .duplicate-details-value::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.duplicate-details-item.full-width .duplicate-details-value::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.duplicate-details-item.full-width .duplicate-details-value::-webkit-scrollbar-thumb:hover {
+  background: #a0a0a0;
+}
+
+/* Ensure summary properly renders HTML content */
+.duplicate-details-value.summary-scrollable {
+  max-height: 120px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+/* Add a class to properly sanitize and render HTML */
+.summary-content {
+  font-size: 0.825rem;
+  line-height: 1.5;
+  color: #4b5563;
+}
+
+.duplicate-modal-footer {
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-top: 1px solid #eee;
+  background-color: #fff;
+  border-radius: 0 0 8px 8px;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1), 0 -2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.duplicate-modal-button {
+  padding: 0.7rem 1.4rem; /* Increased padding */
+  border-radius: 6px; /* Increased radius */
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  letter-spacing: 0.01em; /* Subtle letter spacing */
+}
+
+.duplicate-primary-button {
+  background-image: linear-gradient(to right, #F9645F, #fa7369); /* Add subtle gradient */
+  color: white;
+  box-shadow: 0 2px 5px rgba(249, 100, 95, 0.25);
+}
+
+.duplicate-primary-button:hover:not(:disabled) {
+  background-image: linear-gradient(to right, #ef4f49, #f5625c);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(249, 100, 95, 0.3);
+}
+
+.duplicate-primary-button:disabled {
+  background-color: #e0e0e0;
+  background-image: none; /* Remove gradient */
+  color: #a0a0a0;         /* Lighter text color */
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.7;           /* Add opacity for a more greyed-out appearance */
+  transition: all 0.2s ease; /* Smooth transition */
+}
+
+.duplicate-secondary-button {
+  background-color: #f1f1f1;
+  color: #333;
+}
+
+.duplicate-secondary-button:hover {
+  background-color: #e1e1e1;
+}
+
+.duplicate-non-duplicate-button {
+  background-color: #4b5563;
+  color: white;
+  box-shadow: 0 2px 4px rgba(75, 85, 99, 0.2);
+}
+
+.duplicate-non-duplicate-button:hover {
+  background-color: #374151;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(75, 85, 99, 0.3);
+}
+
+/* Empty state */
+.duplicate-empty-state {
+  padding: 2rem;
+  text-align: center;
+}
+
+.duplicate-empty-icon {
+  font-size: 2.5rem;
+  color: #9ca3af;
+  margin-bottom: 1rem;
+}
+
+.duplicate-empty-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.5rem;
+}
+
+.duplicate-empty-text {
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Responsive styles */
+@media (max-width: 640px) {
+  .duplicate-file-details {
+    grid-template-columns: 1fr;
+  }
+  
+  .duplicate-modal-content {
+    max-width: 95%;
+  }
+
+  .duplicate-modal-footer {
+    flex-direction: column-reverse;
+  }
+  
+  .duplicate-modal-button {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Resume Changes Section - Improved alignment and styling */
+.resume-changes-section {
+  margin-top: 0.75rem;
+  padding: 0.5rem 1rem;
+  background-color: #f9fafb;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.resume-changes-section:hover {
+  background-color: #e5e7eb; /* Apply hover effect to the entire frame */
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.resume-changes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.resume-changes-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Resume Changes Section - Improved alignment and styling */
+.resume-changes-section {
+  margin-top: 0.75rem; /* Adjusted margin for better spacing */
+  padding: 0.3rem 0.8rem; /* Balanced padding for compactness */
+  background-color: #f9fafb;
+  border: 1px solid #e2e5ea;
+  border-radius: 0.375rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem; /* Add spacing between elements */
+}
+
+.resume-changes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem; /* Adjusted padding for compactness */
+  border-radius: 0.25rem;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.resume-changes-header:hover {
+  background-color: #e5e7eb;
+  transform: translateY(-1px);
+}
+
+.resume-changes-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Resume Changes Section - Adjust expand/collapse icon styling */
+.resume-changes-expand-icon {
+  font-size: 1rem; /* Adjusted size for better visibility */
+  font-weight: bold;
+  color: #6b7280;
+  transition: transform 0.2s ease;
+}
+
+.resume-changes-description {
+  font-size: 0.8rem;
+  color: #555;
+  line-height: 1.4;
+  margin: 0.5rem 0;
+}
+
+.resume-change-item {
+  padding: 0.375rem 0.5rem; /* Adjusted padding for compactness */
+  border-radius: 0.25rem;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.resume-change-item.enriched {
+  background-color: #e6ffed;
+  border: 1px solid #a3cfbb;
+}
+
+.resume-change-item.reduced {
+  background-color: #ffebe9;
+  border: 1px solid #f1aeb5;
+}
+
+.resume-change-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: #374151;
+}
+
+.resume-change-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.resume-change-value {
+  font-size: 0.7rem;
+  background-color: rgba(255, 255, 255, 0.7);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+
+.resume-change-value {
+  display: inline-block;
+  font-size: 0.7rem;
+  background-color: rgba(255, 255, 255, 0.7);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+}
+
+.resume-change-item.enriched .resume-change-value {
+  color: #046c4e;
+  border: 1px solid #c6f6d5;
+}
+
+.resume-change-item.reduced .resume-change-value {
+  color: #e53e3e;
+  border: 1px solid #fed7d7;
+}
+
+.resume-no-changes {
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-style: italic;
+  margin: 0.25rem 0;
+  animation: fadeIn 0.3s ease;
+}
+
+.resume-changes-description {
+  font-size: 0.8rem;
+  margin: 0.2rem 0 0.8rem;
+  color: #555;
+  line-height: 1.4;
+  font-style: italic;
+  animation: fadeIn 0.3s ease;
+}
+
+/* Standardize resume change assessment styles */
+.resume-change-assessment {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  border-radius: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin-left: auto;
+}
+
+.assessment-enhanced {
+  background-color: #e6ffed; /* Green background */
+  color: #046c4e; /* Darker green text */
+  border: 1px solid #a3cfbb;
+}
+
+.assessment-degraded {
+  background-color: #fde8e8; /* Slightly lighter red background */
+  color: #e91a1a; /* Darker red text */
+  border: 1px solid #ffb3b1;
+}
+
+.assessment-neutral {
+  background-color: #f7f7f7; /* Grey background */
+  color: #4b5563; /* Grey text */
+  border: 1px solid #d1d5db;
+}
+
+/* Add a specific class for mixed changes with orange color */
+.assessment-mixed {
+  background-color: #feecdc; /* Orange background */
+  color: #b47009; /* Dark orange text */
+  border: 1px solid #fed7aa;
+}
+
+/* Add group styling */
+.duplicate-group {
+  margin-bottom: 1.5rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+/* Enhanced group header styling for expandable functionality */
+.duplicate-group-header {
+  background-color: #f9fafb;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.duplicate-group-header:hover {
+  background-color: #f3f4f6;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.duplicate-group-header.expanded {
+  background-color: #edf2f7;
+}
+
+.duplicate-group-header.collapsed {
+  border-bottom-width: 0;
+}
+
+.duplicate-group-header-content {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.duplicate-group-title {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Improved expand icon styling */
+.expand-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #e2e8f0;
+  margin-left: 8px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+}
+
+.expand-icon::before, 
+.expand-icon::after {
+  content: '';
+  position: absolute;
+  background-color: #4b5563;
+  border-radius: 1px;
+}
+
+.expand-icon::before {
+  width: 8px;
+  height: 2px;
+  left: 5px;
+}
+
+.expand-icon::after {
+  width: 2px;
+  height: 8px;
+  top: 5px;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.duplicate-group-header.collapsed .expand-icon {
+  background-color: #dbeafe;
+}
+
+.duplicate-group-header.expanded .expand-icon {
+  background-color: #c7d2fe;
+}
+
+.duplicate-group-header.expanded .expand-icon::after {
+  transform: scaleY(0);
+}
+
+.duplicate-group-header:hover .expand-icon {
+  transform: scale(1.15);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.expand-icon {
+  font-size: 0.7rem;
+  color: #6b7280;
+  margin-left: 0.5rem;
+  transition: transform 0.3s ease;
+}
+
+.duplicate-group-header.expanded .expand-icon {
+  transform: rotate(0deg);
+}
+
+.duplicate-group-header.collapsed .expand-icon {
+  transform: rotate(-90deg);
+}
+
+/* Candidate summary styles - always visible */
+.candidate-summary-container {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #eaeaea;
+  background-color: #fcfcfc;
+}
+
+/* Collapsible content */
+.duplicate-group-content {
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.duplicate-group-content.expanded {
+  max-height: 5000px; /* Large enough to fit all content */
+  opacity: 1;
+}
+
+.duplicate-group-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.duplicate-group-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.duplicate-group-upload-time {
+  font-size: 0.85rem; /* Increased from 0.75rem */
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.duplicate-group-count {
+  background-color: #e0e7ff;
+  color: #4338ca;
+  font-size: 0.8rem; /* Increased from 0.7rem */
+  font-weight: 500;
+  padding: 0.2rem 0.6rem; /* Slightly larger padding */
+  border-radius: 1rem;
+}
+
+/* Improve the first/last items in a group */
+.duplicate-file-item.first-in-group .duplicate-file-header {
+  padding-top: 0.25rem;
+}
+
+.duplicate-file-item.last-in-group {
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}
+
+/* Highlight the best option in a group */
+.duplicate-file-item.first-in-group {
+  background-color: rgba(243, 244, 246, 0.3);
+}
+
+/* Improved spacing for candidate summary */
+.candidate-summary-container {
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.duplicate-details-label {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #4a4a4a;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}

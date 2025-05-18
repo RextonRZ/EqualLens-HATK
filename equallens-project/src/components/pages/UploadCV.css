@@ -1,0 +1,2274 @@
+/* Global app container */
+.app-container {
+    position: relative;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* Main container */
+.upload-container {
+    background-color: #f8fafc;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    max-width: 64rem;
+    margin: 0 auto;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-top: 0.8rem;
+    position: relative;
+    z-index: 1;
+}
+
+.upload-container.dragover {
+    background-color: #e0f7fa;
+    border: 2px dashed #f63b3b;
+}
+
+.upload-card {
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.upload-flex {
+    display: flex;
+    flex-direction: column;
+}
+
+@media (min-width: 768px) {
+    .upload-flex {
+        flex-direction: row;
+    }
+}
+
+.job-container {
+    padding: 2rem;
+    flex: 1;
+    width: 100%;
+    max-width: 70rem;
+    margin: 0 auto;
+    margin-top: 3rem;
+    position: relative;
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+    overflow: visible;
+    transition: all 0.3s ease;
+    border: 1px solid #f8fafc;
+}
+
+.job-container:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+    transform: translateY(-3px);
+}
+
+/* Add a subtle background pattern */
+.job-container::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(rgba(249, 100, 95, 0.03) 2px, transparent 2px);
+    background-size: 30px 30px;
+    opacity: 0.5;
+    z-index: -1;
+}
+
+.job-title-header {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 1.5rem;
+    position: relative;
+    display: inline-block;
+}
+
+.job-title-header::after {
+    content: "";
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 40%;
+    height: 3px;
+    background: linear-gradient(to right, #F9645F, #ff8783);
+    border-radius: 2px;
+}
+
+.form-group {
+    margin-bottom: 2rem;
+    margin-top: 1.5rem;
+    position: relative;
+    z-index: 5;
+}
+
+/* Create descending z-index for form groups to handle overlapping properly */
+.form-group:nth-child(1) {
+    z-index: 50;
+}
+
+.form-group:nth-child(2) {
+    z-index: 40;
+}
+
+.form-group:nth-child(3) {
+    z-index: 30;
+}
+
+.form-group:nth-child(4) {
+    z-index: 20;
+}
+
+.form-group:nth-child(5) {
+    z-index: 10;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.95rem;
+    color: #374151;
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.01rem;
+    transition: color 0.2s;
+}
+
+.form-group:hover .form-label {
+    color: #F9645F;
+}
+
+.required {
+    color: #ef4444;
+    margin-left: 0.25rem;
+}
+
+.form-input,
+.form-textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+    font-size: 0.95rem;
+    color: #374151;
+    background-color: #ffffff;
+    transition: all 0.25s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+    color: #9ca3af;
+    opacity: 0.7;
+    font-size: 0.9rem;
+    font-style: normal;
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: #F9645F;
+    box-shadow: 0 0 0 3px rgba(249, 100, 95, 0.15);
+    transform: translateY(-1px);
+}
+
+.ai-flagged-file {
+    background-color: #fff0f0;
+    /* Pastel red background */
+    border-left: 4px solid #F9645F;
+    /* Accent red border */
+    position: relative;
+}
+
+.ai-flagged-file::after {
+    content: "AI Detected";
+    position: absolute;
+    top: 12px;
+    right: 48px;
+    /* Position to not overlap with delete button */
+    background-color: #F9645F;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    opacity: 0.85;
+    display: flex;
+    /* Add this to enable proper vertical alignment */
+    align-items: center;
+    /* Add this for vertical centering */
+    height: 20px;
+    /* Specify a fixed height */
+}
+
+/* Add styles for the close button if it exists, or create a new class */
+.ai-flagged-close {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    cursor: pointer;
+    color: #777;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    /* Match the height of the label */
+    font-size: 0.9rem;
+}
+
+.ai-flagged-close:hover {
+    color: #333;
+}
+
+/* Make the content spacing better to accommodate the label */
+.ai-flagged-file .file-content {
+    padding-right: 120px;
+    /* Add more space for the AI label */
+}
+
+/* Ensure suggestion containers have proper z-index */
+.suggestion-container {
+    position: relative;
+    width: 100%;
+    z-index: 20;
+    /* Increase z-index to ensure suggestions appear on top */
+}
+
+.suggestions-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    /* Higher z-index to ensure they appear above all form elements */
+    padding: 0;
+    margin: 0;
+    list-style-type: none;
+    animation: slideDown 0.2s ease-in-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.suggestions-list li {
+    padding: 12px 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 1px solid #f8fafc;
+}
+
+.suggestions-list li:hover {
+    background-color: #f8fafc;
+    color: #F9645F;
+    padding-left: 20px;
+}
+
+.suggestions-list li:last-child {
+    border-bottom: none;
+}
+
+/* Other form elements */
+.input-group {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.input-group .form-input,
+.input-group .form-select {
+    flex: 1;
+}
+
+.add-button {
+    background-color: #F9645F;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.25s;
+    box-shadow: 0 2px 4px rgba(249, 100, 95, 0.2);
+    margin-left: 0.5rem;
+}
+
+.add-button:hover {
+    background-color: #ef402d;
+    box-shadow: 0 4px 8px rgba(249, 100, 95, 0.3);
+    transform: translateY(-2px);
+}
+
+.add-button:disabled {
+    background-color: #d1d5db;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+    margin-top: 0.75rem;
+}
+
+.tag { 
+    background-color: #ffeff3; /* Your pinkish background */
+    color: #F9645F;            /* Your red text color */
+    padding: 0.5rem 0.75rem;   /* Padding for the entire tag area */
+    border-radius: 0.375rem;   /* Border radius for the entire tag */
+    font-size: 0.8125rem;      /* Base font size for text within this tag */
+    font-weight: 500; 
+    
+    display: inline-flex; /* For aligning SkillTagWithLogo's content */
+    align-items: center;  
+    
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    /* margin-right and margin-bottom are removed, use 'gap' on .tags-container */
+}
+
+.tag:hover {
+    background-color: #ffe4eb; 
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.07);
+}
+
+.tag .tag-remove { 
+    background: none;
+    border: none;
+    color: inherit; /* Inherits #F9645F from .tag */
+    font-size: 1.125rem; /* Your original size for '×' */
+    font-weight: normal; /* Reset if SkillTagWithLogo's button style is bold */
+    cursor: pointer;
+    margin-left: 0.375rem; 
+    padding: 0;
+    line-height: 1; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.tag .tag-remove:hover {
+    opacity: 1;
+    transform: scale(1.2);
+}
+
+/* Form actions */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 2.5rem;
+}
+
+.submit-button {
+    background-color: #F9645F;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.75rem;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s;
+    box-shadow: 0 4px 8px rgba(249, 100, 95, 0.25);
+    position: relative;
+    overflow: hidden;
+    margin-top: 0.4rem;
+    min-width: 120px;
+}
+
+.submit-button:hover {
+    background-color: #ef402d;
+    box-shadow: 0 6px 12px rgba(249, 100, 95, 0.35);
+    transform: translateY(-2px);
+}
+
+.submit-button:disabled {
+    background-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+/* Revert CGPA slider and container to original styling */
+.cgpa-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    max-width: 1200px;
+    /* Add maximum width to container */
+}
+
+/* Improved slider styling */
+.cgpa-slider {
+    flex: 3;
+    /* Increase flex proportion to make slider wider */
+    height: 0.5rem;
+    /* Thicker track */
+    -webkit-appearance: none;
+    appearance: none;
+    background: #e5e7eb;
+    border-radius: 0.25rem;
+    outline: none;
+    position: relative;
+    overflow: visible;
+    min-width: 250px;
+    /* Ensure minimum width for the slider */
+}
+
+/* Create a filled track effect */
+.cgpa-slider::-webkit-slider-runnable-track {
+    height: 0.5rem;
+    border-radius: 0.25rem;
+    background: linear-gradient(to right, #ff5e5e 0%, #ffa18e var(--slider-percentage, 50%), #ffffff var(--slider-percentage, 50%), #ffffff 100%);
+    cursor: pointer;
+}
+
+.cgpa-slider::-moz-range-track {
+    height: 0.5rem;
+    border-radius: 0.25rem;
+    background: #e5e7eb;
+    cursor: pointer;
+}
+
+/* Style the slider thumb for webkit browsers */
+.cgpa-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #F9645F;
+    cursor: pointer;
+    position: relative;
+    margin-top: -0.5rem;
+    /* Center thumb on track */
+    box-shadow: 0 2px 6px rgba(249, 100, 95, 0.3);
+    transition: all 0.2s ease;
+    z-index: 2;
+}
+
+/* Style the slider thumb for Firefox */
+.cgpa-slider::-moz-range-thumb {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #F9645F;
+    cursor: pointer;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(249, 100, 95, 0.3);
+    transition: all 0.2s ease;
+    z-index: 2;
+}
+
+/* Add hover effects */
+.cgpa-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(249, 100, 95, 0.5);
+}
+
+.cgpa-slider::-moz-range-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(249, 100, 95, 0.5);
+}
+
+/* Active state */
+.cgpa-slider::-webkit-slider-thumb:active {
+    transform: scale(1.2);
+    box-shadow: 0 3px 10px rgba(249, 100, 95, 0.6);
+    background: #F9645F;
+}
+
+.cgpa-slider::-moz-range-thumb:active {
+    transform: scale(1.2);
+    box-shadow: 0 3px 10px rgba(249, 100, 95, 0.6);
+    background: #F9645F;
+}
+
+/* Style for value display */
+.cgpa-value {
+    flex: 1;
+    /* Reduce flex proportion for the input field */
+    font-size: 0.875rem;
+    color: #374151;
+    background-color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.25rem;
+    min-width: 4rem;
+    text-align: center;
+    border: 1px solid #d1d5db;
+    transition: all 0.2s;
+    width: 4.5rem;
+    max-width: 4.5rem;
+    /* Ensure the input doesn't grow too wide */
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.cgpa-value.error {
+    border-color: #ef4444;
+    background-color: #fee2e2;
+}
+
+/* CGPA N/A button styles */
+.na-button {
+    flex: 1;
+    /* Reduce flex proportion for the button */
+    max-width: 120px;
+    /* Limit button width */
+    background-color: #e5e7eb;
+    color: #374151;
+    border: none;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.25s;
+    white-space: nowrap;
+    font-weight: 500;
+    margin-left: 0.5rem;
+}
+
+.na-button:hover {
+    background-color: #d1d5db;
+}
+
+.na-button.active {
+    background-color: #374151;
+    color: white;
+}
+
+/* Disabled slider style */
+.cgpa-slider.disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.cgpa-slider.disabled::-webkit-slider-runnable-track {
+    background: #d1d5db !important;
+    /* Just plain gray, no gradient */
+}
+
+.cgpa-slider.disabled::-moz-range-track {
+    background: #d1d5db !important;
+    /* Just plain gray, no gradient */
+}
+
+.cgpa-slider.disabled::-webkit-slider-thumb {
+    background-color: #e5e7eb;
+    border-color: #9ca3af;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.cgpa-slider.disabled::-moz-range-thumb {
+    background-color: #e5e7eb;
+    border-color: #9ca3af;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+/* Disabled input style */
+.cgpa-value.disabled {
+    background-color: #f3f4f6;
+    color: #6b7280;
+    border-color: #e5e7eb;
+    cursor: not-allowed;
+}
+
+.error-message {
+    color: #ef4444;
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 2rem;
+}
+
+.submit-button:disabled {
+    background-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* Drop File zone */
+.upload-dropzone-container {
+    padding: 1.5rem;
+    border-right: 1px solid #ebe5e5;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.upload-dropzone {
+    border: 1px dashed #ffeff3;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.upload-dropzone.active-dropzone {
+    border-color: #f63b3b;
+    background-color: rgba(59, 130, 246, 0.05);
+}
+
+.upload-icon-container {
+    width: 3rem;
+    height: 3rem;
+    background-color: #ffeff3;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: #ff7a76;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.upload-text {
+    font-size: 0.875rem;
+    color: #4b5563;
+    margin-bottom: 0.5rem;
+}
+
+.hidden-input {
+    display: none;
+}
+
+.browse-button {
+    background-color: #F9645F;
+    color: white;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 0.75rem;
+}
+
+.browse-button:hover {
+    background-color: #ef402d;
+}
+
+.upload-subtext {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    margin-top: 0.5rem;
+}
+
+/* File list */
+.files-container {
+    padding: 1.5rem;
+    flex: 1;
+    width: 100%;
+    max-width: 64rem;
+    margin: 0 auto;
+    margin-top: 1rem;
+}
+
+.files-title {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 1rem;
+}
+
+.no-files {
+    text-align: center;
+    padding: 2rem 0;
+}
+
+.no-files-text {
+    font-size: 0.875rem;
+    color: #9ca3af;
+}
+
+.files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.file-item {
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s;
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.file-item:hover {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.file-content {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    padding-right: 1.5rem;
+}
+
+.file-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: white;
+    flex-shrink: 0;
+}
+
+.pdf-icon {
+    background-color: #ef4444;
+}
+
+.doc-icon {
+    background-color: #3b82f6;
+}
+
+.default-icon {
+    background-color: #9ca3af;
+}
+
+.file-details {
+    margin-left: 0.75rem;
+    flex: 1;
+    min-width: 0;
+    flex-grow: 1;
+    /* Allows it to take full width */
+    min-width: 0;
+    /* Ensures it shrinks properly */
+    overflow: hidden;
+}
+
+.file-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.file-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    width: 100%;
+    min-width: 0;
+}
+
+.delete-button {
+    color: #9ca3af;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 5;
+}
+
+.delete-button:hover {
+    color: #ef4444;
+}
+
+.delete-button:disabled {
+    color: #d1d5db;
+    cursor: not-allowed;
+}
+
+.delete-button:disabled:hover {
+    color: #d1d5db;
+}
+
+.delete-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.progress-bar-container {
+    width: 100%;
+    background-color: #e5e7eb;
+    border-radius: 9999px;
+    height: 0.375rem;
+    margin-top: 0.5rem;
+    position: relative;
+}
+
+.progress-bar {
+    background-color: #ff6d6d;
+    height: 0.375rem;
+    border-radius: 9999px;
+    transition: width 0.3s ease-in-out;
+}
+
+.progress-text {
+    position: absolute;
+    right: 0;
+    top: -1.2rem;
+    font-size: 0.7rem;
+    color: #6b7280;
+}
+
+.waiting-container {
+    display: flex;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.waiting-text {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+}
+
+.waiting-text::before {
+    content: "";
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background-color: #f59e0b;
+    margin-right: 0.5rem;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.3;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.3;
+    }
+}
+
+.file-size {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+/* Full-page drop overlay */
+.fullpage-drop-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 218, 218, 0.95);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.drop-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.file-preview {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.file-icon-large {
+    width: 5rem;
+    height: 6rem;
+    border-radius: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.file-icon-large {
+    background-color: #a02a2a;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.file-icon-large::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 20px 20px 0;
+    border-color: transparent #711410 transparent transparent;
+}
+
+.copy-badge {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background-color: white;
+    color: #333;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.drop-title {
+    color: black;
+    font-size: 3rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.drop-subtitle {
+    color: black;
+    font-size: 1.25rem;
+}
+
+/* Add these rules to your existing CSS file */
+
+.suggestion-container {
+    position: relative;
+    width: 100%;
+}
+
+.suggestions-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    padding: 0;
+    margin: 0;
+    list-style-type: none;
+}
+
+.suggestions-list li {
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.suggestions-list li:hover {
+    background-color: #f0f0f0;
+}
+
+.language-dropdown-container {
+    position: relative;
+    width: 100%;
+}
+
+.searchable-select {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    cursor: pointer;
+    position: relative;
+}
+
+.language-dropdown-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    padding: 0;
+    margin: 0;
+    list-style-type: none;
+}
+
+.language-dropdown-list li {
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.language-dropdown-list li:hover {
+    background-color: #f0f0f0;
+}
+
+.language-dropdown-list .no-results {
+    padding: 10px 15px;
+    color: #666;
+    font-style: italic;
+    cursor: default;
+}
+
+.language-dropdown-list .no-results:hover {
+    background-color: transparent;
+}
+
+/* Step Navigation */
+.step-header {
+    max-width: 64rem;
+    margin: 0 auto;
+    padding: 1rem 1.5rem;
+    margin-top: 1.4rem;
+}
+
+.step-nav {
+    margin-bottom: 1rem;
+}
+
+.back-button {
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+    color: #F9645F;
+    font-size: 0.875rem;
+    cursor: pointer;
+    padding: 0.5rem 0;
+}
+
+.back-button:hover {
+    color: #ef402d;
+    text-decoration: underline;
+}
+
+.back-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-right: 0.25rem;
+}
+
+.final-submit-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+.final-submit {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+}
+
+/* Clean up and consolidate API loading styles */
+.api-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.api-loading-content {
+    text-align: center;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 400px;
+    transform: translateZ(0);
+    /* Force hardware acceleration */
+}
+
+.api-loading-content p {
+    margin: 0 0 2rem 0;
+    font-size: 1.2rem;
+    color: #555;
+}
+
+/* Progress bar styling */
+.api-loading-overlay .loading-animation {
+    margin-bottom: 4rem;
+    position: relative;
+    z-index: 100;
+}
+
+.api-loading-overlay .progress-bar-container {
+    width: 100%;
+    height: 10px;
+    background-color: #f1f1f1;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 20;
+    margin: 0;
+}
+
+.api-loading-overlay .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg,
+            #F9645F 0%,
+            #ff8783 25%,
+            #fd7975 50%,
+            #ff736e 75%,
+            #fa7873 100%);
+    border-radius: 10px;
+    transition: width 0.5s ease;
+    background-size: 200% 100%;
+    animation: progressBarShift 2s linear infinite;
+}
+
+.api-loading-overlay .progress-text {
+    position: absolute;
+    top: -25px;
+    right: 0;
+    font-size: 1rem;
+    color: #333;
+    font-weight: bold;
+}
+
+@keyframes progressBarShift {
+    0% {
+        background-position: 0% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* Loading overlay styles - with more specific selectors to prevent conflicts */
+.api-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+/* Use very specific selectors to avoid conflicts with pageloading.css */
+.api-loading-overlay .api-loading-content {
+    text-align: center;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.api-loading-overlay .api-loading-content p {
+    margin-top: 1.5rem;
+    font-size: 1.2rem;
+    color: #555;
+    margin-bottom: 1.5rem;
+}
+
+/* Gradient Progress Bar Styles - with more specific selectors */
+.api-loading-overlay .gradient-progress-container {
+    width: 100%;
+    height: 10px;
+    background-color: #f1f1f1;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    margin-top: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.api-loading-overlay .gradient-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg,
+            #F9645F 0%,
+            #ff8783 25%,
+            #fd7975 50%,
+            #ff736e 75%,
+            #fa7873 100%);
+    border-radius: 10px;
+    transition: width 0.5s ease;
+    position: relative;
+    /* Add animated gradient that moves */
+    background-size: 200% 100%;
+    animation: gradientShift 2s linear infinite;
+}
+
+.api-loading-overlay .gradient-progress-text {
+    position: absolute;
+    top: -25px;
+    right: 0;
+    font-size: 1rem;
+    color: #333;
+    font-weight: bold;
+}
+
+/* Animation for the gradient shift */
+@keyframes gradientShift {
+    0% {
+        background-position: 0% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .api-loading-overlay .gradient-progress-container {
+        width: 90%;
+        height: 8px;
+    }
+
+    .api-loading-overlay .gradient-progress-text {
+        font-size: 0.9rem;
+        top: -22px;
+    }
+}
+
+/* Loading overlay styles - cleanup for better positioning */
+.api-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.api-loading-content {
+    text-align: center;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 400px;
+}
+
+/* Ensure proper spacing between animation and progress bar */
+.api-loading-content .loading-animation {
+    margin-bottom: 50px;
+    /* Add enough space for the ball animation */
+}
+
+.api-loading-content p {
+    margin-top: 0;
+    /* Remove additional space */
+    font-size: 1.2rem;
+    color: #555;
+    margin-bottom: 1.5rem;
+}
+
+/* Progress bar styling */
+.api-loading-overlay .progress-bar-container {
+    width: 100%;
+    height: 10px;
+    background-color: #f1f1f1;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1;
+    /* Lower z-index than the loading animation */
+    margin-top: 0;
+    /* Remove any margin that might push it up */
+}
+
+.api-loading-overlay .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg,
+            #F9645F 0%,
+            #ff8783 25%,
+            #fd7975 50%,
+            #ff736e 75%,
+            #fa7873 100%);
+    border-radius: 10px;
+    transition: width 0.5s ease;
+    background-size: 200% 100%;
+    animation: progressBarShift 2s linear infinite;
+}
+
+.api-loading-overlay .progress-text {
+    position: absolute;
+    top: -25px;
+    right: 0;
+    font-size: 1rem;
+    color: #333;
+    font-weight: bold;
+}
+
+/* Remove duplicate styles that might cause conflicts */
+/* Container for the loading animation - REMOVE THIS SECTION */
+.loading-animation {
+    position: relative;
+    width: 200px;
+    height: 120px;
+    margin-bottom: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+/* Fix for the ball animation container - REMOVE THIS SECTION */
+.loading-animation .bar {
+    position: absolute;
+    bottom: 50px;
+}
+
+.loading-animation .ball {
+    position: absolute;
+    bottom: 70px;
+}
+
+/* Adjust the bar and ball to work within the overlay - REMOVE THIS SECTION */
+.loading-animation .bar {
+    margin-top: 40px;
+}
+
+/* Animation for the progress bar gradient shift */
+@keyframes progressBarShift {
+    0% {
+        background-position: 0% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .api-loading-overlay .progress-bar-container {
+        width: 90%;
+        height: 8px;
+    }
+
+    .api-loading-overlay .progress-text {
+        font-size: 0.9rem;
+        top: -22px;
+    }
+}
+
+/* Ensure no interference with pageloading.css */
+.loading-animation {
+    z-index: 3;
+    /* Ensure it is above the progress bar */
+}
+
+/* Ensure no interference with pageloading.css */
+.loading-animation {
+    z-index: 2;
+    /* Ensure it is above the progress bar */
+}
+
+/* Loading overlay styles - prevent animation conflicts */
+.api-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.api-loading-content {
+    text-align: center;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 400px;
+    /* Create a separate stacking context to isolate animations */
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+/* Add proper spacing between loading animation and progress bar */
+.api-loading-overlay .loading-animation {
+    margin-bottom: 80px !important;
+    /* Add extra space to ensure animation has room */
+    /* Force hardware acceleration to prevent animation from stuttering */
+    transform: translateZ(0);
+    will-change: transform;
+    /* Override any conflicting styles */
+    animation-play-state: running !important;
+    z-index: 100 !important;
+}
+
+/* Make sure the seesaw animation isn't affected by progress updates */
+.api-loading-overlay .seesaw-container {
+    animation-play-state: running !important;
+    /* Force hardware acceleration for smoother animation */
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+/* Same for the ball to ensure it keeps animating */
+.api-loading-overlay .ball {
+    animation-play-state: running !important;
+    /* Force hardware acceleration for smoother animation */
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+/* Progress bar container positioned way below animation */
+.api-loading-overlay .progress-bar-container {
+    width: 100%;
+    height: 10px;
+    background-color: #f1f1f1;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1;
+    /* Lower z-index than the loading animation */
+    margin-top: 20px;
+    /* Add space between text and progress bar */
+    /* Create a separate stacking context for the progress bar */
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+.api-loading-content p {
+    margin: 0 0 20px 0;
+    /* Adjust spacing */
+    font-size: 1.2rem;
+    color: #555;
+}
+
+/* Clean up the API loading overlay styles to remove duplicates and conflicts */
+.api-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.api-loading-content {
+    text-align: center;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 400px;
+    /* Force hardware acceleration */
+    transform: translateZ(0);
+}
+
+/* Custom classes for loading animation inside the overlay */
+.api-loading-overlay .loading-animation {
+    margin-bottom: 100px !important;
+    /* Extra space for animation */
+    /* Ensure independent rendering */
+    position: relative;
+    z-index: 100;
+}
+
+.api-loading-overlay .seesaw-container,
+.api-loading-overlay .bar,
+.api-loading-overlay .ball {
+    /* Force animations to run */
+    animation-play-state: running !important;
+    will-change: transform;
+}
+
+/* Text between animation and progress */
+.api-loading-overlay .api-loading-content p {
+    margin: 0;
+    padding: 0 0 50px 0;
+    /* Add space below the text */
+    font-size: 1.2rem;
+    color: #555;
+    position: relative;
+    /* Create stacking context */
+    z-index: 50;
+}
+
+/* Progress bar container */
+.api-loading-overlay .progress-bar-container {
+    width: 100%;
+    height: 10px;
+    background-color: #f1f1f1;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 20;
+    /* Lower than animation */
+    margin: 0;
+    /* Reset margins */
+}
+
+.api-loading-overlay .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg,
+            #F9645F 0%,
+            #ff8783 25%,
+            #fd7975 50%,
+            #ff736e 75%,
+            #fa7873 100%);
+    border-radius: 10px;
+    transition: width 0.5s ease;
+    background-size: 200% 100%;
+    animation: progressBarShift 2s linear infinite;
+}
+
+.api-loading-overlay .progress-text {
+    position: absolute;
+    top: -25px;
+    right: 0;
+    font-size: 1rem;
+    color: #333;
+    font-weight: bold;
+}
+
+/* Status Modal Styles */
+.status-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    animation: fadeIn 0.3s ease;
+}
+
+.status-modal {
+    background-color: white;
+    border-radius: 12px;
+    padding: 35px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: slideIn 0.4s ease;
+}
+
+
+.error-modal {
+    border-top: 5px solid #F44336;
+}
+
+.status-icon {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.success-icon {
+    background-color: rgba(76, 175, 80, 0.1);
+    color: #4CAF50;
+    animation: pulse 2s infinite;
+    width: 100px;
+    /* Increase from 80px */
+    height: 100px;
+    /* Increase from 80px */
+    /* You might want to adjust font size if you have an icon inside */
+    font-size: 48px;
+    /* Adjust this based on your icon size */
+}
+
+.status-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #000000;
+    margin-bottom: 15px;
+}
+
+/* Add specific styling for the description */
+.status-description {
+    font-size: 18px;
+    color: #686868;
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+.status-description strong {
+    font-weight: 600;
+    color: #686868;
+}
+
+.status-message {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 25px;
+}
+
+.status-buttons {
+    display: flex;
+    gap: 70px;
+    margin-top: 10px;
+    width: 100%;
+    justify-content: center;
+}
+
+@media (max-width: 600px) {
+    .status-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+.status-button {
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    min-width: 150px;
+}
+
+.primary-button {
+    background-color: #F9645F;
+    color: white;
+}
+
+.primary-button:hover {
+    background-color: #ef402d;
+}
+
+.secondary-button {
+    background-color: white;
+    color: #333;
+    border: 1px solid #ccc;
+}
+
+.secondary-button:hover {
+    background-color: #f5f5f5;
+    border-color: #bbb;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Bias highlighting styles */
+.bias-input {
+    border-color: #F9645F;
+    /* Highlight border for bias */
+    background-color: rgba(249, 100, 95, 0.05);
+    /* Subtle background for bias */
+}
+
+.bias-feedback {
+    background-color: #fff0f0;
+    border-left: 3px solid #F9645F;
+    padding: 10px 15px;
+    margin-top: 5px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.bias-feedback p {
+    margin-top: 0;
+    margin-bottom: 5px;
+    color: #F9645F;
+    font-weight: 500;
+}
+
+.bias-feedback ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.bias-feedback li {
+    color: #666;
+}
+
+.bias-highlight {
+    display: inline;
+    background-color: rgba(249, 100, 95, 0.2);
+    /* Highlight background */
+    border-bottom: 2px solid #F9645F;
+    /* Highlight underline */
+    padding: 2px 0;
+    /* Adjust padding for consistency */
+}
+
+.suggestion-message {
+    color: #2c7c9c;
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+}
+
+.suggestion-message strong {
+    margin-right: 0.5rem;
+}
+
+
+.suggest-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background-color: #f3f4f6;
+    color: #9ca3af;
+    border-color: #e5e7eb;
+}
+
+.suggest-icon {
+    width: 16px;
+    height: 16px;
+}
+
+
+/* Suggestion Display Area */
+.suggestion-display {
+    background-color: #fffbeb;
+    /* Light yellow background */
+    border: 1px solid #fef3c7;
+    /* Lighter yellow border */
+    border-radius: 6px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    padding: 10px 15px;
+    overflow: hidden;
+    transition: max-height 0.4s ease-out, padding 0.4s ease-out, opacity 0.4s ease-out;
+}
+
+.suggestion-display.collapsed {
+    max-height: 40px;
+    /* Adjust based on button height */
+    padding-top: 5px;
+    padding-bottom: 5px;
+    opacity: 0.9;
+}
+
+.suggestion-display.expanded {
+    max-height: 1000px;
+    /* Large enough to fit content */
+    padding: 15px;
+    opacity: 1;
+}
+
+.suggestion-toggle-button {
+    background: none;
+    border: none;
+    color: #ca8a04;
+    /* Darker yellow */
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 0;
+    width: 100%;
+    justify-content: space-between;
+    /* Push icon to the right */
+    font-size: 0.9rem;
+}
+
+.suggestion-toggle-button .toggle-icon {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.3s ease;
+}
+
+.suggestion-toggle-button .toggle-icon.down {
+    transform: rotate(0deg);
+}
+
+.suggestion-toggle-button .toggle-icon.up {
+    transform: rotate(180deg);
+}
+
+
+.suggestion-content {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #fde68a;
+    /* Dashed yellow line */
+    display: none;
+    /* Hidden when collapsed */
+}
+
+.suggestion-display.expanded .suggestion-content {
+    display: block;
+    /* Shown when expanded */
+}
+
+.suggestion-section {
+    margin-bottom: 15px;
+}
+
+.suggestion-section h4 {
+    font-size: 0.95rem;
+    color: #a16207;
+    /* Darker yellow/brown */
+    margin-bottom: 8px;
+}
+
+.suggestion-text {
+    white-space: pre-wrap;
+    /* Preserve line breaks */
+    word-wrap: break-word;
+    background-color: #fefce8;
+    /* Very light yellow */
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #fef9c3;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    max-height: 250px;
+    /* Limit height and allow scroll */
+    overflow-y: auto;
+    color: #555;
+    font-family: inherit;
+    /* Use same font as rest of app */
+}
+
+.apply-suggestion-button {
+    background-color: #fef9c3;
+    /* Light yellow */
+    color: #a16207;
+    /* Dark yellow/brown */
+    border: 1px solid #fde047;
+    /* Yellow border */
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-top: 8px;
+    margin-right: 8px;
+    transition: background-color 0.2s;
+}
+
+.apply-suggestion-button:hover {
+    background-color: #fef08a;
+}
+
+.apply-suggestion-button.both {
+    background-color: #fbbf24;
+    /* Amber color */
+    color: #422006;
+    border-color: #f59e0b;
+    font-weight: 500;
+}
+
+.apply-suggestion-button.both:hover {
+    background-color: #f59e0b;
+}
+
+/* Ensure BiasHighlightingInput takes textarea styles if used */
+.form-group .bias-highlighting-input-container textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+    font-size: 0.95rem;
+    color: #374151;
+    background-color: #ffffff;
+    transition: all 0.25s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    resize: vertical;
+    min-height: 120px;
+    /* Match textarea */
+    font-family: inherit;
+    /* Ensure consistent font */
+    line-height: 1.5;
+    /* Ensure consistent line height */
+}
+
+.form-group .bias-highlighting-input-container textarea:focus {
+    outline: none;
+    border-color: #F9645F;
+    box-shadow: 0 0 0 3px rgba(249, 100, 95, 0.15);
+    transform: translateY(-1px);
+}
+
+.form-group .bias-highlighting-input-container textarea::placeholder {
+    color: #9ca3af;
+    opacity: 0.7;
+    font-size: 0.9rem;
+    font-style: normal;
+}
+
+/* Redesigned AI Suggestion Button - Softer Style */
+.suggest-button {
+    display: flex;
+    align-items: center;
+    justify-content: left;
+    gap: 8px;
+    background: linear-gradient(135deg, rgba(255, 112, 107, 0.85) 0%, rgba(255, 202, 200, 0.85) 100%);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.35s ease;
+    margin-top: 10px;
+    box-shadow: 0 3px 12px rgba(249, 100, 95, 0.18);
+}
+
+
+.suggest-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(249, 100, 95, 0.25);
+    background: linear-gradient(135deg, rgba(249, 100, 95, 0.95) 0%, rgba(255, 135, 131, 0.95) 100%);
+}
+
+.suggest-button:active {
+    transform: translateY(0px);
+}
+
+.suggest-button:disabled {
+    background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+    opacity: 0.7;
+    color: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.suggest-icon {
+    width: 18px;
+    height: 18px;
+    filter: drop-shadow(0 1px 2px rgba(255, 255, 255, 0.2));
+}
+
+/* Enhanced Suggestion Display Area - Softer Style */
+.suggestion-display {
+    background-color: rgba(249, 100, 95, 0.035);
+    border: 1px solid rgba(249, 100, 95, 0.1);
+    border-radius: 16px;
+    margin-top: 15px;
+    margin-bottom: 25px;
+    overflow: hidden;
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+}
+
+.suggestion-display.collapsed {
+    max-height: 55px;
+    padding: 10px 18px;
+    opacity: 0.95;
+}
+
+.suggestion-display.expanded {
+    max-height: 1200px;
+    /* Large enough to fit content */
+    padding: 18px 22px 22px;
+    opacity: 1;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.03);
+}
+
+.suggestion-toggle-button {
+    background: none;
+    border: none;
+    color: rgba(249, 100, 95, 0.8);
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 2px;
+    width: 100%;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.suggestion-toggle-button:hover {
+    color: rgba(249, 100, 95, 1);
+}
+
+.suggestion-toggle-button .toggle-icon {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    opacity: 0.8;
+}
+
+.suggestion-toggle-button .toggle-icon.down {
+    transform: rotate(0deg);
+}
+
+.suggestion-toggle-button .toggle-icon.up {
+    transform: rotate(180deg);
+}
+
+.suggestion-content {
+    margin-top: 14px;
+    padding-top: 18px;
+    border-top: 1px dashed rgba(249, 100, 95, 0.15);
+    display: none;
+}
+
+.suggestion-display.expanded .suggestion-content {
+    display: block;
+    animation: fadeIn 0.6s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.suggestion-section {
+    margin-bottom: 22px;
+    position: relative;
+}
+
+.suggestion-section h4 {
+    font-size: 1rem;
+    color: #4b5563;
+    margin-bottom: 12px;
+    display: inline-block;
+    position: relative;
+}
+
+.suggestion-section h4::after {
+    content: "";
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 35%;
+    height: 2px;
+    background: linear-gradient(to right, rgba(249, 100, 95, 0.4), rgba(249, 100, 95, 0.1));
+    border-radius: 2px;
+}
+
+.suggestion-text {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background-color: white;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(249, 100, 95, 0.07);
+    font-size: 0.92rem;
+    line-height: 1.6;
+    max-height: 250px;
+    overflow-y: auto;
+    color: #4b5563;
+    font-family: inherit;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.01);
+}
+
+/* Elegant scrollbars for suggestion text */
+.suggestion-text::-webkit-scrollbar {
+    width: 8px;
+}
+
+.suggestion-text::-webkit-scrollbar-track {
+    background: rgba(249, 100, 95, 0.03);
+    border-radius: 8px;
+}
+
+.suggestion-text::-webkit-scrollbar-thumb {
+    background: rgba(249, 100, 95, 0.12);
+    border-radius: 8px;
+}
+
+.suggestion-text::-webkit-scrollbar-thumb:hover {
+    background: rgba(249, 100, 95, 0.18);
+}
+
+/* Fancy suggestion action buttons - softer style */
+.apply-suggestion-button {
+    background-color: white;
+    color: rgba(249, 100, 95, 0.85);
+    border: 1px solid rgba(249, 100, 95, 0.15);
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 12px;
+    margin-right: 10px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.apply-suggestion-button:hover {
+    background-color: rgba(249, 100, 95, 0.03);
+    border-color: rgba(249, 100, 95, 0.25);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+}
+
+.apply-suggestion-button.both {
+    background: linear-gradient(135deg, rgba(249, 100, 95, 0.85) 0%, rgba(255, 135, 131, 0.85) 100%);
+    color: white;
+    border: none;
+    font-weight: 500;
+    box-shadow: 0 3px 10px rgba(249, 100, 95, 0.18);
+}
+
+.apply-suggestion-button.both:hover {
+    background: linear-gradient(135deg, rgba(249, 100, 95, 0.95) 0%, rgba(255, 135, 131, 0.95) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 5px 15px rgba(249, 100, 95, 0.25);
+}

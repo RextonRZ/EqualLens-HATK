@@ -1,0 +1,99 @@
+/* Default styles for the SkillTagWithLogo component (purple theme) */
+.skill-tag-with-logo-component {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.8rem; 
+  font-size: 0.8rem;     
+  border-radius: 20px;   
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin-right: 0.25rem; 
+  margin-bottom: 0.25rem; 
+  line-height: 1.2; 
+  /* background-color and color are applied via inline styles in the component if not 'unstyled' */
+}
+
+/* Hover effect for the default (purple) tags */
+.skill-tag-with-logo-component:not(.unstyled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(130, 80, 200, 0.12); /* Purple-ish shadow */
+}
+
+.skill-tag-with-logo-component .skill-logo-img {
+  width: 15px;   
+  height: 15px;  
+  margin-right: 5px; 
+  object-fit: contain;
+  vertical-align: middle; 
+}
+
+/* When no logo, ensure padding is consistent for the default purple theme */
+.skill-tag-with-logo-component.no-logo:not(.unstyled) {
+  padding-left: 0.8rem; 
+  padding-right: 0.8rem;
+}
+
+/* Fallback style for "None specified" WHEN USING THE DEFAULT PURPLE THEME */
+.skill-tag-with-logo-component.fallback-tag:not(.unstyled) {
+    /* background-color: #e9ecef; /* Set via inline style for clarity */
+    /* color: #6c757d; */
+    border: 1px solid #d1d5db; /* Slightly more prominent border */
+    font-style: italic;
+    opacity: 0.85;
+}
+.skill-tag-with-logo-component.fallback-tag .skill-logo-img {
+    display: none; 
+}
+
+/* Styles for the 'unstyled' version of the tag - mostly resets */
+.skill-tag-with-logo-component.unstyled {
+  /* These properties are inherited or set by the parent .tag class in UploadCV.css */
+  background-color: transparent !important; 
+  color: inherit !important;             
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important; /* Will be controlled by parent .tag */
+  margin: 0 !important;  /* Will be controlled by parent .tag */
+  border-radius: 0 !important; /* Will be controlled by parent .tag */
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
+/* Fallback text for "None specified" when it's UNSTYLED (inherits from .tag in UploadCV.css) */
+.skill-tag-unstyled.fallback-text-only {
+    font-style: italic;
+    opacity: 0.8;
+    /* It will inherit background & color from the parent .tag (pinkish) */
+    /* Add padding here if the parent .tag doesn't provide enough,
+       or if SkillTagWithLogo is used directly without a .tag wrapper */
+    padding: 0.5rem 0.75rem; /* Matching .tag padding from UploadCV.css */
+}
+
+
+/* Remove button styles - generic to work inside any tag theme by inheriting color */
+.skill-tag-with-logo-component .tag-remove-logo { /* Targets button inside styled or unstyled SkillTagWithLogo */
+  background: none; 
+  border: none;
+  padding: 0;        
+  margin-left: 0.4rem; 
+  color: inherit; /* Crucial: inherits text color from its styled parent span */
+  font-size: 1.15em; 
+  font-weight: bold; 
+  line-height: 1; 
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.65; 
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.skill-tag-with-logo-component .tag-remove-logo:hover,
+.skill-tag-with-logo-component .tag-remove-logo:focus {
+  opacity: 1; 
+  transform: scale(1.15); 
+  outline: none; 
+}

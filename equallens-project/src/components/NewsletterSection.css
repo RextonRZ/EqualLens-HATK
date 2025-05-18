@@ -1,0 +1,606 @@
+.newsletter-section {
+    position: relative;
+    padding: 100px 20px;
+    background: linear-gradient(180deg, #fdf2f2 0%, #fff 100%); /* Softer, warmer background */
+    overflow: hidden;
+    margin-top: -1px; /* Ensure no gap between sections */
+}
+
+.newsletter-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Subtle pattern overlay using SVG for a modern touch */
+    background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='rgba(249, 100, 95, 0.1)' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E"),
+    linear-gradient(135deg, rgba(210, 45, 60, 0.05) 0%, rgba(249, 100, 95, 0.08) 100%);
+    z-index: 0;
+    animation: backgroundPulse 8s ease-in-out infinite alternate;
+}
+
+@keyframes backgroundPulse {
+    0% {
+        opacity: 0.7;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+.newsletter-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+    margin-top:100px;
+    margin-bottom:50px;
+    z-index: 1;
+    padding: 60px; /* Increased padding */
+    background: rgba(255, 255, 255, 0.95); /* Slightly more opaque for readability */
+    border-radius: 30px; /* Softer, larger radius */
+    box-shadow: 0 20px 40px -10px rgba(249, 100, 95, 0.15); /* Softer shadow */
+    overflow: hidden; /* Important for pseudo-elements */
+    backdrop-filter: blur(10px); /* Frosted glass effect */
+    border: 1px solid rgba(249, 100, 95, 0.1); /* Subtle border */
+    transform: perspective(1000px) rotateX(1deg); /* Slight 3D tilt for depth */
+}
+
+/* Light sweep effect for a premium feel */
+.newsletter-container::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        45deg,
+        transparent,
+        rgba(249, 100, 95, 0.05), /* Softer light color */
+        transparent,
+        transparent
+    );
+    transform: rotate(45deg);
+    animation: lightSweep 6s linear infinite;
+    z-index: -1; /* Behind content but above background */
+}
+
+@keyframes lightSweep {
+    0% {
+        transform: rotate(45deg) translateX(-100%);
+    }
+    100% {
+        transform: rotate(45deg) translateX(100%);
+    }
+}
+
+.newsletter-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 40px;
+    position: relative; /* Ensure z-index works */
+    z-index: 2;
+}
+
+.newsletter-text {
+    max-width: 600px;
+}
+
+.newsletter-text h2 {
+    font-size: 3rem; /* Slightly larger for impact */
+    font-weight: 800;
+    margin-bottom: 16px;
+    color: rgb(210, 45, 60); /* Theme's primary red */
+    position: relative;
+    display: inline-block; /* For the underline to fit content */
+    animation: pulseGlow 3s infinite;
+    letter-spacing: 1px; /* Added for sophistication */
+}
+
+.newsletter-text h2::after {
+    content: '';
+    position: absolute;
+    bottom: -10px; /* Position underline below text */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px; /* Adjust width as needed */
+    height: 4px;
+    background: linear-gradient(90deg, #D22D3C, #F9645F); /* Theme gradient */
+    border-radius: 2px;
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        text-shadow: 0 0 10px rgba(249, 100, 95, 0.3);
+    }
+    50% {
+        text-shadow: 0 0 20px rgba(249, 100, 95, 0.5);
+    }
+}
+
+.newsletter-text p {
+    font-size: 1.2rem;
+    line-height: 1.6;
+    color: #444; /* Dark grey for readability */
+    margin-top: 30px; /* Added top margin to move paragraph down */
+    margin-bottom: 0;
+}
+
+.newsletter-form-container {
+    width: 100%;
+    max-width: 600px;
+    position: relative; /* For pseudo-element glow */
+}
+
+/* Subtle glow effect on hover for the form area */
+.newsletter-form-container::before {
+    content: '';
+    position: absolute;
+    top: -20px; left: -20px; right: -20px; bottom: -20px;
+    border-radius: 30px; /* Match container radius */
+    background: linear-gradient(135deg, rgba(249, 100, 95, 0.1), transparent);
+    filter: blur(20px);
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.newsletter-form-container:hover::before {
+    opacity: 1;
+}
+
+.newsletter-form {
+    width: 100%;
+}
+
+.input-group-news {
+    display: flex;
+    position: relative;
+    border-radius: 50px; /* Fully rounded input group */
+    overflow: hidden; /* To contain the button */
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy transition */
+    background: white;
+    border: 1px solid rgba(249, 100, 95, 0.2); /* Subtle theme border */
+}
+
+.input-group-news:focus-within {
+    box-shadow: 0 12px 25px rgba(210, 45, 60, 0.15); /* Stronger shadow on focus */
+    transform: translateY(-5px) scale(1.02); /* Pop effect */
+    border: 1px solid rgba(249, 100, 95, 0.4);
+}
+
+.input-group-news input {
+    flex: 1;
+    padding: 22px 30px; /* Generous padding */
+    font-size: 1.1rem;
+    border: none;
+    outline: none;
+    color: #333;
+    background-color: transparent; /* Input is part of the group */
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+.input-group-news input::placeholder {
+    color: #aaa;
+}
+
+.input-group-news input.error {
+    border-color: #ef4444; /* Keep error styling clear */
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+}
+
+.subscribe-btn {
+    background: linear-gradient(90deg, #D22D3C, #F9645F); /* Theme gradient */
+    color: white;
+    border: none;
+    padding: 0 40px; /* Horizontal padding for text and arrow */
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between text and arrow */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    position: relative; /* For ::before shine effect */
+    overflow: hidden;
+    z-index: 1;
+}
+
+/* Shine effect on hover */
+.subscribe-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transition: left 0.6s ease;
+    z-index: -1;
+}
+
+.subscribe-btn:hover::before {
+    left: 100%;
+}
+
+.subscribe-btn:hover {
+    background: linear-gradient(90deg, #b82533, #e85550); /* Darker gradient on hover */
+    transform: translateX(5px); /* Slight move for interaction feedback */
+    box-shadow: 0 0 20px rgba(249, 100, 95, 0.6); /* Glow effect */
+}
+
+.subscribe-btn:hover .btn-arrow {
+    transform: translateX(5px); /* Move arrow further */
+    animation: arrowBounce 1s infinite;
+}
+
+@keyframes arrowBounce {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(5px); }
+}
+
+.btn-arrow {
+    font-size: 1.4rem;
+    transition: transform 0.3s ease;
+}
+
+
+.privacy-note {
+    font-size: 0.85rem;
+    color: rgba(116, 20, 20, 0.768); /* Subtler, themed color */
+    margin-top: 16px;
+    margin-right: 20px; /* Align to right if desired */
+    text-align: right;
+    font-style: italic;
+}
+
+.success-message {
+    background: #f0f7ff; /* Light, celebratory background */
+    border: 1px solid #d1e4ff;
+    border-radius: 20px; /* Softer radius */
+    padding: 40px; /* Generous padding */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: fadeIn 0.7s ease-in-out;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes fadeInUp {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+
+.news-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #D22D3C, #F9645F); /* Theme gradient */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2.5rem; /* Larger icon */
+    margin-bottom: 25px;
+    animation: successPulse 2s infinite;
+    box-shadow: 0 0 30px rgba(249, 100, 95, 0.4); /* Glow for the icon */
+}
+
+@keyframes successPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 30px rgba(249, 100, 95, 0.4);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 0 40px rgba(249, 100, 95, 0.5);
+    }
+}
+
+.success-message h3 {
+    font-size: 2rem;
+    margin-bottom: 12px;
+    color: #333;
+}
+
+.success-message p {
+    color: #666;
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+/* Decorative floating circles for a more dynamic background feel */
+.newsletter-decoration {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Contained within section */
+    z-index: 1; /* Above background, below container */
+    pointer-events: none; /* Not interactive */
+}
+
+.floating-circle {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.1; /* Very subtle */
+    filter: blur(8px); /* Soft edges */
+}
+
+.circle-1 {
+    top: -120px;
+    left: -80px;
+    width: 280px;
+    height: 280px;
+    background: linear-gradient(135deg, #F9645F, #ff8783); /* Theme colors */
+    animation: floatLarge 18s infinite ease-in-out;
+}
+
+.circle-2 {
+    bottom: -150px;
+    right: -100px;
+    width: 400px;
+    height: 400px;
+    background: linear-gradient(135deg, #D22D3C, #F9645F);
+    animation: floatLarge 22s infinite ease-in-out reverse; /* Different timing and direction */
+}
+
+.circle-3 {
+    top: 40%;
+    right: 15%;
+    width: 150px;
+    height: 150px;
+    background: linear-gradient(135deg, #F9645F, #ffa07a); /* Lighter accent */
+    animation: floatSmall 12s infinite ease-in-out;
+}
+
+@keyframes floatLarge {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(40px, -30px) rotate(5deg); }
+    50% { transform: translate(0, 20px) rotate(0deg); }
+    75% { transform: translate(-40px, -10px) rotate(-5deg); }
+}
+
+@keyframes floatSmall {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    20% { transform: translate(15px, -15px) rotate(10deg); }
+    40% { transform: translate(15px, 15px) rotate(0deg); }
+    60% { transform: translate(-15px, 15px) rotate(-10deg); }
+    80% { transform: translate(-15px, -15px) rotate(0deg); }
+}
+
+
+/* Responsive styles */
+@media (min-width: 768px) {
+    .newsletter-content {
+        flex-direction: row;
+        text-align: left;
+        justify-content: space-between;
+        align-items: center; /* Vertically align items */
+    }
+
+    .newsletter-text {
+        flex: 1;
+        padding-right: 60px; /* Space between text and form */
+    }
+
+    .newsletter-text h2::after {
+        left: 0; /* Align underline to the left */
+        transform: none;
+    }
+
+    .newsletter-form-container {
+        flex: 1; /* Allow form to take available space */
+    }
+}
+
+@media (max-width: 767px) {
+    .newsletter-section {
+        padding: 40px 10px; /* Further reduced padding */
+    }
+    
+    .newsletter-container {
+        padding: 25px 15px;
+        border-radius: 15px; /* Even smaller radius */
+        box-shadow: 0 15px 30px -10px rgba(249, 100, 95, 0.1); /* Softer shadow */
+        transform: none; /* Remove the 3D perspective on mobile */
+    }
+    
+    .newsletter-text h2 {
+        font-size: 1.7rem; /* Smaller heading */
+        margin-bottom: 30px; /* Increased from 20px to create more space */
+    }
+    
+    .newsletter-text h2::after {
+        width: 60px; /* Shorter underline */
+        height: 3px; /* Thinner line */
+        bottom: -8px;
+    }
+    
+    .newsletter-text p {
+        font-size: 0.9rem; /* Smaller paragraph text */
+        line-height: 1.4;
+        margin-top: 20px; /* Added top margin for mobile view */
+        margin-bottom: 30px; /* Increased from 25px for more space */
+        padding: 0 5px;
+    }
+    
+    .input-group-news {
+        flex-direction: column;
+        border-radius: 12px;
+        box-shadow: 0 5px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    .input-group-news input {
+        border-radius: 12px 12px 0 0;
+        text-align: center;
+        padding: 14px 15px;
+        font-size: 0.9rem;
+    }
+    
+    .subscribe-btn {
+        justify-content: center;
+        padding: 12px 16px;
+        border-radius: 0 0 12px 12px;
+        width: 100%;
+        font-size: 0.9rem;
+        gap: 5px;
+    }
+    
+    .btn-arrow {
+        font-size: 1.2rem;
+    }
+    
+    .privacy-note {
+        font-size: 0.75rem;
+        margin-top: 10px;
+        text-align: center;
+        padding: 0;
+    }
+
+    /* Simpler success message for mobile */
+    .success-message {
+        padding: 20px 15px;
+        border-radius: 12px;
+    }
+    
+    .news-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+        margin-bottom: 12px;
+    }
+    
+    .success-message h3 {
+        font-size: 1.3rem;
+        margin-bottom: 8px;
+    }
+    
+    .success-message p {
+        font-size: 0.9rem;
+    }
+    
+    /* Hide some decorative elements on mobile for cleaner look */
+    .circle-3 {
+        display: none;
+    }
+    
+    .circle-1, .circle-2 {
+        opacity: 0.05;
+    }
+    
+    .error-message {
+        font-size: 0.75rem;
+        padding-left: 10px;
+    }
+}
+
+/* Special styles for very small screens */
+@media (max-width: 480px) {
+    .newsletter-section {
+        padding: 40px 10px;
+    }
+    
+    .newsletter-container {
+        padding: 25px 15px;
+        transform: none; /* Remove the perspective tilt */
+    }
+    
+    .newsletter-text h2 {
+        font-size: 1.8rem;
+        margin-bottom: 30px; /* Increased space below heading */
+    }
+    
+    .newsletter-text p {
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin-top: 15px; /* Added top margin for very small screens */
+        margin-bottom: 25px; /* Space below paragraph */
+    }
+    
+    .input-group-news input {
+        padding: 14px 15px;
+    }
+    
+    .subscribe-btn {
+        padding: 12px;
+    }
+    
+    .news-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.7rem;
+    }
+    
+    .error-message {
+        font-size: 0.8rem;
+        padding-left: 15px;
+    }
+}
+
+/* Add orientation-specific styles for landscape mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+    .newsletter-section {
+        padding: 30px 15px;
+    }
+    
+    .newsletter-content {
+        flex-direction: row; /* Keep side-by-side layout in landscape */
+        text-align: left;
+    }
+    
+    .newsletter-text {
+        flex: 1;
+        padding-right: 30px;
+    }
+    
+    .newsletter-form-container {
+        flex: 1;
+    }
+    
+    .newsletter-text h2::after {
+        left: 0;
+        transform: none;
+    }
+    
+    .newsletter-container {
+        padding: 30px;
+    }
+    
+    .circle-1, .circle-2, .circle-3 {
+        opacity: 0.05; /* Make even more subtle in landscape */
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 360px) {
+    .newsletter-text h2 {
+        font-size: 1.5rem;
+    }
+
+    .newsletter-content{
+        margin-top:100px;
+    }
+    
+    .newsletter-text p {
+        margin-top:500px;
+        font-size: 0.85rem;
+    }
+    
+    .newsletter-container {
+        padding: 20px 12px;
+    }
+    
+    .input-group-news input,
+    .subscribe-btn {
+        padding: 12px;
+    }
+}

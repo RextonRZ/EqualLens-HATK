@@ -1,0 +1,137 @@
+.bias-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    animation: fadeIn 0.3s ease;
+}
+
+.bias-modal {
+    background-color: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    animation: slideIn 0.4s ease;
+    border-top: 5px solid #F9645F;
+}
+
+.bias-modal-header {
+    padding: 20px 25px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.bias-modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #333;
+}
+
+.bias-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+}
+
+.bias-modal-close:hover {
+    color: #F9645F;
+}
+
+.bias-modal-content {
+    padding: 20px 25px;
+}
+
+.bias-warning-icon {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.bias-message {
+    font-size: 1.1rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    text-align: center;
+    color: #333;
+}
+
+.bias-results {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.bias-category {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.bias-category:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.bias-category h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #F9645F;
+}
+
+.bias-category p {
+    margin: 0;
+    line-height: 1.5;
+    color: #555;
+}
+
+.bias-modal-footer {
+    padding: 20px 25px;
+    border-top: 1px solid #eee;
+    text-align: right;
+}
+
+.bias-action-button {
+    background-color: #F9645F;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.bias-action-button:hover {
+    background-color: #e04842;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* Highlighted text styling */
+.bias-highlight {
+    background-color: rgba(249, 100, 95, 0.2);
+    border-bottom: 2px solid #F9645F;
+    padding: 2px 0;
+}

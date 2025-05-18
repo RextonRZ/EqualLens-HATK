@@ -1,0 +1,2833 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'PT Sans', sans-serif;
+}
+
+.dashboard {
+  display: flex;
+  height: 90vh;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+}
+
+.dashboard-container {
+  padding: 2.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 90vh;
+  background-color: #f8fafc;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.dashboard-header h1 {
+  font-size: 2rem;
+  color: #333;
+  position: relative;
+  display: inline-block;
+}
+
+.dashboard-header h1::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 40%;
+  height: 3px;
+  background: linear-gradient(to right, #F9645F, #ff8783);
+  border-radius: 2px;
+}
+
+/* Add this to your Dashboard CSS file or component */
+.dashboard-action-button.export-button {
+  background-color: #227728;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(56, 178, 172, 0.2);
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.dashboard-action-button.export-button:hover {
+  background-color: #1a591e;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(95, 249, 131, 0.2);
+}
+
+.dashboard-action-button.export-button:before {
+  content: '';
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z'/%3E%3Cpath d='M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z'/%3E%3C/svg%3E");
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  margin-right: 6px;
+  background-repeat: no-repeat;
+}
+
+.export-csv-button {
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  border: none;
+  color: #FFF;
+  background-color: #38B2AC !important;
+  /* Use !important if needed to override inline styles */
+  transition: background-color 0.2s ease;
+  /* Smooth transition */
+}
+
+.export-csv-button:hover {
+  background-color: #2c908a !important;
+  /* Slightly darker teal */
+}
+
+.export-pdf-button {
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  border: none;
+  color: #FFF;
+  background-color: #485EDB !important;
+  /* Use !important if needed to override inline styles */
+  transition: background-color 0.2s ease;
+  /* Smooth transition */
+}
+
+.export-pdf-button:hover {
+  background-color: #3a4cb5 !important;
+  /* Slightly darker blue */
+}
+
+.button-icon {
+  font-size: 1.1rem;
+}
+
+.create-job-button {
+  background-color: #F9645F;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(249, 100, 95, 0.2);
+}
+
+.create-job-button:hover {
+  background-color: #ef402d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(249, 100, 95, 0.3);
+}
+
+/* Search Container */
+.search-container {
+  margin-bottom: 2rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.search-input-wrapper {
+  display: flex;
+  width: 100%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.search-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-right: none;
+  border-radius: 0.5rem 0 0 0.5rem;
+  font-size: 1rem;
+  color: #374151;
+  transition: all 0.25s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #F9645F;
+  box-shadow: 0 0 0 3px rgba(249, 100, 95, 0.15);
+}
+
+.search-category {
+  width: 180px;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  background-color: #ffffff;
+  font-size: 1rem;
+  color: #374151;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+}
+
+.search-category:focus {
+  outline: none;
+  border-color: #F9645F;
+}
+
+/* Sort Container */
+.sort-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.sort-container label {
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.sort-select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background-color: #ffffff;
+  font-size: 0.9rem;
+  color: #374151;
+  cursor: pointer;
+  appearance: none;
+  min-width: 180px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: #F9645F;
+  box-shadow: 0 0 0 3px rgba(249, 100, 95, 0.15);
+}
+
+/* Filter dropdown styles */
+.filter-container {
+  position: relative;
+  min-width: 240px;
+}
+
+.filter-select {
+  width: 100%;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  background-color: white;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.filter-select:hover {
+  border-color: #cbd5e0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #F9645F;
+  box-shadow: 0 0 0 3px rgba(249, 100, 95, 0.15);
+}
+
+/* Single column job list */
+.jobs-list-single-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Job card row styling with fixed height and improved hover effects */
+.job-card-row {
+  background-color: white;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 1px solid #f1f1f1;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
+  height: 340px;
+  /* Set a consistent height for all job cards */
+  overflow: hidden;
+  position: relative;
+  /* Position relative for absolute positioning of children */
+}
+
+.job-card-row:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  border-color: rgba(249, 100, 95, 0.2);
+}
+
+/* Ensure the job card row expands properly when description is expanded */
+.job-card-row.expanded {
+  height: auto !important;
+  max-height: none !important;
+  transition: all 0.3s ease;
+  border-color: rgba(249, 100, 95, 0.3);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Add a slight highlight to expanded cards */
+.job-card-row.expanded:hover {
+  transform: translateY(-3px);
+}
+
+/* Add a subtle transition effect when toggling */
+.job-card-row {
+  transition: height 0.3s ease, max-height 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+/* Improved content container with flex layout */
+.job-card-main-content {
+  flex: 3;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Contain the content */
+  max-height: 100%;
+  /* Fill parent height */
+  position: relative;
+  /* For absolute positioning of fade effect */
+}
+
+/* Enhanced job title styling */
+.job-card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 16;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Comprehensive description styling with preserved formatting */
+.job-card-description {
+  color: #666;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+  white-space: pre-line;
+  /* Preserve line breaks as entered */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 10;
+  /* Limit to 4 lines */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 480px;
+  /* ~4 lines with 1.4 line height and 20px font */
+  position: relative;
+  font-size: 0.95rem;
+}
+
+/* Add gradient fade effect at the bottom of truncated descriptions */
+.job-card-description::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 30px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 1));
+  pointer-events: none;
+  /* Don't block clicks */
+  opacity: 0.8;
+}
+
+/* Add these new styles after the existing .job-card-description styles */
+.job-card-description.expanded {
+  -webkit-line-clamp: initial;
+  /* Remove line limit when expanded */
+  max-height: none;
+  /* Remove height restriction */
+  margin-bottom: 1.5rem;
+  /* Add more space at bottom for better readability */
+}
+
+/* Hide gradient fade when expanded */
+.job-card-description.expanded::after {
+  display: none;
+}
+
+/* Make job card expand when skills are expanded */
+.job-card-row:has(.skills-tags.expanded) {
+  height: auto !important;
+  max-height: none !important;
+  transition: all 0.3s ease;
+  border-color: rgba(249, 100, 95, 0.3);
+}
+
+/* Improve styling for skills section within expanded card */
+.skills-tags.expanded {
+  max-height: none;
+  overflow: visible;
+  margin-bottom: 0.75rem;
+}
+
+/* Make sure skills tags section has enough space when expanded */
+.job-card-skills {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.75rem;
+}
+
+/* Ensure the job card row expands properly when description is expanded */
+.job-card-row:has(.job-card-description.expanded) {
+  height: auto;
+  max-height: none;
+  transition: height 0.3s ease, max-height 0.3s ease, transform 0.2s ease;
+}
+
+/* Add some additional spacing at the bottom of expanded descriptions */
+.job-card-description.expanded {
+  -webkit-line-clamp: initial;
+  /* Remove line limit when expanded */
+  max-height: none;
+  /* Remove height restriction */
+  margin-bottom: 1.5rem;
+  /* Add more space at bottom for better readability */
+  padding-bottom: 1rem;
+  /* Add padding to create space around read less button */
+}
+
+.job-card-description.expanded .read-more-toggle {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Skills display with expanded state and hover effects */
+.skills-tags {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: max-height 0.3s ease;
+  width: 100%;
+}
+
+.skills-tags.collapsed {
+  max-height: 10rem;
+  overflow: hidden;
+}
+
+.skills-tags.expanded {
+  max-height: none;
+}
+
+/* Add READ MORE indicator with animated styles */
+.read-more {
+  color: #F9645F;
+  font-weight: 500;
+  display: inline-block;
+  cursor: pointer;
+  position: absolute;
+  right: 0;
+  bottom: -5px;
+  background-color: white;
+  padding: 0 5px;
+  font-size: 0.85rem;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  transform: translateY(5px);
+  z-index: 5;
+  /* Ensure it appears above the fade gradient */
+}
+
+/* Style for skills overflow indicator with matching design to read-more-toggle */
+.skills-overflow-indicator {
+  color: #F9645F;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 1px solid rgba(249, 100, 95, 0.2);
+  box-shadow: 0 2px 5px rgba(249, 100, 95, 0.1);
+}
+
+.skills-overflow-indicator:hover {
+  color: white;
+  background-color: #F9645F;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 5px 15px rgba(249, 100, 95, 0.3);
+  font-weight: 600;
+}
+
+/* Add arrow animation on hover */
+.skills-overflow-indicator:hover::after {
+  content: "→";
+  margin-left: 5px;
+  display: inline-block;
+  animation: bounceArrow 0.75s infinite alternate;
+}
+
+/* When job card is expanded, automatically show all skills */
+.job-card-row.expanded .skills-tags {
+  max-height: none;
+  overflow: visible;
+}
+
+/* Hide the overflow indicator when skills are expanded or job card is expanded */
+.skills-tags.expanded .skills-overflow-indicator,
+.job-card-row.expanded .skills-overflow-indicator {
+  display: none;
+}
+
+.skill-tag {
+  background-color: #f8f0ff;
+  color: #8250c8;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease;
+  display: block;
+}
+
+.skill-tag:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure container has proper margins when expanded */
+.job-card-main-content:has(.job-card-description.expanded) {
+  margin-bottom: 0.5rem;
+}
+
+/* Adjust transition for smoother expansion */
+.job-card-description {
+  transition: all 0.3s ease;
+}
+
+/* Enhanced style for the read more/less toggle with fancy hover effects */
+.read-more-toggle {
+  color: #F9645F;
+  font-weight: 500;
+  display: inline-block;
+  cursor: pointer;
+  position: absolute;
+  right: 0;
+  bottom: 0px;
+  background-color: white;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.85rem;
+  border-radius: 12px;
+  z-index: 5;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 1px solid rgba(249, 100, 95, 0.2);
+  box-shadow: 0 2px 5px rgba(249, 100, 95, 0.1);
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+/* Fancy hover effect */
+.read-more-toggle:hover {
+  color: white;
+  background-color: #F9645F;
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 5px 15px rgba(249, 100, 95, 0.3);
+  font-weight: 600;
+  padding-right: 1rem;
+  letter-spacing: 0.5px;
+}
+
+/* Add arrow animation on hover */
+.read-more-toggle:hover::after {
+  content: "→";
+  margin-left: 5px;
+  display: inline-block;
+  animation: bounceArrow 0.75s infinite alternate;
+}
+
+/* Arrow bounce animation */
+@keyframes bounceArrow {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(3px);
+  }
+}
+
+/* When in "READ LESS" state, show different arrow */
+.job-card-description.expanded .read-more-toggle:hover::after {
+  content: "↑";
+  animation: bounceArrowUp 0.75s infinite alternate;
+}
+
+@keyframes bounceArrowUp {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(-3px);
+  }
+}
+
+/* Add a subtle pulse animation when the page loads to draw attention */
+@keyframes pulseFade {
+
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+/* Apply the pulse animation to newly loaded toggle buttons */
+.job-card-row:hover .read-more-toggle:not(:hover) {
+  animation: pulseFade 2s ease-in-out;
+}
+
+/* Show toggle button on hover and when expanded */
+.job-card-row:hover .read-more-toggle,
+.job-card-description.expanded .read-more-toggle {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Add READ MORE indicator with animated styles */
+.read-more {
+  color: #F9645F;
+  font-weight: 500;
+  display: inline-block;
+  cursor: pointer;
+  position: absolute;
+  right: 0;
+  bottom: -5px;
+  background-color: white;
+  padding: 0 5px;
+  font-size: 0.85rem;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  transform: translateY(5px);
+  z-index: 5;
+  /* Ensure it appears above the fade gradient */
+}
+
+/* Show the READ MORE on hover */
+.job-card-row:hover .read-more {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Style for departments container with proper spacing */
+.job-card-departments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: auto;
+  /* Push to bottom of container */
+  padding-top: 0.75rem;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Ensure department tags don't break layouts */
+.department-tag {
+  background-color: #f0f7ff;
+  color: #0066cc;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.job-card-side-content {
+  flex: 1;
+  min-width: 200px;
+  padding-left: 1.5rem;
+  border-left: 1px solid #f1f1f1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.job-card-date,
+.job-card-applications {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.detail-label {
+  font-weight: 500;
+  color: #333;
+}
+
+/* Job Detail View - Full Description */
+.description-group .info-value {
+  white-space: pre-line;
+  /* Preserve formatting in detailed view */
+  line-height: 1.6;
+  background-color: #fcfcfc;
+  padding: 1rem;
+  border-radius: 4px;
+  border: 1px solid #eee;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow-wrap: break-word;
+  /* Ensure long words don't overflow */
+  max-height: 500px;
+  /* Add a max height */
+  overflow-y: auto;
+  /* Allow scrolling for very long descriptions */
+}
+
+/* Responsive adjustments for job cards */
+@media (max-width: 768px) {
+  .job-card-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .job-card-side-content {
+    padding-left: 0;
+    border-left: none;
+    border-top: 1px solid #f1f1f1;
+    padding-top: 1rem;
+    width: 100%;
+  }
+}
+
+/* Responsive adjustments for search and sort */
+@media (min-width: 768px) {
+  .search-container {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .search-input-wrapper {
+    max-width: 600px;
+  }
+
+  .sort-container {
+    margin-top: 0;
+  }
+}
+
+/* Loading and Error States */
+.loading-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+}
+
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-left-color: #F9645F;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error-message {
+  background-color: #ffebee;
+  border: 1px solid #ffcdd2;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.error-message h3 {
+  color: #d32f2f;
+  margin-bottom: 1rem;
+}
+
+.error-message button {
+  background-color: #d32f2f;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  margin-top: 1rem;
+  cursor: pointer;
+}
+
+.no-jobs {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 3rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  color: #666;
+}
+
+/* Job Detail View */
+.job-detail-view {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.back-button {
+  background: none;
+  border: none;
+  color: #F9645F;
+  font-size: 1rem;
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.back-button:hover {
+  text-decoration: underline;
+}
+
+.job-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.job-detail-header h2 {
+  font-size: 1.8rem;
+  color: #333;
+}
+
+.job-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.edit-job-button,
+.save-button,
+.cancel-button {
+  background-color: #F9645F;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(249, 100, 95, 0.2);
+}
+
+.edit-job-button:hover,
+.save-button:hover {
+  background-color: #e84e48;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(249, 100, 95, 0.3);
+}
+
+.cancel-button {
+  background-color: #f1f1f1;
+  color: #333;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.cancel-button:hover {
+  background-color: #e1e1e1;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Change job detail content layout from grid to column */
+.job-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+}
+
+/* Adjust containers for the new stacked layout */
+.job-info-container,
+.applicants-container {
+  background-color: white;
+  border-radius: 8px;
+  padding: 1.75rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f1f1f1;
+  width: 100%;
+  /* Ensure full width */
+}
+
+.job-info-container,
+.applicants-container {
+  background-color: white;
+  border-radius: 8px;
+  padding: 1.75rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f1f1f1;
+}
+
+.job-info-container h3,
+.applicants-container h3 {
+  margin-bottom: 1rem;
+  color: #333;
+  padding-bottom: 0.5rem;
+}
+
+/* Job Info Display */
+.job-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.info-group {
+  margin-top: 0.7rem;
+  margin-bottom: 0.5rem;
+  /* More space between info groups */
+  padding-bottom: 0.5rem;
+  /* Add padding at the bottom of each group */
+}
+
+.info-group .skills-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.skills-display .skill-tag {
+  display: inline-flex;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Remove scrolling for job description and show full content */
+.description-group .info-value {
+  white-space: pre-line;
+  overflow: visible;
+  max-height: none;
+  height: auto;
+  overflow-y: visible;
+}
+
+.info-label {
+  font-weight: 600;
+  /* Bolder labels */
+  color: #444;
+  margin-bottom: 0.5rem;
+  /* More space between label and value */
+  font-size: 1rem;
+  /* Slightly larger label */
+}
+
+.info-value {
+  color: #333;
+  line-height: 1.5;
+  /* Better line height for readability */
+  padding: 0.25rem 0;
+  /* Add some padding around values */
+  font-size: 1rem;
+}
+
+/* Info columns container for a two-column layout in job information */
+.info-columns {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.info-column {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 0.2rem;
+}
+
+/* Container for the top applicants */
+.top-applicants-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  /* Space between the title and the row */
+  margin-bottom: 2.5rem;
+  /* Space below the container */
+}
+
+/* Row to display top applicants in a single row */
+.top-applicants-row {
+  display: flex;
+  justify-content: center;
+  /* Distribute cards evenly */
+  align-items: stretch;
+  /* Ensure all cards have the same height */
+  gap: 1rem;
+  /* Space between cards */
+}
+
+/* Special styling for the primary applicant card (rank 1) */
+.applicant-card.top-applicant-card.primary-applicant {
+  border: 2px solid #F9645F;
+  /* Highlighted border for primary applicant */
+  background-color: #fff5f5;
+  /* Light red background */
+}
+
+/* Applicant card for top applicants */
+.applicant-card.top-applicant-card {
+  display: flex;
+  flex-direction: column;
+  /* Arrange content in rows */
+  justify-content: flex-start;
+  /* Align content to the top */
+  align-items: center;
+  /* Center content horizontally */
+  flex: 1;
+  /* Allow cards to take equal width */
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  /* Light border */
+  border-radius: 8px;
+  /* Rounded corners */
+  background-color: #ffffff;
+  /* White background */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  /* Subtle shadow */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  gap: 1rem;
+  /* Space between rows */
+}
+
+.flippable-card {
+  position: relative;
+  perspective: 1000px;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.flippable-card[data-rank="1"] {
+  height: 420px;
+}
+
+.flippable-card[data-rank="2"] {
+  height: 360px;
+}
+
+.flippable-card[data-rank="2"][mode="1"] {
+  height: 420px;
+}
+
+.flippable-card[data-rank="3"] {
+  height: 340px;
+}
+
+.flipper {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.6s ease;
+}
+
+.flippable-card.flipped .flipper {
+  transform: rotateY(180deg);
+}
+
+.front,
+.back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  overflow: hidden;
+  transition: opacity 0.3s ease;
+  transition-delay: 0.1s;
+}
+
+.front {
+  z-index: 2;
+  transform: rotateY(0deg);
+  opacity: 1;
+}
+
+.back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transform: rotateY(180deg);
+  /* Flip the back side correctly */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  z-index: 1;
+}
+
+.back .applicant-content-container {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  align-items: flex-start;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.back .applicant-content-container h4 {
+  margin: 0;
+  text-align: left;
+  flex: 1;
+  display: block;
+  width: auto;
+}
+
+.back .applicant-content-container>div {
+  text-align: right;
+  margin-left: auto;
+  /* Push to the right */
+}
+
+/* Score elements */
+.back .applicant-content-container .rank-score-label,
+.back .applicant-content-container .rank-score-value {
+  text-align: right;
+}
+
+.back p {
+  text-align: justify;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.flippable-card.flipped .front {
+  z-index: 1;
+  opacity: 0;
+}
+
+.flippable-card.flipped .back {
+  z-index: 100;
+  opacity: 1;
+}
+
+/* Fix the hover effect to work with the existing transform */
+.flippable-card:hover .front,
+.applicant-card.top-applicant-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Add specific hover effect for the back side */
+.flippable-card.flipped:hover .back {
+  /* Combine both transforms to avoid conflicts */
+  transform: rotateY(180deg) translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Prevent the front from interfering when card is flipped */
+.flippable-card.flipped:hover .front {
+  transform: rotateY(0deg);
+}
+
+/* Top Applicants - Podium Layout */
+.top-three-applicants {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: -2rem;
+}
+
+.top-applicants-row {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  /* Align items to the bottom to create podium effect */
+  gap: 1rem;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+/* Alternative with better browser support */
+.top-applicants-row-2 {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  /* Align items to the start */
+  gap: 1rem;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+/* Style for rank 1 (center, taller) */
+.top-applicant-card[data-rank="1"] {
+  order: 2;
+  /* Center position in flexbox */
+  min-width: 300px;
+  z-index: 3;
+  /* Highest z-index to appear on top */
+  background: linear-gradient(180deg, #fffef0, #ffffff);
+  height: 420px;
+}
+
+/* Style for mode="1" (alternative mode) */
+.top-applicant-card[data-rank="1"][mode="1"] {
+  margin-top: -20px;
+}
+
+/* Style for rank 2 (left) */
+.top-applicant-card[data-rank="2"] {
+  order: 1;
+  /* Left position in flexbox */
+  height: 360px;
+  min-width: 250px;
+  z-index: 2;
+  background: linear-gradient(180deg, #f8f8f8, #ffffff);
+}
+
+/* Style for mode="1" (alternative mode) */
+.top-applicant-card[data-rank="2"][mode="1"] {
+  height: 420px;
+}
+
+/* Style for rank 3 (right) */
+.top-applicant-card[data-rank="3"] {
+  order: 3;
+  /* Right position in flexbox */
+  height: 340px;
+  min-width: 250px;
+  z-index: 1;
+  background: linear-gradient(180deg, #fdf8f3, #ffffff);
+}
+
+/* Ensure normal applicant cards maintain their styling even when flippable */
+.flippable-card .front.applicant-card:not(.top-applicant-card) .back.applicant-card:not(.top-applicant-card) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  background-color: #fafafa;
+  height: 9rem;
+  min-height: 120px;
+}
+
+/* Fix fade transition for regular applicant cards - maintain consistent dimensions */
+.flippable-card:not([data-rank="1"]):not([data-rank="2"]):not([data-rank="3"]) {
+  height: 9rem;
+  min-height: 120px;
+  perspective: none;
+  transition: transform 0.3s ease;
+  position: relative;
+}
+
+/* Ensure flipper maintains proper dimensions */
+.flippable-card:not([data-rank="1"]):not([data-rank="2"]):not([data-rank="3"]) .flipper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  transition: none;
+}
+
+/* Fix front and back sides to have consistent dimensions */
+.flippable-card:not([data-rank="1"]):not([data-rank="2"]):not([data-rank="3"]) .front,
+.flippable-card:not([data-rank="1"]):not([data-rank="2"]):not([data-rank="3"]) .back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  backface-visibility: visible;
+  transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+  transform-origin: center center;
+  padding: 0.75rem;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  background-color: #fafafa;
+}
+
+/* Set up fade transition */
+.flippable-card:not([data-rank="1"]):not([data-rank="2"]):not([data-rank="3"]) .front {
+  opacity: 1;
+  z-index: 2;
+  transform: translateY(0);
+}
+
+/* For standard cards - remove the rotateY from the back face */
+.flippable-card:not([data-rank="1"]):not([data-rank="2"]):not([data-rank="3"]) .back {
+  opacity: 0;
+  z-index: 1;
+  transform: translateY(5px);
+  display: flex;
+  flex-direction: column;
+  /* Remove any rotation that causes mirroring */
+}
+
+/* For standard cards - keep using opacity transitions instead of flips */
+.flippable-card:not([data-rank="1"]):not([data-rank="2"]):not([data-rank="3"]).flipped .flipper {
+  transform: none;
+  /* Don't rotate for regular cards */
+}
+
+/* When flipped, swap visibility with fade effect instead of 3D rotation */
+.flippable-card:not([data-rank="1"]):not([data-rank="2"]):not([data-rank="3"]).flipped .front {
+  opacity: 0;
+  z-index: 1;
+  transform: translateY(-5px);
+}
+
+.flippable-card:not([data-rank="1"]):not([data-rank="2"]):not([data-rank="3"]).flipped .back {
+  opacity: 1;
+  z-index: 2;
+  transform: translateY(0);
+}
+
+/* Side-by-side layout for back of regular applicant cards */
+.back.applicant-card .applicant-back-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.back.applicant-card .applicant-rank-info {
+  flex: 0 0 20%;
+  border-right: 1px solid #eaeaea;
+  padding-right: 12px;
+  margin-right: 12px;
+}
+
+.back.applicant-card .reasoning-container {
+  flex: 1;
+  overflow-y: auto;
+  padding-left: 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.back.applicant-card .reasoning-text {
+  font-size: 16px;
+  line-height: 1.4;
+  margin: 0;
+  overflow-y: auto;
+  max-height: 100px;
+}
+
+/* Rank badges - circular rankings with medal colors */
+.rank-badge {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  /* Perfect circle */
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: white;
+  margin: 0 auto 1rem;
+  position: relative;
+  /* Ensure perfect circle shape */
+  min-width: 60px;
+  min-height: 60px;
+  max-width: 60px;
+  max-height: 60px;
+  /* Remove box-shadow */
+  box-shadow: none;
+}
+
+/* Gold medal for rank 1 */
+.rank-badge[data-rank="1"] {
+  background: linear-gradient(135deg, #FFD700, #FFC400);
+  border: 3px solid #fff;
+  margin-top: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Silver medal for rank 2 */
+.rank-badge[data-rank="2"] {
+  background: linear-gradient(135deg, #C0C0C0, #A9A9A9);
+  border: 3px solid #fff;
+  margin-top: 0.5rem;
+  margin-bottom: 1.2rem;
+}
+
+/* Bronze medal for rank 3 */
+.rank-badge[data-rank="3"] {
+  background: linear-gradient(135deg, #CD7F32, #B87333);
+  border: 3px solid #fff;
+}
+
+/* Style for the crown icon for first place */
+.crown-icon {
+  position: absolute;
+  top: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 30px;
+  color: #FFD700;
+  /* Remove filter */
+  filter: none;
+}
+
+/* Simplify the score display to normal text styling */
+.rank-score-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+  /* Remove button-like styling */
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.rank-score-label {
+  font-weight: bold;
+  color: #555;
+}
+
+.rank-score-value {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #3d3939;
+}
+
+/* Make responsive adjustments for the podium layout */
+@media (max-width: 992px) {
+  .top-applicant-card[data-rank="1"] {
+    min-width: 280px;
+    height: 300px;
+  }
+
+  .top-applicant-card[data-rank="2"],
+  .top-applicant-card[data-rank="3"] {
+    min-width: 220px;
+    height: 260px;
+  }
+}
+
+@media (max-width: 768px) {
+  .top-applicants-row {
+    flex-direction: column;
+    align-items: center;
+    gap: 4rem;
+  }
+
+  .top-applicant-card[data-rank="1"],
+  .top-applicant-card[data-rank="2"],
+  .top-applicant-card[data-rank="3"] {
+    order: 0;
+    width: 100%;
+    max-width: 320px;
+    min-width: unset;
+    height: auto;
+    transform: none;
+  }
+}
+
+/* Enhance the styling for the applicant cards */
+.applicant-card.top-applicant-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.applicant-card.top-applicant-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Add styling for rank score display */
+.rank-score-container {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.rank-score-label {
+  font-weight: bold;
+  color: #555;
+}
+
+.rank-score-value {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #545454;
+}
+
+/* Override the existing rank-number styling to work better with the podium */
+.rank-number-container {
+  margin-bottom: 0.5rem;
+}
+
+/* Rank number styling */
+.rank-number {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 50px;
+  /* Fixed width for the rank circle */
+  height: 50px;
+  /* Fixed height for the rank circle */
+  border-radius: 50%;
+  /* Make it a perfect circle */
+  background-color: #6c757d;
+  /* Default gray background */
+  color: #ffffff;
+  /* White text color */
+  font-size: 1.2rem;
+  /* Font size for the rank number */
+  font-weight: bold;
+  /* Bold font fZor emphasis */
+  margin-bottom: 1.2rem;
+  margin-top: 1rem;
+}
+
+.rank-circle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  /* Circular shape */
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #ffffff;
+  background-color: #6c757d;
+  /* Default gray background */
+}
+
+/* First row: Rank number container */
+.rank-number-container {
+  display: flex;
+  justify-content: center;
+  /* Center horizontally */
+  align-items: center;
+  /* Center vertically */
+  width: 100%;
+  /* Full width of the container */
+  height: 50px;
+  /* Fixed height for the rank number row */
+}
+
+/* Second row: Content container */
+.applicant-content-container {
+  display: flex;
+  flex-direction: column;
+  /* Arrange content vertically */
+  justify-content: flex-start;
+  /* Align content to the top */
+  align-items: flex-start;
+  /* Align content to the left */
+  width: 100%;
+  /* Full width of the container */
+  gap: 0.5rem;
+  /* Space between elements */
+}
+
+.description-group .info-label {
+  color: #333;
+}
+
+.description-group .info-value {
+  white-space: pre-line;
+  line-height: 1.6;
+  /* Keep the good line height */
+  background-color: #fcfcfc;
+  /* Very light background, almost white */
+  padding: 1rem;
+  /* Keep padding for readability */
+  border-radius: 4px;
+  /* Keep rounded corners */
+  border: 1px solid #eee;
+  /* Light border instead of red accent */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  /* Very subtle shadow */
+}
+
+/* Ranking status container */
+.ranking-status-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding: 0.8rem 1rem;
+  border-radius: 6px;
+  min-height: 56px;
+}
+
+.ranking-status {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  line-height: 1.5;
+}
+
+/* Additional style for ranked vs unranked indicators */
+.ranking-status.ranked {
+  color: #333;
+  align-items: center;
+}
+
+.ranking-status.unranked {
+  color: #666;
+  font-style: italic;
+}
+
+.ranking-criteria {
+  font-weight: 500;
+  color: #545454;
+  font-size: 1.2rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+}
+
+/* Updated question mark button styling */
+.rank-info-button {
+  background-color: #f96e5f;
+  color: white;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(249, 100, 95, 0.2);
+  margin-left: 10px;
+  flex-shrink: 0;
+}
+
+.rank-info-button:hover {
+  background-color: #d82f40;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(249, 100, 95, 0.3);
+}
+
+/* Job Edit Form */
+.job-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: #333;
+  font-size: 1rem;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group .form-input {
+  padding: 0.65rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #374151;
+  transition: border-color 0.2s;
+  background-color: #fcfcfc;
+  margin-top: 0.15rem;
+  font-family: inherit;
+}
+
+.form-group .auto-resize-textarea {
+  min-height: 100px;
+  resize: none;
+  overflow-y: hidden;
+  line-height: 1.5;
+  padding: 0.65rem;
+  font-size: 1rem;
+  color: #374151;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group .form-input:focus {
+  border-color: #F9645F;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(249, 100, 95, 0.2);
+  background-color: white;
+}
+
+.form-group textarea,
+.form-group input[type="text"],
+.form-group input[type="number"] {
+  font-weight: normal;
+  color: #374151;
+}
+
+.job-edit-form .departments-container .tag,
+.job-edit-form .skills-container .tag {
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+}
+
+.skills-overflow-indicator {
+  color: #9346ff;
+  font-weight: 500;
+  padding: 4px 8px;
+  margin-top: 5px;
+  margin-left: 0;
+  background-color: #f8f0ff;
+  border-radius: 15px;
+  display: inline-block;
+  cursor: pointer;
+  border: 1px dashed #9346ff;
+  font-size: 0.85rem;
+}
+
+.skills-overflow-indicator:hover {
+  background-color: #a388cd;
+  transform: translateY(-1px);
+}
+
+/* Update the form input style to match the rest of the form */
+.helper-text {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-style: italic;
+}
+
+/* Applicants Section */
+.applicants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.applicant-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  background-color: #fafafa;
+}
+
+.applicant-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.applicant-header h4 {
+  font-size: 1.1rem;
+  color: #333;
+  margin: 0;
+}
+
+.status-badge {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  border-radius: 20px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-badge.new {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.status-badge.reviewed {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.rejected {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+/* Add this new status badge for approved status */
+.status-badge.approved {
+  background-color: #f1e3fd;
+  /* Light blue background for approved */
+  color: #9346ff;
+  /* Blue text for approved */
+}
+
+/* Also add style for "interview completed" status */
+.status-badge.interview.completed {
+  background-color: #e1f5fe;
+  /* Light blue background */
+  color: #02ced1;
+  /* Blue green text color */
+}
+
+/* Also add style for "interview abandoned" status */
+.status-badge.interview.abandoned {
+  background-color: #ffecb3;  /* Light amber background */
+  color: #ff8f00;  /* Amber text color */
+}
+
+/* Add style for "physical interview scheduled" status */
+.status-badge.physical.interview.scheduled {
+  background-color: #e8eaf6;  /* Light indigo background */
+  color: #3f51b5;  /* Indigo text color */
+}
+
+.applicant-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.applicant-details {
+  margin-bottom: 1rem;
+}
+
+.applicant-details p {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.applicant-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.view-resume-button,
+.view-profile-button {
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.view-resume-button {
+  background-color: #F9645F;
+  color: white;
+}
+
+.view-resume-button:hover {
+  background-color: #e84e48;
+}
+
+.view-profile-button {
+  font-size: 0.9rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  background-color: #f1f1f1;
+  color: #333;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  min-width: 100px;
+}
+
+.view-profile-button:hover {
+  background-color: #e1e1e1;
+}
+
+.view-responses-button {
+  background-color: #F9645F;
+  color: white;
+  font-size: 0.9rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px;
+  box-shadow: 0 2px 4px rgba(249, 100, 95, 0.2);
+}
+
+.view-responses-button:hover {
+  background-color: #e84e48;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(249, 100, 95, 0.3);
+}
+
+.no-applicants {
+  padding: 2rem;
+  text-align: center;
+  background-color: #f9f9f9;
+  border-radius: 6px;
+  color: #666;
+}
+
+/* New layout for applicant card */
+.applicant-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  background-color: #fafafa;
+}
+
+/* Group candidate info (name and email) */
+.applicant-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.applicant-email {
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  color: #a1a1a1;
+}
+
+/* Applicant rank info container */
+.applicant-rank-info {
+  display: flex;
+  /* Use flexbox to arrange items horizontally */
+  align-items: center;
+  /* Vertically align items in the center */
+  gap: 1rem;
+  /* Add spacing between the rank-number and applicant-info */
+}
+
+/* Right-side container for status badge and action button */
+.applicant-status-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  /* Center items horizontally */
+  gap: 0.5rem;
+}
+
+/* Add this new class for the horizontal button container */
+.button-container {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  /* Center buttons horizontally */
+  width: 100%;
+}
+
+/* Align content inside applicant-status-actions to the center */
+.applicant-status-actions-2 {
+  display: flex;
+  flex-direction: column;
+  /* Arrange items vertically */
+  align-items: flex-end;
+  /* Align items to the right */
+  justify-content: flex-end;
+  /* Push items to the bottom if needed */
+  width: 100%;
+  /* Ensure the container takes the full width */
+  gap: 0.5rem;
+  /* Add spacing between elements */
+}
+
+/* Make status badge larger */
+.status-badge {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  border-radius: 20px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+/* Increase Full Profile button size and adjust spacing */
+.view-profile-button {
+  font-size: 0.9rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  background-color: #f1f1f1;
+  color: #333;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  min-width: 100px;
+}
+
+.view-profile-button:hover {
+  background-color: #e1e1e1;
+}
+
+/* New container for the "Upload More CV" button */
+.upload-more-cv-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+  padding: 1.5rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px dashed #e2e8f0;
+}
+
+/* Updated styling for the button */
+.upload-more-cv-button {
+  background-color: #f95f79;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-left: 1rem;
+  box-shadow: 0 2px 4px rgba(249, 100, 95, 0.2);
+}
+
+.upload-more-cv-button:hover {
+  background-color: #ef2d71;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(249, 100, 95, 0.3);
+}
+
+.job-actions button {
+  margin-right: 0.75rem;
+}
+
+
+.suggestions-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    z-index: 999;
+    /* Higher z-index to ensure they appear above all form elements */
+    padding: 0;
+    margin: 0;
+    list-style-type: none;
+    animation: slideDown 0.2s ease-in-out;
+}
+
+/* Job edit form suggestion dropdowns and tags */
+.job-edit-form .suggestion-container {
+  position: relative;
+  width: 100%;
+  z-index: 999;
+  overflow: visible;
+}
+
+.job-edit-form .input-group {
+  display: flex;
+  gap: 0.3rem;
+  /* Reduced from 0.5rem */
+  margin-bottom: 0.15rem;
+  /* Reduced from 0.3rem */
+}
+
+.job-edit-form .input-group .form-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  color: #374151;
+  background-color: #fcfcfc;
+  transition: all 0.25s;
+}
+
+.job-edit-form .input-group .form-input:focus {
+  border-color: #F9645F;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(249, 100, 95, 0.15);
+  background-color: white;
+}
+
+.job-edit-form .suggestions-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  z-index: 9999;
+  padding: 0;
+  margin: 0;
+  list-style-type: none;
+  animation: slideDown 0.2s ease-in-out;
+  overflow: visible;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.job-edit-form .suggestions-list li {
+  padding: 8px 12px;
+  /* Reduced from 12px 15px */
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 1px solid #f8fafc;
+  overflow: visible;
+}
+
+.job-edit-form .suggestions-list li:hover {
+  background-color: #f8fafc;
+  color: #F9645F;
+  padding-left: 20px;
+  overflow: visible;
+}
+
+.job-edit-form .add-button {
+  background-color: #F9645F;
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.25s;
+  box-shadow: 0 2px 4px rgba(249, 100, 95, 0.2);
+  min-width: 80px;
+}
+
+.job-edit-form .add-button:hover {
+  background-color: #ef402d;
+  box-shadow: 0 4px 8px rgba(249, 100, 95, 0.3);
+}
+
+.job-edit-form .add-button:disabled {
+  background-color: #d1d5db;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.job-edit-form .tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.job-edit-form .tag {
+  background-color: #ffeff3;
+  color: #F9645F;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s;
+}
+
+.job-edit-form .tag-remove {
+  background: none;
+  border: none;
+  color: #F9645F;
+  font-size: 1.125rem;
+  cursor: pointer;
+  margin-left: 0.375rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  transition: all 0.2s;
+}
+
+.job-edit-form .tag-remove:hover {
+  color: #ef402d;
+  transform: scale(1.2);
+}
+
+/* Style for department tags in edit mode */
+.job-edit-form .departments-container .tag {
+  background-color: #f0f7ff;
+  color: #0066cc;
+  border-radius: 20px;
+}
+
+/* Style for skill tags in edit mode */
+.job-edit-form .skills-container .tag {
+  background-color: #f8f0ff;
+  color: #8250c8;
+  border-radius: 20px;
+}
+
+/* Style for the remove button that should adapt to parent tag color */
+.job-edit-form .departments-container .tag-remove {
+  color: #0066cc;
+}
+
+.job-edit-form .skills-container .tag-remove {
+  color: #8250c8;
+}
+
+.job-edit-form .departments-container .tag-remove:hover {
+  color: #004c99;
+}
+
+.job-edit-form .skills-container .tag-remove:hover {
+  color: #663da3;
+}
+
+/* Warning icon for confirmation modal */
+.warning-icon {
+  background-color: rgba(255, 193, 7, 0.1);
+  color: #ff9800;
+}
+
+/* Add styles for the applicants header with flexbox layout */
+.applicants-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  position: relative;
+}
+
+.applicants-header h3 {
+  margin: 0;
+  padding: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Center the applicants actions container */
+.applicants-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  /* Center the buttons horizontally */
+  flex-wrap: wrap;
+}
+
+/* Ensure all buttons in the actions container are centered */
+.applicants-actions .filter-container,
+.applicants-actions button {
+  margin: 0 auto;
+  /* Add auto margin to center items */
+}
+
+/* Adjust the button container to center buttons */
+.button-container {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  /* Center buttons horizontally */
+  width: 100%;
+}
+
+/* Ensure the rank score container is centered */
+.rank-score-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Remove old styling for h3 in job-info-container that will now be handled by section-header */
+.job-info-container h3 {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+/* Add new section header styles for job details with interview questions button */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.section-header h3 {
+  margin-bottom: 0;
+  /* Override previous margin to prevent extra space */
+  padding-bottom: 0;
+  /* Override previous padding */
+  border-bottom: none;
+  /* Remove the border since it's now on the container */
+}
+
+/* Style for the Interview Questions button - updated to match Upload More CV button */
+.interview-questions-button {
+  background-color: #f96e5f;
+  /* Updated to match Upload More CV button color */
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(249, 100, 95, 0.2);
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  /* Push to the right edge */
+}
+
+.interview-questions-button:hover {
+  background-color: #d82f40;
+  /* Match hover state of Upload More CV */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(249, 100, 95, 0.3);
+}
+
+/* Add styles for the applicants-actions container */
+.applicants-actions {
+  display: flex;
+  gap: 0.75rem;
+  /* Space between the buttons */
+  align-items: center;
+}
+
+.applicants-actions button {
+  margin: 0;
+  /* Remove any default margins */
+  flex-shrink: 0;
+  /* Prevent buttons from shrinking */
+}
+
+/* Ensure all action buttons have exactly the same padding */
+.filter-completed-button,
+.filter-approved-button,
+.rank-button,
+.upload-more-cv-button {
+  padding: 0.6rem 1.2rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 4px;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+/* Style for the Rank button - updated with ranking theme and gold shining effect */
+.rank-button {
+  background: linear-gradient(90deg, #ffa035, #ff7e28, #ff6a00);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 4px 8px rgba(255, 106, 0, 0.3);
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Add a subtle golden shimmer effect to the button */
+.rank-button::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle,
+      rgba(255, 215, 0, 0.1) 0%,
+      rgba(255, 215, 0, 0.05) 25%,
+      transparent 70%);
+  opacity: 0;
+  transform: scale(0.5);
+  transform-origin: center;
+  animation: rankPulse 3s infinite ease-out;
+  pointer-events: none;
+}
+
+/* Add a trophy icon effect in the background */
+.rank-button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: radial-gradient(circle at 70% center,
+      rgba(255, 223, 0, 0.15) 0%,
+      transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.rank-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(255, 106, 0, 0.4);
+}
+
+.rank-button:hover::before {
+  animation: rankShimmer 1.5s infinite ease-out;
+  opacity: 1;
+}
+
+.rank-button:hover::after {
+  opacity: 1;
+}
+
+/* Add an AI icon and a small podium/trophy icon to the rank button */
+.rank-button .ai-icon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.7));
+}
+
+/* Shimmer animation for ranking effect */
+@keyframes rankShimmer {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0;
+  }
+
+  25% {
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0.2;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Subtle pulsing effect for the button at rest */
+@keyframes rankPulse {
+
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 0.15;
+    transform: scale(1);
+  }
+}
+
+.filter-approved-button {
+  background-color: #2196f3;
+  /* Blue color to distinguish from the green completed button */
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.2);
+}
+
+.filter-approved-button:hover {
+  background-color: #1976d2;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
+}
+
+.filter-completed-button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.2);
+}
+
+.filter-completed-button:hover {
+  background-color: #388e3c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+/* Improved collapsible header styling */
+.collapsible-header {
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+}
+
+.collapsible-header:hover {
+  background-color: #f8f8f8;
+}
+
+.collapsible-header.collapsed {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0.5rem;
+}
+
+.collapsible-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.collapsible-header .header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+/* Style the collapse icon to appear next to the title */
+.collapse-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: #666;
+  transition: transform 0.2s ease;
+}
+
+.collapsible-header.collapsed .collapse-icon {
+  transform: rotate(180deg);
+}
+
+/* Right-align the interview questions button */
+.interview-questions-button {
+  background-color: #f96e5f;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(249, 100, 95, 0.2);
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  /* Push to the right edge */
+}
+
+/* Animate the content height */
+.job-info-container {
+  background-color: white;
+  border-radius: 8px;
+  padding: 1.75rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f1f1f1;
+  width: 100%;
+  overflow: hidden; /* Default for collapse animation */
+  transition: max-height 0.3s ease;
+}
+
+.job-info-container.editing-job-active {
+  overflow: visible;
+}
+
+/* Add some space between sections when collapsed */
+.job-info-container.collapsed {
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+}
+
+.job-edit-form .form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.5rem; /* Or your preferred margin */
+  position: relative; /* Crucial for child absolute positioning and z-index */
+  overflow: visible;  /* Allow children (like suggestion lists) to overflow */
+  /* You can assign z-index here if needed, e.g., for overlapping dropdowns from different groups */
+  /* z-index: 1; (example) */
+}
+
+.job-edit-form .suggestion-container {
+  position: relative;
+  width: 100%;
+  z-index: 999; /* Ensure this is high enough */
+  overflow: visible; /* Allow suggestions list to overflow this container */
+}
+
+.job-edit-form .suggestions-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto; /* For scrolling within the list if it's too long */
+  background-color: white;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15); /* Slightly more prominent shadow */
+  z-index: 9999; /* Highest z-index to ensure it's on top of everything */
+  padding: 0;
+  margin: 0;
+  list-style-type: none;
+  animation: slideDown 0.2s ease-in-out;
+}
+
+/* Ensure the interview questions button is properly positioned */
+.interview-questions-button {
+  margin-right: 0.5rem;
+}
+
+/* Special styling for rank 1,2,3 applicant */
+.top-applicant-card[data-rank="1"] .status-badge {
+  font-weight: 700;
+  padding: 0.4rem 1rem;
+  box-shadow: 0 2px 4px rgba(255, 215, 0, 0.1);
+}
+
+.top-applicant-card[data-rank="2"] .status-badge {
+  font-weight: 700;
+  padding: 0.4rem 1rem;
+  box-shadow: 0 2px 4px rgba(255, 215, 0, 0.1);
+}
+
+.top-applicant-card[data-rank="1"] .rank-score-container {
+  margin-top: 0.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.top-applicant-card[data-rank="1"] .rank-score-label {
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.top-applicant-card[data-rank="1"] .rank-score-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.top-applicant-card[data-rank="1"] .view-profile-button {
+  color: #333;
+  padding: 0.5rem 1.2rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.top-applicant-card[data-rank="2"] .view-profile-button {
+  color: #333;
+  padding: 0.5rem 1.2rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.top-applicant-card[data-rank="3"] .view-profile-button {
+  color: #333;
+  padding: 0.5rem 1.2rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.top-applicant-card[data-rank="1"] .view-profile-button:hover {
+  background-color: #ffcc00;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.top-applicant-card[data-rank="2"] .view-profile-button:hover {
+  background-color: #aeaeae;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.top-applicant-card[data-rank="3"] .view-profile-button:hover {
+  background-color: #cf9858;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.top-applicant-card[data-rank="1"] .view-responses-button:hover {
+  background-color: #ffcc00;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.top-applicant-card[data-rank="2"] .view-responses-button:hover {
+  background-color: #aeaeae;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.top-applicant-card[data-rank="3"] .view-responses-button:hover {
+  background-color: #cf9858;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Improve spacing in the top applicant card content */
+.top-applicant-card[data-rank="1"] .applicant-content-container {
+  margin-top: 0.5rem;
+}
+
+.top-applicant-card[data-rank="1"] .applicant-status-actions-2 {
+  width: 100%;
+}
+
+.top-applicant-card[data-rank="1"] .button-container {
+  margin-top: 0.5rem;
+}
+
+/* Error, Success, and Warning Icons */
+.error-icon {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: #f44336;
+}
+
+.success-icon {
+  background-color: rgba(76, 175, 80, 0.3);
+  /* Increased opacity for a more visible light green */
+  color: #4caf50;
+}
+
+.warning-icon {
+  background-color: rgba(255, 193, 7, 0.1);
+  color: #ff9800;
+}

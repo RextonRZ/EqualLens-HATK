@@ -1,0 +1,118 @@
+.bias-highlighting-input-container {
+    position: relative;
+    width: 100%;
+    border: none; /* Remove container border */
+}
+
+.bias-highlighting-input {
+    width: 100%;
+    padding: 0.75rem 1rem; /* Match padding with form-input */
+    border-radius: 0.5rem; /* Match border radius */
+    border: 1px solid #e2e8f0; /* Match border color */
+    font-size: 0.95rem; /* Match font size */
+    color: #374151; /* Match text color */
+    background-color: #ffffff; /* Match background color */
+    transition: all 0.25s; /* Match transition */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02); /* Match shadow */
+    outline: none; /* Remove default outline */
+    line-height: 1.5; /* Ensure consistent line height */
+    position: relative; /* Ensure placeholder alignment */
+}
+
+.bias-highlighting-input div {
+    margin-bottom: 0.5rem; /* Add spacing between lines */
+}
+
+.bias-highlighting-input:not(.empty):before,
+.bias-highlighting-input.focused:before {
+    display: none; /* Hide the pseudo-element */
+}
+
+.bias-highlighting-input::placeholder {
+    color: #9ca3af; /* Match placeholder text color */
+    opacity: 0.7; /* Match opacity */
+    font-size: 0.9rem; /* Match font size */
+    font-style: normal; /* Match font style */
+}
+
+/* Update the placeholder style to use data-placeholder attribute */
+.bias-highlighting-input.empty:before {
+    content: attr(data-placeholder); /* Use data-placeholder for placeholder text */
+    position: absolute;
+    top: 0.75rem; /* Match vertical padding */
+    left: 1rem; /* Match horizontal padding */
+    color: #9ca3af; /* Match placeholder text color */
+    font-size: 0.9rem; /* Match font size */
+    opacity: 0.7; /* Match opacity */
+    font-style: normal; /* Match font style */
+    pointer-events: none; /* Prevent interaction */
+}
+
+/* Adjust positioning for multiline */
+.bias-highlighting-input[data-multiline="true"].empty:before {
+    top: 0.75rem; /* Match padding for multiline */
+}
+
+/* Remove old placeholder rule that used the wrong approach */
+.bias-highlighting-input.empty::before {
+    content: attr(data-placeholder);
+    position: absolute;
+    top: 0.75rem; /* Match padding */
+    left: 1rem; /* Match padding */
+    transform: none; /* Remove transform that could cause misalignment */
+    color: #9ca3af;
+    font-size: 0.9rem;
+    opacity: 0.7;
+    font-style: normal;
+    pointer-events: none;
+}
+
+.bias-highlighting-input.empty {
+    color: transparent; /* Hide caret when empty */
+}
+
+/* Show the caret when empty and focused */
+.bias-highlighting-input.empty.focused {
+    color: inherit;
+}
+
+/* Style for highlighted bias terms */
+.bias-highlight {
+    background-color: rgba(249, 100, 95, 0.2); /* Highlight background */
+    border-bottom: 2px solid #F9645F; /* Highlight underline */
+    padding: 0; /* Remove padding for consistency */
+    font-weight: inherit; /* Ensure consistent font weight */
+    font-size: inherit; /* Ensure consistent font size */
+    line-height: inherit; /* Ensure consistent line height */
+    color: inherit; /* Match text color */
+}
+
+/* Ensure consistency for multiline inputs */
+.bias-highlighting-input[data-multiline="true"] {
+    min-height: 120px; /* Match textarea height */
+    resize: vertical; /* Allow resizing */
+}
+
+.bias-highlighting-input.single-line .bias-highlight {
+    background-color: rgba(249, 100, 95, 0.2);
+    border-bottom: 2px solid #F9645F;
+}
+
+/* Make sure single-line inputs behave correctly */
+.bias-highlighting-input:not([data-multiline="true"]) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bias-highlighting-input.focused .bias-highlight {
+    background-color: rgba(249, 100, 95, 0.2);
+    border-bottom-color: rgba(249, 100, 95, 0.1);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bias-highlighting-input:focus {
+    border-color: #F9645F; /* Match focus border color */
+    box-shadow: 0 0 0 3px rgba(249, 100, 95, 0.15); /* Match focus shadow */
+    transform: translateY(-1px); /* Match focus transform */
+}

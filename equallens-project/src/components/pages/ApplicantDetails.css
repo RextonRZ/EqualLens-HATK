@@ -1,0 +1,2959 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'PT Sans', sans-serif;
+}
+
+.detail {
+    display: flex;
+    height: 90vh;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+}
+
+.detail-container {
+    padding: 2.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: 90vh;
+    background-color: #f8fafc;
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2rem;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.detail-header h1 {
+    font-size: 2rem;
+    color: #333;
+    position: relative;
+    display: inline-block;
+}
+
+.detail-header h1::after {
+    content: "";
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 40%;
+    height: 3px;
+    background: linear-gradient(to right, #F9645F, #ff8783);
+    border-radius: 2px;
+}
+
+/* Apply CSS properties to ui-widgets class */
+.ui-widgets {
+    position: relative;
+    display: inline-block;
+    width: 10rem;
+    height: 10rem;
+    border-radius: 9rem;
+    margin: 1.5rem;
+    border: 1.2rem solid palegreen;
+    box-shadow: inset 0 0 7px grey;
+    border-left-color: palegreen;
+    border-top-color: chartreuse;
+    border-right-color: darkgreen;
+    border-bottom-color: white;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+/*  Apply css properties to the second 
+    child of ui-widgets class */
+.ui-widgets:nth-child(2) {
+    border-top-color: chartreuse;
+    border-right-color: white;
+    border-left-color: palegreen;
+    border-bottom-color: white;
+}
+
+/*  Apply css properties to ui-widgets class 
+    and ui-values class*/
+.ui-widgets .ui-values {
+    top: 40px;
+    position: absolute;
+    left: 10px;
+    right: 0;
+    font-weight: 700;
+    font-size: 2.0rem;
+
+}
+
+/*  Apply css properties to ui-widgets 
+    class and ui-labels class*/
+.ui-widgets .ui-labels {
+
+    left: 0;
+    bottom: -16px;
+    text-shadow: 0 0 4px grey;
+    color: black;
+    position: absolute;
+    width: 100%;
+    font-size: 16px;
+}
+
+.skill {
+    width: 160px;
+    height: 160px;
+    position: relative;
+}
+
+.outer {
+    height: 160px;
+    width: 160px;
+    padding: 20px;
+    box-shadow: 6px 6px 10px -1px rgba(0, 0, 0, 0.15), -6px -6px 10px -1px rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+}
+
+.inner {
+    height: 120px;
+    width: 120px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    ;
+    box-shadow: inset 4px 4px 6px -1px rgba(0, 0, 0, 0.2), inset -4px -4px 6px -1px rgba(255, 255, 255, 0.7),
+        -0.5px -0.5px 0px rgba(255, 255, 255, 1), 0.5px 0.5px 0px rgba(0, 0, 0, 0.15),
+        0px 12px 10px -10px rgba(0, 0, 0, 0.05);
+}
+
+#number {
+    font-weight: 600;
+    color: #555;
+    font-size: 30px;
+    position: absolute;
+    /* Ensure it is positioned relative to the parent */
+    top: 50%;
+    /* Center vertically */
+    left: 50%;
+    /* Center horizontally */
+    transform: translate(-50%, -50%);
+    /* Adjust for the element's own dimensions */
+    text-align: center;
+    /* Center text alignment */
+}
+
+circle {
+    fill: none;
+    stroke: url(#GradientColor);
+    stroke-width: 20px;
+    stroke-dasharray: 450;
+    stroke-dashoffset: 450;
+    /* Default value */
+    transition: stroke-dashoffset 2s linear;
+    /* Smooth transition for dynamic updates */
+    transform: rotate(-90);
+}
+
+.skill svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.export-csvv-button {
+    background-color: #227728;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(56, 178, 172, 0.2);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+  }
+  
+  .export-csvv-button:hover {
+    background-color: #227728;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(95, 249, 131, 0.2);
+  }
+  
+  .export-csvv-button:before {
+    content: '';
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z'/%3E%3Cpath d='M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z'/%3E%3C/svg%3E");
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    margin-right: 6px;
+    background-repeat: no-repeat;
+  }
+
+.reject-button {
+    background-color: #F9645F;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(249, 100, 95, 0.2);
+    min-width: 120px; /* Add fixed minimum width */
+    text-align: center; /* Center the text */
+}
+
+.reject-button:hover {
+    background-color: #e84e48;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(249, 100, 95, 0.3);
+}
+
+.accept-button {
+    background-color: #37d03f;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(55, 208, 63, 0.2);
+    min-width: 120px; /* Add fixed minimum width */
+    text-align: center; /* Center the text */
+}
+
+/* Add matching hover effect for accept button to match reject button */
+.accept-button:hover {
+    background-color: #2bb732; /* Darker shade of green */
+    transform: translateY(-2px); /* Same floating effect as reject button */
+    box-shadow: 0 4px 8px rgba(55, 208, 63, 0.3); /* Enhanced shadow for hover */
+}
+
+/* Update the container for the buttons to use gap instead of margins */
+.applicant-action-buttons {
+    display: flex;
+    gap: 1.5rem; /* Use gap instead of margin for consistent spacing */
+}
+
+/* Single column applicant list */
+.applicants-list-single-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.applicant-card-row {
+    background-color: white;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 1px solid #f1f1f1;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2rem;
+}
+
+.applicant-card-row:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border-color: rgba(249, 100, 95, 0.2);
+}
+
+.applicant-card-main-content {
+    flex: 3;
+}
+
+.applicant-card-side-content {
+    flex: 1;
+    min-width: 200px;
+    padding-left: 1.5rem;
+    border-left: 1px solid #f1f1f1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.applicant-card-title {
+    font-size: 1.25rem;
+    color: #111;
+    margin-bottom: 0.75rem;
+}
+
+.applicant-card-description {
+    color: #666;
+    margin-bottom: 1rem;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: justify;
+}
+
+.applicant-card-date,
+.applicant-card-applications {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.detail-label {
+    font-weight: 500;
+    color: #333;
+}
+
+.applicant-card-departments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.department-tag {
+    background-color: #f0f7ff;
+    color: #0066cc;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.applicant-card-skills {
+    margin-top: 0.5rem;
+}
+
+.skills-tags {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin-top: 0.375rem;
+}
+
+.education-tag {
+    background-color: #f0f7ff;
+    color: #0066cc;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.experience-tag {
+    background-color: #fff0fa;
+    color: #dd20c1;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid #e0e0e0;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.experience-tag:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(221, 32, 193, 0.2);
+    border-color: rgba(221, 32, 193, 0.3);
+}
+
+/* applicant Card Skills Tags - Make similar to Department Tags */
+.skill-tag {
+    background-color: #f8f0ff;
+    /* Light purple background, similar to departments but distinct */
+    color: #8250c8;
+    /* Purple text color */
+    padding: 0.4rem 0.8rem;
+    /* Same padding as department tags */
+    border-radius: 20px;
+    /* Same rounded corners as department tags */
+    font-size: 0.8rem;
+    /* Same font size as department tags */
+    font-weight: 500;
+    /* Same font weight as department tags */
+}
+
+/* Update Skills Display in applicant details view to match departments display */
+.skills-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+/* Skills group header with tooltip */
+.skills-group-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.skills-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+.education-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.experience-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+/* Relevance indicator styling */
+.relevance-star {
+    color: gold;
+    margin-right: 2px;
+}
+
+/* Relevant item styling for different categories */
+.skill-tag.relevant {
+    background-color: rgba(130, 80, 200, 0.2);
+    border: 1px solid #8250c8;
+    font-weight: 600;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(130, 80, 200, 0.2);
+}
+
+.education-tag.relevant {
+    background-color: rgba(0, 102, 204, 0.2);
+    border: 1px solid #0066cc;
+    font-weight: 600;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 102, 204, 0.2);
+}
+
+.experience-tag.relevant,
+.project-tag.relevant,
+.activity-tag.relevant {
+    background-color: rgba(221, 32, 193, 0.2);
+    border: 1px solid #dd20c1;
+    font-weight: 600;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(221, 32, 193, 0.2);
+}
+
+/* Make relevant items have the same hover effect as non-relevant ones */
+.skill-tag.relevant:hover,
+.education-tag.relevant:hover,
+.experience-tag.relevant:hover,
+.project-tag.relevant:hover,
+.activity-tag.relevant:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15) !important;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Improved relevance legend styling with fixed positioning at the top of tab content */
+.relevance-legend {
+    display: flex;
+    align-items: center;
+    font-size: 0.85rem;
+    color: #555;
+    margin: 0 0 1rem auto;
+    padding: 0.5rem 0.75rem;
+    background-color: #fffbeb;
+    border: 1px solid #ffeeba;
+    border-radius: 4px;
+    max-width: fit-content;
+    margin-bottom: -40px;
+}
+
+.relevance-legend-icon {
+    color: gold;
+    font-size: 1rem;
+    margin-right: 6px;
+}
+
+.relevance-legend-text {
+    font-weight: 500;
+}
+/* Responsive adjustments for applicant cards */
+@media (max-width: 768px) {
+    .applicant-card-row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .applicant-card-side-content {
+        padding-left: 0;
+        border-left: none;
+        border-top: 1px solid #f1f1f1;
+        padding-top: 1rem;
+        width: 100%;
+    }
+}
+
+/* Responsive adjustments for search and sort */
+@media (min-width: 768px) {
+    .search-container {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .search-input-wrapper {
+        max-width: 600px;
+    }
+
+    .sort-container {
+        margin-top: 0;
+    }
+}
+
+/* Loading and Error States */
+.loading-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+}
+
+.spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left-color: #F9645F;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.error-message {
+    background-color: #ffebee;
+    border: 1px solid #ffcdd2;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+}
+
+.error-message h3 {
+    color: #d32f2f;
+    margin-bottom: 1rem;
+}
+
+.error-message button {
+    background-color: #d32f2f;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    margin-top: 1rem;
+    cursor: pointer;
+}
+
+.no-details {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    color: #666;
+}
+
+/* applicant Detail View */
+.applicant-detail-view {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.back-button {
+    background: none;
+    border: none;
+    color: #F9645F;
+    font-size: 1rem;
+    padding: 0.5rem 0;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+}
+
+.back-button:hover {
+    text-decoration: underline;
+}
+
+.view-breakdown-button {
+    background-color: #F9645F;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(249, 100, 95, 0.2);
+    font-size: 0.9rem;
+    white-space: nowrap;
+    margin-left: auto;
+}
+
+.view-breakdown-button:hover {
+    background-color: #ef402d;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(249, 100, 95, 0.3);
+}
+
+.applicant-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+/* Change applicant detail content layout from grid to column */
+.applicant-detail-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    width: 100%;
+}
+
+/* Adjust containers for the new stacked layout */
+.info-container {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f1f1f1;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+    /* Ensure full width */
+}
+
+/* Left column for additional-info */
+.additional-info {
+    flex: 1;
+    /* Fixed 45% width for the left column */
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    /* Add spacing between elements inside the column */
+}
+
+.additional-info-2 {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 0.4rem;
+    flex: 1 1 15%;
+    /* Flex-grow: 1, Flex-shrink: 1, Base width: 55% */
+    max-width: 20%;
+}
+
+.additional-info-3 {
+    width: 35%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 0.2rem;
+}
+
+/* Add a little extra space after applicant details container */
+.applicant-info-container {
+    margin-bottom: 1rem;
+}
+
+.applicant-info-container,
+.applicants-container {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f1f1f1;
+}
+
+.applicant-info-container h3,
+.applicants-container h3 {
+    margin-bottom: 1rem;
+    color: #333;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+/* applicant Info Display */
+.applicant-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.info-group {
+    margin-bottom: 0.5rem;
+    /* More space between info groups */
+    padding-bottom: 0.5rem;
+    /* Add padding at the bottom of each group */
+}
+
+.info-group-2 {
+    padding-top: 0.5rem;
+    /* Add padding at the bottom of each group */
+}
+
+.info-label {
+    font-weight: 600;
+    /* Bolder labels */
+    color: #444;
+    margin-bottom: 0.5rem;
+    /* More space between label and value */
+    font-size: 1rem;
+    /* Slightly larger label */
+}
+
+.info-value {
+    color: #333;
+    line-height: 1.5;
+    /* Better line height for readability */
+    padding: 0.25rem 0;
+    /* Add some padding around values */
+    font-size: 1rem;
+}
+
+.no-applicants {
+    padding: 2rem;
+    text-align: center;
+    background-color: #f9f9f9;
+    border-radius: 6px;
+    color: #666;
+}
+
+/* Group candidate info (name and email) */
+.applicant-info {
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Warning icon for confirmation modal */
+.warning-icon {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: #df2121;
+    animation: pulse 2s infinite;
+    width: 80px;
+    height: 80px;
+}
+
+/* Remove old styling for h3 in applicant-info-container that will now be handled by section-header */
+.applicant-info-container h3 {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+/* Education and Experience Containers */
+.education-container,
+.experience-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.education-card,
+.experience-card {
+    background-color: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1rem;
+    color: #333;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.status-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.status-modal {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 30px;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    animation: slideIn 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.status-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin-bottom: 20px;
+}
+
+.error-icon {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: #f44336;
+}
+
+.success-icon {
+    background-color: rgba(76, 175, 80, 0.1);
+    color: #4caf50;
+}
+
+.status-title {
+    font-size: 24px;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.status-description {
+    font-size: 16px;
+    color: #555;
+    margin-bottom: 25px;
+    line-height: 1.5;
+}
+
+.status-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.status-button {
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    border: none;
+}
+
+.primary-button {
+    background-color: #ef402d;
+    color: white;
+}
+
+.primary-button:hover {
+    background-color: #d63020;
+}
+
+.secondary-button {
+    background-color: #f1f1f1;
+    color: #333;
+}
+
+.secondary-button:hover {
+    background-color: #e1e1e1;
+}
+
+.csv-button {
+    background-color: #38B2AC;
+    color: white;
+}
+
+.csv-button:hover {
+    background-color: #319691;
+}
+
+.pdf-button {
+    background-color: #485EDB;
+    color: white;
+}
+
+.pdf-button:hover {
+    background-color: #3b4db2;
+}
+
+/* Combine base styles and transition for CSV button */
+.csv-button, .status-button.csv-button {
+    background-color: #38B2AC;
+    color: white;
+    transition: background-color 0.2s ease; /* Ensure transition is here */
+}
+
+/* Apply hover style with !important */
+.csv-button:hover, .status-button.csv-button:hover {
+    background-color: #319691 !important;
+}
+
+/* Combine base styles and transition for PDF button */
+.pdf-button, .status-button.pdf-button {
+    background-color: #485EDB;
+    color: white;
+    transition: background-color 0.2s ease; /* Ensure transition is here */
+}
+
+/* Apply hover style with !important */
+.pdf-button:hover, .status-button.pdf-button:hover {
+    background-color: #3b4db2 !important;
+}
+
+.status-button.csv-button {
+    transition: background-color 0.2s ease;
+}
+
+.status-button.pdf-button {
+    transition: background-color 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Interview Date Picker Styles */
+.interview-date-picker {
+    width: 100%;
+    margin: 15px 0;
+}
+
+.interview-date-picker label {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.interview-date-picker input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    font-size: 14px;
+}
+
+.interview-date-picker input:focus {
+    border-color: #ef402d;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(239, 64, 45, 0.2);
+}
+
+.applicant-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.applicant-status-badge {
+    display: inline-block;
+    margin-top: -5px;
+}
+
+.status-badge {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8rem;
+    border-radius: 20px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.status-badge.new {
+    background-color: #e3f2fd;
+    color: #1565c0;
+}
+
+.status-badge.interview {
+    background-color: #fff8e1;
+    color: #f57c00;
+}
+
+.status-badge.completed {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.status-badge.rejected {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+/* Info Modal Styles */
+.info-modal .status-icon {
+    background-color: rgba(33, 150, 243, 0.1);
+    color: #2196f3;
+}
+
+/* Disabled Button Styles */
+.accept-button:disabled,
+.reject-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.accept-button:disabled:hover,
+.reject-button:disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Detailed Breakdown Modal */
+.detail-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.detail-modal-content {
+    background-color: #f8fafc;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    animation: slideIn 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.detail-modal-content.optimized-modal {
+    max-width: 900px;
+    width: 90%;
+    max-height: 90vh;
+    margin: auto;
+}
+
+.detail-modal-header {
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    background-color: #fff;
+    border-radius: 8px 8px 0 0;
+}
+
+.detail-modal-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.detail-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #666;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.detail-modal-close:hover {
+    background-color: #f1f1f1;
+    color: #333;
+}
+
+.detail-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    align-items: stretch;
+    padding: 1.5rem;
+    max-height: 65vh; /* Fixed height - 60% of viewport height */
+    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+}
+
+.detail-modal-body.optimized-body {
+    padding: 1rem 1.5rem 1.5rem;
+    overflow: visible;
+    max-height: none;
+}
+
+.detail-modal-footer {
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    border-top: 1px solid #eee;
+    background-color: #fff;
+    border-radius: 0 0 8px 8px;
+}
+
+.detail-modal-button {
+    padding: 0.6rem 1.2rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.detail-modal-close:disabled {
+    color: #999;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .detail-modal-content {
+        max-width: calc(100% - 20px);
+    }
+
+    .detail-modal-title {
+        font-size: 1.25rem;
+    }
+
+    .detail-modal-footer {
+        flex-direction: column;
+    }
+
+    .detail-modal-button {
+        width: 100%;
+    }
+}
+
+/* Tab styling */
+.detail-modal-tabs {
+    display: flex;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 1rem;
+}
+
+.detail-tab {
+    padding: 0.75rem 1.5rem;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.detail-tab:hover {
+    color: #333;
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.detail-tab.active {
+    color: #F9645F;
+    border-bottom: 3px solid #F9645F;
+}
+
+.tab-title {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #333;
+    font-size: 1.3rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .tab-title {
+        font-size: 1.1rem;
+        margin-bottom: 0.75rem;
+    }
+}
+
+/* Scoring standard tab styling */
+.standard-tab h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.standard-description {
+    margin-bottom: 1.5rem;
+    color: #555;
+}
+
+.scoring-levels {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.scoring-level {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.level-header {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    color: white;
+}
+
+.level-range {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-right: 1rem;
+}
+
+.level-label {
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.level-description {
+    padding: 1rem;
+    margin: 0;
+    background-color: white;
+    color: #333;
+}
+
+.final-score-explanation {
+    background-color: #f8f9fa;
+    padding: 1.25rem;
+    border-radius: 6px;
+    border-left: 4px solid #0066cc;
+}
+
+.final-score-explanation h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: #0066cc;
+}
+
+/* Make sure the detail modal is large enough */
+.detail-modal-content {
+    max-width: 900px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.scoring-range-bar {
+    display: flex;
+    width: 100%;
+    height: 30px;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.range-segment {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.scoring-label-bar {
+    display: flex;
+    width: 100%;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.label-segment {
+    padding: 0 5px;
+    font-weight: 500;
+}
+
+.final-score-explanation ul {
+    margin-left: 20px;
+}
+
+.final-score-explanation li {
+    margin-bottom: 5px;
+}
+
+.education-list,
+.awards-list,
+.experience-list,
+.projects-list,
+.activities-list {
+    list-style-type: none;
+    padding-left: 0;
+    margin-top: 0.5rem;
+}
+
+.education-item,
+.award-item,
+.experience-item,
+.project-item,
+.activity-item {
+    margin-bottom: 0.5rem;
+    padding: 0.5rem;
+    background-color: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+/* Title styling for items (e.g., Education, Awards, etc.) */
+.education-tag .title,
+.experience-tag .title,
+.award-tag .title,
+.project-tag .title,
+.activity-tag .title {
+    font-weight: bold;
+    font-size: 1rem;
+    color: #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+/* Description styling for items */
+.education-tag .description,
+.experience-tag .description,
+.award-tag .description,
+.project-tag .description,
+.activity-tag .description {
+    font-size: 0.875rem;
+    color: #555;
+    line-height: 1.5;
+    margin-top: 0.5rem;
+    width: 100%; /* Ensure description spans the full row */
+    text-align: justify; /* Align text for better readability */
+}
+
+/* Remove unnecessary padding or margins for list items */
+.education-tag,
+.experience-tag,
+.award-tag,
+.project-tag,
+.activity-tag {
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: #333;
+    background-color: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    margin-bottom: 1rem; /* Add spacing between items */
+}
+
+/* Ensure lists take up full width */
+.education-display,
+.experience-display,
+.awards-display,
+.projects-display,
+.activities-display {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%; /* Ensure full width for lists */
+    margin-top: 0.5rem;
+}
+
+/* Standardize styling for all Experience category items */
+.experience-tag,
+.project-tag,
+.activity-tag {
+    background-color: #fff0fa; /* Standard light pink background for all experience items */
+    color: #dd20c1; /* Standard dark pink text for all experience items */
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px; /* Ensure consistent rounded corners */
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid #e0e0e0;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease; /* Add transition for hover effect */
+}
+
+/* Add hover effect to all experience-related tags */
+.experience-tag:hover,
+.project-tag:hover,
+.activity-tag:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(221, 32, 193, 0.2);
+    border-color: rgba(221, 32, 193, 0.3);
+}
+
+/* Ensure lists for experience-related sections have consistent spacing and style */
+.experience-display,
+.projects-display,
+.activities-display {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+/* Candidate tabs styling */
+.candidate-tabs-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.candidate-tabs {
+    display: flex;
+    background-color: white;
+    border-bottom: 1px solid #eee;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    -ms-overflow-style: none;
+}
+
+.candidate-tabs::-webkit-scrollbar {
+    height: 4px;
+}
+
+.candidate-tabs::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.candidate-tab {
+    padding: 1rem 2rem;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-weight: 500;
+    font-size: 1rem;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.candidate-tab:hover {
+    color: #F9645F;
+    background-color: rgba(249, 100, 95, 0.05);
+}
+
+.candidate-tab.active {
+    color: #F9645F;
+    border-bottom-color: #F9645F;
+    font-weight: 600;
+}
+
+.candidate-tab-content {
+    background-color: white;
+    min-height: 200px;
+}
+
+.candidate-tab-content .applicant-info-container {
+    margin-bottom: 0;
+    box-shadow: none;
+    border-radius: 0;
+}
+
+/* Smooth transition for tab content */
+.candidate-tab-content {
+    animation: fadeIn 0.3s ease;
+}
+
+/* New layout styles for restructured applicant details */
+
+/* Summary container styles */
+.summary-container {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f1f1f1;
+    width: 100%;
+    margin-bottom: 1.5rem;
+}
+
+/* Ranking criteria container styles */
+.ranking-criteria-container {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+/* Updated ranking criteria header styling for inline display with button */
+.ranking-criteria-header {
+    margin: 1.5rem 0;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.ranking-criteria-inline {
+    display: flex;
+    align-items: center;
+    margin-top: 3rem;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* Make ranking criteria label match info-label style */
+.ranking-criteria-inline .info-label {
+    margin-bottom: 0; /* Override the default margin */
+    white-space: nowrap;
+}
+
+.ranking-criteria-content {
+    font-size: 1rem;
+    color: #555;
+    line-height: 1.5;
+    flex: 1;
+    margin-right: 1rem;
+}
+
+/* Adjust view breakdown button to fit inline */
+.view-breakdown-button {
+    white-space: nowrap;
+    margin-left: auto;
+}
+
+/* Assessment container - holds radar chart and breakdown */
+.assessment-container {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f1f1f1;
+    width: 100%;
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+}
+
+@media (max-width: 992px) {
+    .assessment-container {
+        flex-direction: column;
+    }
+}
+
+/* Assessment chart - left side with radar chart */
+.assessment-chart {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Assessment breakdown - right side with score breakdown */
+.assessment-breakdown {
+    flex: 1.5;
+    min-width: 0;
+    margin-top: -1rem;
+}
+
+/* Adjust the assessment breakdown header to include scoring standard */
+.assessment-breakdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+/* Ensure scoring info panel aligns to the right */
+.scoring-info-panel {
+    margin: 0; /* Remove top margin */
+    background-color: #f8f9fb;
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    max-width: fit-content; /* Ensure it fits content */
+}
+
+/* Breakdown columns container */
+.breakdown-columns {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+}
+
+.breakdown-columns.single-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.breakdown-columns.two-columns {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.breakdown-columns.three-columns {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .breakdown-columns {
+        flex-direction: column;
+    }
+}
+
+/* Individual breakdown column */
+.breakdown-column {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Radar chart container styles */
+.radar-chart-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+/* Revert to the original overall score styling */
+.radar-chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    width: 100%;
+}
+
+.overall-score {
+    background-color: #fff0fa;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    display: inline-block;
+    box-shadow: 0 2px 4px rgb(255, 197, 222);
+    margin-top: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.score-label {
+    font-size: 0.9rem;
+    color: #12ff6d;
+    margin-right: 0.5rem;
+}
+
+.score-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #F9645F;
+}
+
+.score-max {
+    font-size: 0.9rem;
+    color: #888;
+    margin-left: 0.25rem;
+}
+
+/* Keep the radar chart enhancements for hover effects */
+.radar-chart {
+    margin-top: 1rem;
+}
+
+/* Style for unranked progress bars */
+.progress-bar.unranked {
+    background-image: repeating-linear-gradient(
+        45deg,
+        #d9d9d9,
+        #d9d9d9 10px,
+        #e6e6e6 10px,
+        #e6e6e6 20px
+    );
+    opacity: 1;
+}
+
+/* Style for the no-criteria-warning message */
+.no-criteria-warning {
+    text-align: center;
+    color: #666;
+    font-size: 1rem;
+    padding: 1rem;
+    background-color: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+/* Style for tooltip */
+.custom-tooltip {
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.tooltip-subject {
+    font-weight: bold;
+    margin: 0;
+    font-size: 14px;
+}
+
+.tooltip-value {
+    margin: 5px 0 0;
+    font-size: 16px;
+}
+
+.tooltip-category {
+    margin: 5px 0 0;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* Remove the styles we don't want anymore */
+.overall-score-container,
+.overall-score-circle,
+.score-value-large,
+.score-max-text,
+.score-details {
+    display: none;
+}
+
+/* Update the radar chart header to display as a flex container with space-between */
+.radar-chart-header h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.overall-score {
+    background-color: #fef7fb;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    display: inline-block;
+}
+
+.score-label {
+    font-size: 0.9rem;
+    color: #555;
+    margin-right: 0.5rem;
+}
+
+.score-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #F9645F;
+}
+
+.score-max {
+    font-size: 0.9rem;
+    color: #888;
+    margin-left: 0.25rem;
+}
+
+.radar-chart {
+    width: 100%;
+    height: 300px;
+}
+
+/* Remove these unused legend styles */
+.radar-chart-legend,
+.legend-item,
+.legend-color {
+    display: none;
+}
+
+/* Legend for the radar chart */
+.radar-chart-legend {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+/* Remove the skills/experience/education labels in the criteria-labels-row */
+.criteria-labels-row {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Remove the view-details-container since we're moving the button */
+.view-details-container {
+    display: none;
+}
+
+/* View details button container */
+.view-details-container {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+}
+
+/* Fix score cards grid to enforce equal height rows */
+.score-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    align-items: stretch;
+    grid-auto-rows: minmax(min-content, auto);
+}
+
+/* Make score cards more compact */
+.score-card {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    background-color: #fcfcfc;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.score-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.score-card.compact-card {
+    margin-bottom: 0;
+    padding: 1rem;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    background-color: #fcfcfc;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    height: fit-content;
+}
+
+/* Add styling for full reasoning cards that always show the complete content */
+.reasoning-card.full {
+    font-size: 0.85rem;
+    color: #444;
+    line-height: 1.5;
+    margin-top: 0.25rem;
+    padding: 0.75rem;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+    max-height: none;
+    width: 100%;
+    overflow-wrap: break-word;
+    white-space: normal;
+}
+
+/* Make score cards stretch to fill grid cell */
+.score-card.compact-card {
+    margin-bottom: 0;
+    padding: 1rem;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    background-color: #fcfcfc;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    height: 100%; /* Fill entire grid cell */
+}
+
+/* Make the score header consistent height */
+.score-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    min-height: 24px; /* Ensure consistent height */
+    flex-shrink: 0; /* Prevent header from shrinking */
+}
+
+/* Progress bar container consistency */
+.progress-bar-container {
+    height: 6px;
+    background-color: #eee;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.75rem; /* Consistent spacing */
+    flex-shrink: 0; /* Prevent progress bar from shrinking */
+}
+
+/* Make reasoning container grow to fill available space */
+.reasoning-container {
+    margin-top: 0.25rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Fill available space */
+}
+
+/* Make reasoning title consistent height */
+.reasoning-title {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #555;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    flex-shrink: 0; /* Prevent title from shrinking */
+}
+
+/* Make full reasoning cards grow to fill space */
+.reasoning-card.full {
+    font-size: 0.85rem;
+    color: #444;
+    line-height: 1.5;
+    margin-top: 0.25rem;
+    padding: 0.75rem;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+    max-height: none;
+    width: 100%;
+    overflow-wrap: break-word;
+    white-space: normal;
+    flex-grow: 1; /* Fill available space */
+    overflow-y: auto; /* Allow scrolling if content is too long */
+}
+
+/* Ensure compact-card in the same row have matching heights */
+@supports (display: grid) {
+    .detail-modal-body.optimized-body .score-cards-grid {
+        display: grid;
+        grid-auto-flow: row;
+    }
+}
+
+/* Simplify the reasoning header since we don't need the expand/collapse functionality */
+.reasoning-title {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #555;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+/* Ensure score cards grid items align at the top */
+.score-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.score-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.score-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.score-value {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #444;
+}
+
+.reasoning-container {
+    margin-top: 0.25rem;
+}
+
+.reasoning-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 0.25rem 0;
+}
+
+.reasoning-title {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #555;
+    font-weight: 500;
+}
+
+.expand-icon {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #777;
+    transition: transform 0.2s ease;
+}
+
+.reasoning-card.collapsed {
+    font-size: 0.85rem;
+    color: #666;
+    line-height: 1.4;
+    margin-top: 0.25rem;
+    max-height: 3.4em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    position: relative;
+}
+
+.reasoning-card.expanded {
+    font-size: 0.85rem;
+    color: #444;
+    line-height: 1.5;
+    margin-top: 0.25rem;
+    padding: 0.75rem;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+    max-height: none;
+}
+
+.score-detail-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.score-detail-modal-content {
+    background-color: #fff;
+    border: 4px solid;
+    border-radius: 8px;
+    padding: 2rem;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    animation: zoomIn 0.3s ease;
+    position: relative; /* Ensure the close button is positioned relative to the modal */
+}
+
+.close-modal-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #666;
+    cursor: pointer;
+    z-index: 10; /* Ensure the close button is above other elements */
+    transition: all 0.2s;
+}
+
+.close-modal-button:hover {
+    color: #333;
+}
+
+.score-detail-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.score-detail-modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.score-detail-modal-body {
+    font-size: 1rem;
+    color: #555;
+    line-height: 1.5;
+}
+
+.explanation-content {
+    background-color: #f9f9f9;
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+    margin-top: 0.5rem;
+}
+
+@keyframes zoomIn {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Make the progress bar taller */
+.progress-bar-container {
+    height: 6px;
+    background-color: #eee;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+/* Combined container styles for summary and assessment */
+.combined-container {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f1f1f1;
+    width: 100%;
+    margin-bottom: 1.5rem;
+}
+
+/* Ranking criteria header styling */
+.ranking-criteria-header {
+    margin: 1.5rem 0;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.ranking-criteria-header h2 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.75rem;
+}
+
+.ranking-criteria-content {
+    font-size: 1.2rem;
+    color: #555;
+    line-height: 1.5;
+}
+
+/* Assessment title styling */
+.assessment-title {
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #333;
+    margin: 1.5rem 0 1rem 0;
+}
+
+/* Assessment section styling - replaces assessment-container */
+.assessment-section {
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+}
+
+@media (max-width: 992px) {
+    .assessment-section {
+        flex-direction: column;
+    }
+}
+
+/* New styles for the row of labels */
+.criteria-labels-row {
+    display: flex;
+    margin-top: 1rem;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.criteria-label {
+    flex: 1;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #444;
+}
+
+.skills-label {
+    color: #8250c8;
+}
+
+.experience-label {
+    color: #dd20c1;
+}
+
+.education-label {
+    color: #0066cc;
+}
+
+/* Styles for the question mark button and tooltip */
+.score-info-tooltip {
+    position: relative;
+    display: inline-block;
+    margin-left: 8px;
+}
+
+.info-button {
+    background: none;
+    border: none;
+    color: #555;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    font-weight: bold;
+}
+
+.info-button:hover {
+    color: #F9645F;
+}
+
+.tooltip-content {
+    visibility: hidden;
+    width: 200px;
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    position: absolute;
+    z-index: 1;
+    bottom: 125%; /* Position above the button */
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tooltip-subject {
+    font-weight: bold;
+    margin: 0;
+    font-size: 14px;
+}
+
+.tooltip-value {
+    margin: 5px 0 0;
+    font-size: 16px;
+}
+
+.tooltip-category {
+    margin: 5px 0 0;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.score-info-tooltip:hover .tooltip-content {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Updated scoring info panel - removed left border and made more compact */
+.scoring-info-panel {
+    margin-top: 1rem;
+    background-color: #f8f9fb;
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    margin-bottom: 1rem;
+}
+
+.scoring-info-panel:hover {
+    background-color: #fff8f8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(249, 100, 95, 0.15);
+}
+
+.scoring-info-left {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.scoring-info-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.scoring-info-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #333;
+    margin-right: 1rem;
+}
+
+.scoring-info-subtitle {
+    font-size: 0.75rem;
+    color: #666;
+    max-width: 270px; /* Limit width to make it more compact */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Styles for the Scoring Standard button */
+.scoring-info-panel {
+    margin-top: 1.5rem;
+    background-color: #f8f9fb;
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.scoring-info-panel:hover {
+    background-color: #fff8f8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(249, 100, 95, 0.15);
+}
+
+.scoring-info-left {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.scoring-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(249, 100, 95, 0.1);
+    border-radius: 50%;
+    color: #F9645F;
+}
+
+.scoring-info-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.scoring-info-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #333;
+}
+
+.scoring-info-subtitle {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.scoring-info-arrow {
+    color: #F9645F;
+    transition: transform 0.3s ease;
+}
+
+.scoring-info-panel:hover .scoring-info-arrow {
+    transform: translateX(3px);
+}
+
+/* Remove old scoring button styles */
+.scoring-standard-button-container {
+    display: none;
+}
+
+.scoring-standard-button {
+    display: none;
+}
+
+/* Styles for the question mark button inside a circle */
+.info-circle-button {
+    background-color: #f0f7ff;
+    color: #F9645F;
+    border: 2px solid #F9645F;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-left: 8px;
+    transition: all 0.3s ease;
+}
+
+.info-circle-button:hover {
+    background-color: #F9645F;
+    color: #fff;
+}
+
+/* Modal overlay for RankCriteriaModal */
+.rank-criteria-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.rank-criteria-modal-content {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.close-modal-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.close-modal-button:hover {
+    color: #333;
+}
+
+/* Container for the question mark button and hover text */
+.info-circle-container {
+    position: relative;
+    display: inline-block;
+}
+
+/* Styles for the hover text */
+.info-hover-text {
+    visibility: hidden;
+    opacity: 0;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 4px;
+    padding: 5px 10px;
+    position: absolute;
+    bottom: 150%; /* Position above the button */
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 0.875rem;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+
+/* Show the hover text when hovering over the container */
+.info-circle-container:hover .info-hover-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Adjust the position of the hover text arrow */
+.info-hover-text::after {
+    content: '';
+    position: absolute;
+    top: 100%; /* Arrow at the bottom of the tooltip */
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+}
+
+/* Criteria buttons container - to handle multiple buttons */
+.criteria-buttons {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-left: auto;
+}
+
+/* Style for the "Show Detailed Scoring" button */
+.show-detailed-scoring-button {
+    background-color: #f67f48;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.show-detailed-scoring-button:hover {
+    background-color: #d75d25;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 6px rgba(132, 68, 9, 0.4);
+}
+
+/* Modal styles */
+.detailed-scoring-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(3px);
+}
+
+.detailed-scoring-modal {
+    background-color: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 900px;
+    height: auto; /* Allow height to adjust dynamically */
+    max-height: calc(100vh - 40px); /* Ensure it fits within the viewport */
+    overflow: hidden; /* Prevent scrolling */
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    animation: modalFadeIn 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    background-color: white;
+    z-index: 10;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.modal-header h2 {
+    font-size: 1.5rem;
+    color: #111827;
+    margin: 0;
+    font-weight: 700;
+}
+
+.modal-content {
+    padding: 1.5rem;
+}
+
+.overall-score-display {
+    background: linear-gradient(135deg, #f0f9ff 0%, #eef2ff 100%);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    text-align: center;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.overall-score-display h3 {
+    font-size: 2rem;
+    color: #4f46e5;
+    margin: 0 0 0.5rem 0;
+    font-weight: 700;
+}
+
+.score-explanation {
+    color: #6b7280;
+    margin: 0;
+    font-size: 1rem;
+}
+
+.score-charts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.chart-container {
+    flex: 1;
+    min-width: 300px;
+    background-color: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f3f4f6;
+}
+
+.chart-container h4 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #374151;
+    font-weight: 600;
+    text-align: center;
+    font-size: 1.25rem;
+}
+
+.chart-wrapper {
+    height: 250px;
+    position: relative;
+}
+
+.pie-chart-container {
+    flex: 1;
+}
+
+.bar-chart-container {
+    flex: 1.2;
+}
+
+.detailed-calculations {
+    background-color: #f9fafb;
+    border-radius: 12px;
+    padding: 2rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.detailed-calculations h3 {
+    margin-top: 0;
+    color: #111827;
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.calculation-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.calculation-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.calculation-section h4 {
+    margin: 0 0 1.25rem 0;
+    font-size: 1.2rem;
+    border-left: 4px solid #cbd5e1;
+    padding-left: 0.75rem;
+    font-weight: 600;
+}
+
+.skills-heading {
+    border-left-color: #8250c8 !important;
+    color: #8250c8;
+}
+
+.experience-heading {
+    border-left-color: #dd20c1 !important;
+    color: #dd20c1;
+}
+
+.education-heading {
+    border-left-color: #0066cc !important;
+    color: #0066cc;
+}
+
+.calculation-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.calculation-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+}
+
+.calculation-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.calculation-item.total {
+    background-color: #f3f4f6;
+    font-weight: 600;
+    border: 1px solid #d1d5db;
+    margin-top: 0.5rem;
+}
+
+.calculation-item.total-final {
+    background-color: #eef2ff;
+    font-weight: 700;
+    border: 1px solid #c7d2fe;
+    padding: 1rem 1.5rem;
+    margin-top: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(79, 70, 229, 0.1);
+}
+
+.calculation-math {
+    color: #4b5563;
+    font-family: monospace;
+    font-size: 1.05rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.percentage-display {
+    font-weight: 600;
+    color: #4f46e5;
+    margin-left: 0.5rem;
+}
+
+.calculation-result {
+    font-weight: 600;
+    color: #111827;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+}
+
+.final-calculation {
+    margin-top: 1.5rem;
+}
+
+.final-math {
+    font-family: monospace;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.final-score {
+    margin-left: 0.5rem;
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: #4f46e5;
+    background-color: #eef2ff;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+    .criteria-buttons {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+        width: 100%;
+        margin-top: 1rem;
+        margin-left: 0;
+    }
+
+    .view-breakdown-button,
+    .show-detailed-scoring-button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .detailed-scoring-modal {
+        width: 95%;
+        max-height: 90vh;
+    }
+
+    .score-charts {
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .calculation-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 1rem;
+    }
+
+    .calculation-math,
+    .final-math {
+        width: 100%;
+        text-align: left;
+        justify-content: flex-start;
+    }
+
+    .calculation-result {
+        margin-top: 0.5rem;
+    }
+
+    .percentage-display {
+        margin-left: 0;
+    }
+
+    .final-score {
+        margin-top: 0.5rem;
+        display: inline-block;
+        text-align: center;
+        width: 100%;
+    }
+
+    .overall-score-display h3 {
+        font-size: 1.75rem;
+    }
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Adjust modal content spacing and word styling */
+.detail-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem; /* Increase spacing between sections */
+    align-items: stretch;
+    padding: 2rem; /* Add more padding for better spacing */
+    line-height: 1.6; /* Improve readability */
+    font-size: 1rem; /* Standardize font size */
+    color: #444; /* Slightly darker text for better contrast */
+}
+
+/* Reasoning explanation font weight adjustment */
+.reasoning-title {
+    font-weight: 500; /* Slightly bold for the title */
+    color: #555; /* Neutral color for the title */
+    margin-bottom: 0.5rem;
+}
+
+.reasoning-card {
+    font-weight: 400; /* Lighter font weight for reasoning explanation */
+    color: #666; /* Softer color for reasoning text */
+    line-height: 1.5; /* Improve readability */
+    padding: 0.75rem 1rem; /* Add padding for better spacing */
+    background-color: #f9f9f9; /* Light background for contrast */
+    border-radius: 6px; /* Rounded corners for better aesthetics */
+    border: 1px solid #e0e0e0; /* Subtle border for separation */
+}
+
+.score-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .score-cards-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .detail-modal-body.optimized-body {
+        padding: 1rem;
+    }
+}

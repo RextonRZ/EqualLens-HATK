@@ -1,0 +1,2563 @@
+.add-interview-questions-container {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: 90vh;
+    background-color: #f8fafc;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Improved page header */
+.page-header {
+    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.back-button {
+    background: none;
+    border: none;
+    color: #F9645F;
+    font-size: 1rem;
+    padding: 0.5rem 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    transition: all 0.2s ease;
+}
+
+.back-button:hover {
+    transform: translateX(-3px);
+}
+
+.back-icon {
+    width: 1.2rem;
+    height: 1.2rem;
+    margin-right: 0.25rem;
+}
+
+.title-container {
+    margin-top: 0.5rem;
+}
+
+.title-container h1 {
+    font-size: 1.8rem;
+    color: #333;
+    margin: 0;
+    position: relative;
+    display: inline-block;
+    font-weight: 700;
+}
+
+.title-container h1::after {
+    content: "";
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 40%;
+    height: 3px;
+    background: linear-gradient(to right, #F9645F, #ff8783);
+    border-radius: 2px;
+}
+
+.job-title-reference {
+    margin-top: 0.75rem;
+    font-size: 1rem;
+    color: #666;
+    font-style: italic;
+    margin-bottom: 0.5rem;
+}
+
+/* Main content area */
+.interview-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* Controls panel with applicant selector and AI generate button */
+.controls-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end; /* Changed from center to flex-end to align with bottom */
+    gap: 2rem;
+    padding: 1.5rem;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f0f0f0;
+}
+
+.applicant-selector {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.applicant-selector label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #333;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.select-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    height: 40px; /* Set a specific height to match the AI button */
+}
+
+#applicant-select {
+    padding: 0.6rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #1f2937;
+    background-color: #f9fafb;
+    flex: 1;
+    min-width: 200px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#applicant-select:hover {
+    border-color: #cbd5e1;
+}
+
+#applicant-select:focus {
+    outline: none;
+    border-color: #F9645F;
+    box-shadow: 0 0 0 2px rgba(249, 100, 95, 0.15);
+}
+
+.view-profile-button {
+    background-color: #e5e7eb;
+    color: #4b5563;
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.view-profile-button:hover {
+    background-color: #d1d5db;
+    transform: translateY(-1px);
+}
+
+.ai-generate-button {
+    background: linear-gradient(90deg, #ff7eb3, #ff758c, #ff6b6b);
+    color: white;
+    border: none;
+    padding: 0.6rem 1.5rem; /* Reduced top/bottom padding slightly */
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+    box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    height: 40px; 
+    position: relative; /* Required for absolute positioning of pseudo-elements */
+    overflow: visible; /* Allow overflow for the butterfly effects */
+    z-index: 1; /* Ensure button is above animations */
+}
+
+/* Styles for when AI Generate has been used */
+.ai-generate-button.used {
+    background: linear-gradient(90deg, #d1d5db, #9ca3af, #6b7280);
+    box-shadow: 0 2px 4px rgba(107, 114, 128, 0.2);
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.7;
+}
+
+.ai-generate-button.used:hover {
+    transform: none;
+    box-shadow: 0 2px 4px rgba(107, 114, 128, 0.2);
+}
+
+/* Remove the pseudo-elements animation when the button is in 'used' state */
+.ai-generate-button.used::before,
+.ai-generate-button.used::after {
+    display: none; /* Don't display butterflies for used button */
+}
+
+.ai-generate-button::before,
+.ai-generate-button::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    opacity: 0;
+    pointer-events: none; /* Make sure it doesn't interfere with button clicks */
+    z-index: -1;
+}
+
+.ai-generate-button::before {
+    /* First butterfly/flower */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24' stroke='%23ff7eb3' stroke-width='1' fill='none'%3E%3Cpath d='M12 1c3 0 7 3 7 7s-4 7-7 7-7-4-7-7 3-7 7-7zm0 0v15M7 8c2 2 5 2 7 0M8 5c2 2 6 2 8 0'/%3E%3C/svg%3E");
+    top: -15px;
+    left: 25%;
+    animation: floatingButterflyLeft 5s ease-in-out infinite;
+}
+
+.ai-generate-button::after {
+    /* Second butterfly/flower */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24' stroke='%23ff6b6b' stroke-width='1' fill='none'%3E%3Cpath d='M12 1c3 0 7 3 7 7s-4 7-7 7-7-4-7-7 3-7 7-7zm0 0v15M7 8c2 2 5 2 7 0M8 5c2 2 6 2 8 0'/%3E%3C/svg%3E");
+    top: -10px;
+    right: 25%;
+    animation: floatingButterflyRight 6s ease-in-out infinite 1s;
+}
+
+/* Create additional butterflies using generated content */
+.ai-generate-button-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.butterfly {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    z-index: -1;
+    pointer-events: none;
+}
+
+.butterfly:nth-child(1) {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24' stroke='%23ff9eb3' stroke-width='1' fill='none'%3E%3Cpath d='M4 12h8M4 18V6M20 18V6M12 6c4 0 8 3 8 6s-4 6-8 6'/%3E%3C/svg%3E");
+    top: -20px;
+    left: 10%;
+    animation: floatingButterflyLeft 7s ease-in-out infinite 0.5s;
+}
+
+.butterfly:nth-child(2) {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24' stroke='%23ff758c' stroke-width='1' fill='none'%3E%3Cpath d='M4 12h8M4 18V6M20 18V6M12 6c4 0 8 3 8 6s-4 6-8 6'/%3E%3C/svg%3E");
+    top: -15px;
+    right: 15%;
+    animation: floatingButterflyRight 6s ease-in-out infinite 1.5s;
+}
+
+.butterfly:nth-child(3) {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24' stroke='%23ff7eb3' stroke-width='1' fill='none'%3E%3Cpath d='M12 1c3 0 7 3 7 7s-4 7-7 7-7-4-7-7 3-7 7-7zm0 0v15M7 8c2 2 5 2 7 0M8 5c2 2 6 2 8 0'/%3E%3C/svg%3E");
+    bottom: -15px;
+    left: 30%;
+    animation: floatingButterflyBottom 8s ease-in-out infinite 1s;
+}
+
+/* Add success message styling */
+.ai-success-message {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    background: linear-gradient(90deg, #86efac, #4ade80);
+    color: #064e3b;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(74, 222, 128, 0.25);
+    animation: fadeInOut 3s ease forwards;
+    white-space: nowrap;
+    z-index: 5;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(-10px); }
+    15% { opacity: 1; transform: translateY(0); }
+    85% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-10px); }
+}
+
+/* Animation for when button is hovered */
+.ai-generate-button:hover::before,
+.ai-generate-button:hover::after,
+.ai-generate-button:hover .butterfly {
+    opacity: 1;
+}
+
+.ai-generate-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(255, 107, 107, 0.4);
+}
+
+/* Keyframes for the floating animations */
+@keyframes floatingButterflyLeft {
+    0% {
+        transform: translateY(0) translateX(0) rotate(0deg);
+        opacity: 0;
+    }
+    20% {
+        opacity: 0.8;
+    }
+    50% {
+        transform: translateY(-15px) translateX(-15px) rotate(10deg);
+        opacity: 1;
+    }
+    80% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(-25px) translateX(-25px) rotate(0deg);
+        opacity: 0;
+    }
+}
+
+@keyframes floatingButterflyRight {
+    0% {
+        transform: translateY(0) translateX(0) rotate(0deg);
+        opacity: 0;
+    }
+    20% {
+        opacity: 0.8;
+    }
+    50% {
+        transform: translateY(-15px) translateX(15px) rotate(-10deg);
+        opacity: 1;
+    }
+    80% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(-25px) translateX(25px) rotate(0deg);
+        opacity: 0;
+    }
+}
+
+@keyframes floatingButterflyBottom {
+    0% {
+        transform: translateY(0) translateX(0) rotate(0deg);
+        opacity: 0;
+    }
+    20% {
+        opacity: 0.8;
+    }
+    50% {
+        transform: translateY(15px) translateX(-10px) rotate(-5deg);
+        opacity: 1;
+    }
+    80% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(25px) translateX(-20px) rotate(0deg);
+        opacity: 0;
+    }
+}
+
+/* Section creator */
+.section-creator {
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f0f0f0;
+}
+
+.section-creator h2 {
+    font-size: 1.2rem;
+    color: #333;
+    margin: 0 0 1rem 0;
+    font-weight: 600;
+}
+
+.section-input-group {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.section-title-input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 1rem;
+    color: #374151;
+    transition: all 0.25s;
+    background-color: #f9fafb;
+}
+
+.section-title-input::placeholder{
+    color: #a4a4a4;
+}
+
+.section-title-input:focus {
+    outline: none;
+    border-color: #F9645F;
+    box-shadow: 0 0 0 3px rgba(249, 100, 95, 0.15);
+    background-color: #fff;
+}
+
+.add-section-button {
+    background-color: #F9645F;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(249, 100, 95, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.add-icon {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+
+.add-section-button:hover {
+    background-color: #ef402d;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(249, 100, 95, 0.3);
+}
+
+/* Empty state */
+.no-sections {
+    text-align: center;
+    padding: 3rem;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    color: #666;
+    border: 1px dashed #ccc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.empty-icon {
+    width: 4rem;
+    height: 4rem;
+    color: #cbd5e1;
+}
+
+.no-sections p {
+    margin: 0;
+    line-height: 1.6;
+}
+
+.no-sections p:first-of-type {
+    font-weight: 500;
+    color: #4b5563;
+}
+
+/* Sections container */
+.sections-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* Improved section header layout with better spacing and edit functionality */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid #e0e0e0;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    position: relative;
+    min-height: 3.5rem;
+    overflow: visible; /* Allow edit container to overflow */
+}
+
+.section-header:hover {
+    background-color: #f8fafc;
+}
+
+/* Fix section title editable container with proper event handling */
+.section-title-editable {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.75rem; /* Increased from 0.1rem to provide more space between title and edit button */
+    pointer-events: none; /* Make the container itself non-interactive */
+    margin-left: 5.5rem;
+    flex: 1;
+    position: relative;
+    z-index: 3;
+}
+
+/* Make the title and edit button individually interactive */
+.section-title {
+    font-size: 1.3rem;
+    color: #333;
+    margin: 0;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 500px;
+    line-height: 1.3;
+    pointer-events: auto; /* Allow clicking on title */
+}
+
+/* Fix the edit button to ensure it's clickable */
+.edit-title-button {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    position: relative;
+    z-index: 10; /* Higher z-index to ensure it's above other elements */
+    width: 2rem;
+    height: 2rem;
+    pointer-events: auto; /* Explicitly enable pointer events */
+}
+
+.edit-title-button:hover {
+    color: #F9645F;
+    background-color: #f1f5f9;
+}
+
+.edit-title-button svg {
+    width: 1rem;
+    height: 1rem;
+    pointer-events: none; /* Prevent the SVG from capturing clicks instead of the button */
+}
+
+/* Improve section title edit container to prevent event bubbling */
+.section-title-edit-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 80%; /* Limit width to prevent overlapping with section actions */
+    position: relative;
+    background-color: rgba(255, 255, 255, 0);
+    border-radius: 6px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    padding: 4px;
+    z-index: 50; /* Higher z-index to appear above other elements */
+    margin-left: 5.5rem; /* Match the margin-left of section-title-editable */
+}
+
+/* Improve section title input styling for better usability */
+.section-title-input-edit {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #333;
+    border: 1px solid #F9645F;
+    border-radius: 6px;
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0);
+    width: 100%;
+    flex: 1;
+}
+
+.section-title-input-edit:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(249, 100, 95, 0.15);
+    border-color: #F9645F;
+}
+
+/* Fix edit actions to be more contained */
+.edit-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+.save-edit-button,
+.cancel-edit-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    transition: all 0.2s ease;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+.save-edit-button {
+    color: #10b981;
+    background-color: #d1fae500;
+}
+
+.cancel-edit-button {
+    color: #ef4444;
+    background-color: #fee2e200;
+}
+
+.save-edit-button:hover {
+    background-color: #a7f3d0;
+}
+
+.cancel-edit-button:hover {
+    background-color: #fecaca;
+}
+
+.save-edit-button svg,
+.cancel-edit-button svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Fix section number badge for better vertical alignment */
+.section-card .section-header::before {
+    content: attr(data-section);
+    position: absolute;
+    top: 50%;
+    left: 1.25rem;
+    transform: translateY(-50%);
+    background-color: #e2e8f0;
+    color: #475569;
+    border-radius: 999px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    z-index: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    min-width: 4rem;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2rem;
+}
+
+/* Ensure proper spacing in actions area and fix z-index */
+.section-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    z-index: 5; /* Ensure it's above other elements but below edit controls */
+    margin-left: 2rem;
+    pointer-events: auto; /* Make sure buttons are clickable */
+    position: relative; /* Add positioning context */
+    flex-shrink: 0; /* Prevent shrinking */
+    min-width: 100px; /* Ensure minimum width */
+}
+
+/* Fix for the edit title container to ensure it works correctly when editing */
+.section-title-edit-container {
+    cursor: text;
+    position: relative;
+    background-color: rgba(255, 255, 255, 0); /* Ensure it has a background to cover other elements */
+    border-radius: 6px;
+    pointer-events: auto !important; /* Force pointer events to be enabled */
+}
+
+/* Additional styling to fix edit actions buttons */
+.edit-actions {
+    display: flex;
+    gap: 0.5rem;
+    z-index: 20; /* Even higher z-index */
+    pointer-events: auto; /* Ensure buttons are clickable */
+}
+
+.save-edit-button,
+.cancel-edit-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    transition: all 0.2s ease;
+    pointer-events: auto; /* Explicitly enable */
+    z-index: 20; /* Ensure they're above everything */
+}
+
+.save-edit-button {
+    color: #10b981;
+    background-color: #d1fae5;
+}
+
+.cancel-edit-button {
+    color: #ef4444;
+    background-color: #fee2e2;
+}
+
+.save-edit-button:hover {
+    background-color: #a7f3d0;
+}
+
+.cancel-edit-button:hover {
+    background-color: #fecaca;
+}
+
+.save-edit-button svg,
+.cancel-edit-button svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Sections container */
+.sections-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.section-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, opacity 0.3s ease, padding 0.3s ease;
+    opacity: 1;
+    max-height: 3000px; /* Large enough to fit content */
+    padding: 1.5rem;
+}
+
+.collapsed .section-content {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    pointer-events: none; /* Prevent interaction when collapsed */
+}
+
+.collapsed .section-header {
+    border-bottom: none;
+}
+
+/* Fix the header toggle cursor */
+.section-header {
+    cursor: pointer;
+}
+
+.section-title-edit-container {
+    cursor: text;
+}
+
+/* Avoid border flash when collapsed */
+.collapsed .section-content {
+    border-top: none;
+}
+
+/* Improve section card appearance */
+.section-card {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f1f1f1;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    padding: 0; /* Remove padding as it's now in section header and content */
+}
+
+.section-card:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+/* Remove any padding from original section-card as we've moved it */
+.section-card {
+    padding: 0;
+}
+
+/* Fix for the editable title container which needs to be clickable */
+.section-title-edit-container {
+    width: 100%;
+    max-width: 600px;
+    z-index: 2;
+}
+
+/* Fix remove section button to work with the new layout */
+.remove-section-button {
+    margin-left: 0;
+    z-index: 2;
+    pointer-events: auto;
+}
+
+/* Add a section counter badge */
+.section-card .section-header::before {
+    content: attr(data-section);
+    position: absolute;
+    top: 50%;
+    left: 0.75rem;
+    transform: translateY(-50%);
+    background-color: #e2e8f0;
+    color: #475569;
+    border-radius: 999px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+/* Styles for section move buttons */
+.section-move-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-right: 1rem;
+}
+
+.move-section-button {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.move-section-button:hover {
+    background-color: #e2e8f0;
+    color: #1e293b;
+}
+
+.move-section-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.move-section-button:disabled:hover {
+    background-color: transparent;
+    color: #94a3b8;
+}
+
+.move-section-button svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Ensure edit and remove buttons remain clickable */
+.edit-title-button, 
+.remove-section-button {
+    z-index: 5;
+    position: relative;
+}
+
+/* Update section card styles */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.section-title {
+    font-size: 1.3rem;
+    color: #333;
+    margin: 0;
+    font-weight: 600;
+}
+
+.section-title-editable {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section-title-input-edit {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #333;
+    border: 1px solid #F9645F;
+    border-radius: 6px;
+    padding: 0.25rem 0.5rem;
+    background: white;
+    width: 100%;
+}
+
+.section-title-input-edit:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(249, 100, 95, 0.15);
+}
+
+.edit-title-button {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.edit-title-button:hover {
+    color: #F9645F;
+    background-color: #f1f5f9;
+}
+
+.edit-title-button svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Redesigned question interface */
+.questions-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Enhanced question item styles with darker colors */
+.question-item {
+    position: relative;
+    width: 100%;
+    transition: all 0.2s ease;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+}
+
+.question-header {
+    display: flex;
+    align-items: center;
+    background-color: #edf2f7; /* Darker header background */
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #d1d5db;
+    position: relative;
+}
+
+.question-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background-color: #F9645F;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-radius: 50%;
+    margin-right: 0.75rem;
+    box-shadow: 0 2px 4px rgba(249, 100, 95, 0.2);
+}
+
+.optional-item .question-number {
+    background-color: #64748b; /* Darker color for optional */
+    box-shadow: 0 2px 4px rgba(100, 116, 139, 0.2);
+}
+
+.question-type-indicator {
+    margin-left: auto;
+    margin-right: 2rem;
+}
+
+.compulsory-badge, .optional-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.compulsory-badge {
+    background-color: #fee2e2;
+    color: #ef4444;
+}
+
+.optional-badge {
+    background-color: #e2e8f0;
+    color: #64748b;
+}
+
+.q-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: #ffffff;
+}
+
+.question-textarea {
+    width: 100%;
+    padding: 1rem; /* More padding */
+    border: none;
+    border-bottom: 1px solid #d1d5db; /* Darker border */
+    border-radius: 0;
+    font-size: 1rem;
+    min-height: 80px;
+    resize: vertical;
+    font-family: inherit;
+    color: #333;
+    background-color: #ffffff;
+    transition: all 0.25s;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05); /* Subtle inner shadow */
+}
+
+.question-textarea::placeholder{
+    color: #aeaeae;
+}
+
+/* Remove the border-left styles for compulsory and optional */
+.question-textarea.compulsory,
+.question-textarea.optional {
+    /* Removed border-left */
+    box-shadow: none;
+}
+
+.question-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    background-color: #f1f5f9; /* Darker controls background */
+    border-top: 1px solid #d1d5db;
+}
+
+.question-time-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.time-icon, .info-icon {
+    width: 16px;
+    height: 16px;
+    color: #64748b;
+}
+
+.question-time-control label {
+    color: #4b5563;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.time-input {
+    width: 60px;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    background-color: #f9fafb;
+    color: #1f2937;
+    text-align: center;
+}
+
+.time-unit {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.question-compulsory-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.compulsory-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #4b5563;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.compulsory-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: #F9645F;
+    cursor: pointer;
+}
+
+.remove-question-button {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.remove-question-button:hover {
+    color: #F9645F;
+    background-color: #ffeff3;
+}
+
+.remove-question-button svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.add-question-button {
+    flex-basis: 70%;
+    margin: 0;
+    background-color: #f1f5f9;
+    color: #64748b;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px dashed #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.add-q-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.add-question-button:hover {
+    background-color: #e2e8f0;
+    color: #475569;
+    border-color: #94a3b8;
+}
+
+/* Save button at the bottom - adjust to be closer to time summary */
+.save-container {
+    text-align: center;
+    margin-top: 1rem; /* Reduced from 1.5rem to bring it closer */
+    padding-top: 1rem; /* Reduced from 1.5rem to bring it closer */
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: center;
+}
+
+.save-button {
+    background-color: #F9645F;
+    color: white;
+    border: none;
+    padding: 0.85rem 2.5rem;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(249, 100, 95, 0.25);
+}
+
+/* Add a more visible disabled button state */
+.save-button:disabled {
+    background-color: #ccc;
+    color: #666;
+    cursor: not-allowed;
+    box-shadow: none;
+    opacity: 0.7;
+    transform: none;
+}
+
+.save-button:disabled:hover {
+    background-color: #ccc;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Loading Styles */
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.loading-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left-color: #F9645F;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Modal styles are already defined in your Dashboard.css */
+/* Adding responsive adjustments */
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .ai-generate-button {
+        align-self: stretch;
+        justify-content: center;
+    }
+    
+    .applicant-selection-container {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+    }
+    
+    .select-wrapper {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .view-profile-button {
+        width: 100%;
+        margin-top: 0.5rem;
+        justify-content: center;
+    }
+    
+    .new-section-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .add-section-button {
+        width: 100%;
+    }
+    
+    .applicant-controls-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .select-wrapper {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        width: 100%;
+        min-width: unset;
+    }
+    
+    .applicant-select {
+        width: 100%;
+    }
+    
+    .ai-generate-button {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .view-profile-button {
+        width: 100%;
+        text-align: center;
+        display: flex;
+        justify-content: center;
+    }
+
+    .controls-panel {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+        padding: 1.25rem;
+    }
+    
+    .applicant-selector {
+        width: 100%;
+    }
+    
+    .select-actions {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+    }
+    
+    #applicant-select {
+        width: 100%;
+    }
+    
+    .view-profile-button {
+        width: 100%;
+    }
+    
+    .ai-generate-button {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .section-input-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .add-section-button {
+        justify-content: center;
+    }
+
+    .question-time-control {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .time-input {
+        width: 100%;
+    }
+
+    .question-controls {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .question-compulsory-control {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+
+    .question-header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 0.75rem;
+    }
+    
+    .question-number {
+        margin-right: 0.5rem;
+    }
+    
+    .question-type-indicator {
+        margin-right: 0;
+        margin-left: 0;
+    }
+    
+    .question-controls {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .question-time-control {
+        width: 100%;
+    }
+    
+    .question-compulsory-control {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .interview-time-summary {
+        flex-direction: column;
+        padding: 0.75rem;
+        gap: 0.5rem;
+    }
+}
+
+/* Update styles for question actions container to reverse button order */
+.question-actions-container {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+.add-question-button {
+    flex-basis: 70%;
+    margin: 0;
+    background-color: #f1f5f9;
+    color: #64748b;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px dashed #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.ai-generate-question-button {
+    flex-basis: 30%;
+    background: linear-gradient(90deg, #ff7575, #ff62a9, #ff9eca);
+    color: white;
+    border: none;
+    padding: 0.6rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+    box-shadow: 0 4px 8px rgba(241, 99, 139, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.question-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.question-time-control {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.25rem 0;
+    margin-top: 0.25rem;
+}
+
+.question-time-control label {
+    color: #4b5563;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.time-input {
+    width: 80px;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    background-color: #f9fafb;
+    color: #1f2937;
+    text-align: center;
+}
+
+.time-input:focus {
+    outline: none;
+    border-color: #F9645F;
+    box-shadow: 0 0 0 2px rgba(249, 100, 95, 0.15);
+}
+
+.time-input::-webkit-inner-spin-button, 
+.time-input::-webkit-outer-spin-button { 
+    opacity: 1;
+}
+
+/* Question compulsory/optional styles */
+.question-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.question-compulsory-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.compulsory-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #4b5563;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.compulsory-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: #F9645F;
+    cursor: pointer;
+}
+
+/* Random selection settings */
+.section-random-settings {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background-color: #bbccdd;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.random-toggle {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.random-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+    color: #4b5563;
+    cursor: pointer;
+}
+
+.random-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: #F9645F;
+    cursor: pointer;
+}
+
+.random-disabled-note {
+    font-size: 0.90rem;
+    color: #5d6775;
+    font-style: normal;
+    margin-left: 0rem;
+}
+
+.random-checkbox:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.random-count-selector {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.random-count-selector label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #4b5563;
+}
+
+.random-count-input {
+    width: 50px;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.9rem;
+    background-color: white;
+}
+
+.random-count-input:focus {
+    outline: none;
+    border-color: #F9645F;
+    box-shadow: 0 0 0 2px rgba(249, 100, 95, 0.15);
+}
+
+.random-help-text {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-style: italic;
+    margin-top: 0.25rem;
+}
+
+/* Improved random selection settings */
+.section-random-settings {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+.random-toggle {
+    display: flex;
+    align-items: center;
+}
+
+.random-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+    color: #4b5563;
+    cursor: pointer;
+}
+
+.random-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: #F9645F;
+    cursor: pointer;
+}
+
+.random-count-selector {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.random-count-selector label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    color: #4b5563;
+    flex-wrap: wrap;
+}
+
+.random-count-input {
+    width: 50px;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 0.9rem;
+    background-color: white;
+    font-weight: 600;
+}
+
+.random-count-input:focus {
+    outline: none;
+    border-color: #F9645F;
+    box-shadow: 0 0 0 2px rgba(249, 100, 95, 0.15);
+}
+
+.random-help-text {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+    line-height: 1.4;
+}
+
+/* Error modal styles */
+.error-modal {
+    border-top: 4px solid #ef4444;
+    animation: errorShake 0.4s ease-in-out;
+}
+
+.success-modal{
+    background-color: #91ffb9;
+}
+
+/* Add success icon styling to match other components */
+.success-icon {
+    background-color: rgba(76, 175, 80, 0.3); /* Increased opacity for a more visible light green */
+    color: #4caf50;
+}
+
+@keyframes errorShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(5px); }
+    75% { transform: translateX(-5px); }
+}
+
+.error-icon {
+    color: #ef4444;
+    background-color: #fee2e2;
+}
+
+/* Ensure the error message has good contrast and is clearly visible */
+.error-modal .status-description {
+    color: #333;
+    font-weight: 500;
+    white-space: pre-line; /* This allows line breaks in the error message */
+    margin: 1rem 0;
+}
+
+/* Update modal width */
+.status-modal {
+    max-width: 520px; /* Increased from the default (typically 400px) */
+}
+
+.status-modal .status-description {
+    white-space: normal;
+    line-height: 1.5;
+    margin: 1rem 0;
+    text-align: justify;
+}
+
+/* Improve random-count-input validation visual feedback */
+.random-count-input.invalid {
+    border-color: #ef4444;
+    background-color: #fef2f2;
+}
+
+.random-count-input.invalid:focus {
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+/* Add warning text when count exceeds available */
+.random-count-warning {
+    color: #ef4444;
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.warning-icon {
+    width: 14px;
+    height: 14px;
+}
+
+/* Improved section title editing UI */
+.section-title-edit-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 600px;
+}
+
+.section-title-input-edit {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #333;
+    border: 1px solid #F9645F;
+    border-radius: 6px;
+    padding: 0.25rem 0.5rem;
+    background: white;
+    width: 100%;
+}
+
+.section-title-input-edit:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(249, 100, 95, 0.15);
+}
+
+.edit-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.save-edit-button,
+.cancel-edit-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    transition: all 0.2s ease;
+}
+
+.save-edit-button {
+    color: #10b981;
+    background-color: #d1fae5;
+}
+
+.cancel-edit-button {
+    color: #ef4444;
+    background-color: #fee2e2;
+}
+
+.save-edit-button:hover {
+    background-color: #a7f3d0;
+}
+
+.cancel-edit-button:hover {
+    background-color: #fecaca;
+}
+
+.save-edit-button svg,
+.cancel-edit-button svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Fix for remove section button to ensure it's always visible */
+.remove-section-button {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    margin-left: auto;
+}
+
+.remove-section-button:hover {
+    color: #ef4444;
+    background-color: #fee2e2;
+}
+
+.remove-section-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Confirmation modal styling */
+.status-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.status-modal {
+    background-color: white;
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 520px;
+    width: 90%;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.status-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem auto;
+}
+
+.status-icon svg {
+    width: 32px;
+    height: 32px;
+}
+
+.warning-icon {
+    background-color: #ff9090;
+    color: #ea580c;
+}
+
+.status-title {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+.status-description {
+    color: #666;
+    margin-bottom: 1.5rem;
+}
+
+.status-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.status-button {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.primary-button {
+    background-color: #F9645F;
+    color: white;
+}
+
+.primary-button:hover {
+    background-color: #ef402d;
+}
+
+.secondary-button {
+    background-color: #f1f5f9;
+    color: #475569;
+}
+
+.secondary-button:hover {
+    background-color: #e2e8f0;
+}
+
+/* Total interview time display */
+.interview-time-summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 2rem;
+    padding: 1rem;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    /* Remove bottom margin to make save container closer */
+    margin-bottom: 0;
+}
+
+.time-icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.total-time-icon {
+    width: 24px;
+    height: 24px;
+    color: #F9645F;
+}
+
+.total-time-text {
+    font-size: 1rem;
+    color: #4b5563;
+}
+
+.time-value {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+/* Confirmation modal icon */
+.confirm-icon {
+    background-color: #e0f2fe;
+    color: #0284c7;
+}
+
+/* AI Generated Questions Styles */
+.ai-generated-question {
+    border-color: #ff7eb3;
+}
+
+.ai-generated-header {
+    background: linear-gradient(90deg, #ffbed9, #ffb3c0);
+    border-bottom-color: #ffa0b0;
+}
+
+.ai-generated-controls {
+    background: linear-gradient(90deg, #fff1f7, #fff0f2);
+    border-top-color: #ffccd5;
+}
+
+.ai-generated-textarea {
+    border-bottom-color: #ffccd5;
+}
+
+/* AI Badge Styles */
+.ai-badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-weight: 500;
+    margin-left: 0.5rem;
+    background: linear-gradient(90deg, #ff7eb3, #ff758c, #ff6b6b);
+    color: white;
+    white-space: nowrap;
+    display: inline-block;
+    box-shadow: 0 2px 4px rgba(255, 107, 107, 0.2);
+}
+
+.ai-badge.ai-modified {
+    background: linear-gradient(90deg, #e879f9, #d946ef);
+}
+
+/* AI Generated Section styling */
+.ai-generated-section {
+    /* Remove the left pink border completely */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    background-color: #ffffff;
+}
+
+/* Make the question type container more flexible to hold badges */
+.question-type-indicator {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-left: auto;
+    margin-right: 2rem;
+}
+
+/* Ensure AI-generated questions have slightly better spacing */
+.ai-generated-question .question-content {
+    gap: 0.75rem;
+}
+
+/* Improve visibility of text on AI-generated headers */
+.ai-generated-header .question-number {
+    background-color: white;
+    color: #ff758c;
+}
+
+.ai-generated-header .compulsory-badge,
+.ai-generated-header .optional-badge {
+    background-color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.ai-generated-header .compulsory-badge {
+    color: #ff4a6e;
+}
+
+.ai-generated-header .optional-badge {
+    color: #ff4a6e;
+}
+
+/* Better hover state for AI-generated questions */
+.ai-generated-question:hover {
+    box-shadow: 0 4px 15px rgba(255, 126, 179, 0.15);
+}
+
+/* AI Generated Questions Styles - adjusted for better UI integration */
+.ai-generated-question {
+    border-color: #e2e8f0;
+    box-shadow: 0 3px 10px rgba(255, 126, 179, 0.08);
+}
+
+.ai-generated-header {
+    background: linear-gradient(90deg, #fef5f9, #fef2f5);
+    border-bottom-color: #ffe4ec;
+}
+
+.ai-generated-controls {
+    background: linear-gradient(90deg, #fefcfd, #fff9fa);
+    border-top-color: #ffe4ec;
+}
+
+.ai-generated-textarea {
+    border-bottom-color: #ffe4ec;
+}
+
+/* AI Badge Styles - keep these more vibrant to stand out */
+.ai-badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-weight: 500;
+    margin-left: 0.5rem;
+    background: linear-gradient(90deg, #ff7eb3, #ff758c, #ff6b6b);
+    color: white;
+    white-space: nowrap;
+    display: inline-block;
+    box-shadow: 0 2px 4px rgba(255, 107, 107, 0.2);
+}
+
+.ai-badge.ai-modified {
+    background: linear-gradient(90deg, #e879f9, #d946ef);
+}
+
+/* AI Generated Section styling - remove the left border */
+.ai-generated-section {
+    /* Remove the left pink border completely */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    background-color: #ffffff;
+}
+
+/* Modified color for AI-generated question headers to better match UI */
+.ai-generated-header .question-number {
+    background-color: #ff758c;
+    color: white;
+}
+
+.ai-generated-header .compulsory-badge {
+    background-color: #fff0f3;
+    color: #ff4a6e;
+    border: none;
+}
+
+.ai-generated-header .optional-badge {
+    background-color: #fff0f3;
+    color: #ff758c;
+    border: none;
+}
+
+/* Better hover state for AI-generated questions */
+.ai-generated-question:hover {
+    box-shadow: 0 4px 15px rgba(255, 126, 179, 0.15);
+}
+
+/* AI Generated Header styling - consistent with normal badges */
+.ai-generated-header .compulsory-badge {
+    background-color: #fee2e2; /* Same as normal compulsory badge */
+    color: #ef4444;
+    border: none;
+}
+
+.ai-generated-header .optional-badge {
+    background-color: #e2e8f0; /* Same as normal optional badge */
+    color: #64748b;
+    border: none;
+}
+
+/* Remove the previous AI-generated question number styling that changed color */
+.ai-generated-header .question-number {
+    background-color: #F9645F; /* Keep the same style as regular questions */
+    color: white;
+}
+
+.ai-generated-header .optional-item .question-number {
+    background-color: #64748b; /* Keep same style as regular optional questions */
+    box-shadow: 0 2px 4px rgba(100, 116, 139, 0.2);
+}
+
+/* Apply to All Modal Styles */
+.default-button {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.default-button:hover {
+    background-color: #2563eb;
+}
+
+.error-text {
+    color: #ef4444;
+    font-weight: 500;
+}
+
+/* Update save container to handle multiple buttons */
+.save-container {
+    text-align: center;
+    margin-top: 1rem; 
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.action-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.reset-button {
+    background-color: #ff7b64;
+    color: white;
+    border: none;
+    padding: 0.85rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(239, 68, 68, 0.25);
+}
+
+.reset-button:hover {
+    background-color: #dc5426;
+    transform: translateY(-2px);
+}
+
+.reset-button:disabled {
+    background-color: #fca5a5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.danger-button {
+    background-color: #ef4444;
+    color: white;
+}
+
+.danger-button:hover {
+    background-color: #dc2626;
+}
+
+/* Add these styles for the updated interview-time-summary section */
+.interview-time-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 20px 0;
+    padding: 15px 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.time-info, .question-info {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+.question-info {
+    margin-left: 40px;
+}
+
+.time-icon-container, .question-icon-container {
+    margin-right: 10px;
+}
+
+.info-icon {
+    width: 24px;
+    height: 24px;
+    color: #4a5568;
+}
+
+.info-text {
+    font-size: 14px;
+    color: #2d3748;
+}
+
+.value-text {
+    font-weight: 600;
+}
+
+/* For small screens, stack the time and question info vertically */
+@media (max-width: 768px) {
+    .interview-time-summary {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .question-info {
+        margin-left: 0;
+        margin-top: 10px;
+    }
+}
+
+/* Add styles for the "Please select an applicant" prompt */
+.applicant-select-prompt {
+    text-align: center;
+    padding: 3rem;
+    background-color: #f8fafc;
+    border-radius: 12px;
+    color: #64748b;
+    border: 2px dashed #cbd5e1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.applicant-select-prompt .empty-icon {
+    width: 4rem;
+    height: 4rem;
+    color: #94a3b8;
+}
+
+.applicant-select-prompt p:first-of-type {
+    font-weight: 600;
+    color: #334155;
+    font-size: 1.1rem;
+}
+
+/* Replace the interview-time-summary with a more polished stats summary */
+.interview-stats-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    margin: 20px 0;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.stats-item {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 18px 20px;
+    gap: 15px;
+}
+
+.time-stats {
+    background-color: #f0f9ff;
+    border: 1px solid #bae6fd;
+}
+
+.question-stats {
+    background-color: #f0fdf4;
+    border: 1px solid #bbf7d0;
+}
+
+.stats-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.time-stats .stats-icon {
+    background-color: #e0f2fe;
+    color: #0284c7;
+}
+
+.question-stats .stats-icon {
+    background-color: #dcfce7;
+    color: #16a34a;
+}
+
+.stats-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.stats-content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.stats-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.stats-value {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.time-stats .stats-value {
+    color: #0284c7;
+}
+
+.question-stats .stats-value {
+    color: #16a34a;
+}
+
+/* Media query to handle smaller screens */
+@media (max-width: 768px) {
+    .interview-stats-summary {
+        flex-direction: column;
+    }
+    
+    .stats-item {
+        padding: 15px;
+    }
+}
+
+/* Add styles for question actions container and AI Generate Question button */
+.question-actions-container {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+.ai-generate-question-button {
+    flex-basis: 30%;
+    background: linear-gradient(90deg, #ff7575, #ff62a9, #ff9eca);
+    color: white;
+    border: none;
+    padding: 0.6rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+    box-shadow: 0 4px 8px rgba(241, 99, 139, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.ai-generate-question-button::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        to bottom right,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    transform: rotate(45deg);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.ai-generate-question-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(241, 99, 139, 0.3);
+}
+
+.ai-generate-question-button:hover::before {
+    animation: shimmer 1.5s infinite;
+    opacity: 1;
+}
+
+.ai-generate-question-button .ai-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Define shimmer animation for the button */
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%) rotate(45deg);
+    }
+    100% {
+        transform: translateX(100%) rotate(45deg);
+    }
+}
+
+/* Style for disabled AI generate question button */
+.ai-generate-question-button:disabled {
+    background: linear-gradient(90deg, #cbd5e1, #94a3b8);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    opacity: 0.7;
+}
+
+.ai-generate-question-button:disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.ai-generate-question-button:disabled::before {
+    display: none;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+    .question-actions-container {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .ai-generate-question-button,
+    .add-question-button {
+        flex-basis: auto;
+        width: 100%;
+    }
+}
+
+/* Typing animation for question generation */
+.question-typing-animation {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ffccd5;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.typing-header {
+    font-size: 0.9rem;
+    color: #ff758c;
+}
+
+.typing-content {
+    display: flex;
+    align-items: center;
+    font-size: 0.95rem;
+    color: #4b5563;
+}
+
+.typing-dots {
+    display: flex;
+    gap: 5px;
+}
+
+.typing-dots span {
+    width: 8px;
+    height: 8px;
+    background-color: #ff758c;
+    border-radius: 50%;
+    display: inline-block;
+    opacity: 0.6;
+}
+
+.typing-dots span:nth-child(1) {
+    animation: typingDot 1s infinite 0s;
+}
+
+.typing-dots span:nth-child(2) {
+    animation: typingDot 1s infinite 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+    animation: typingDot 1s infinite 0.4s;
+}
+
+@keyframes typingDot {
+    0%, 100% {
+        opacity: 0.6;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+}
+
+/* When a specific section is generating a question, add a subtle highlight */
+.generating-question {
+    background-color: #fff9fb;
+    transition: background-color 0.3s ease;
+}

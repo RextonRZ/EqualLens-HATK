@@ -1,0 +1,910 @@
+.hero-container {
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    padding-top: 0; /* Ensure no padding at top */
+}
+
+video {
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+    display: block; /* Ensure it displays as a block element */
+    object-position: 25% center; /* Moved further left from 65% to 55% */
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        135deg, 
+        rgba(210, 45, 60, 0.85) 0%, 
+        rgba(249, 100, 95, 0.7) 40%,
+        rgba(249, 100, 95, 0.3) 70%,
+        rgba(249, 100, 95, 0.2) 100%
+    );
+    z-index: 0;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 1400px;
+    display: flex;
+    justify-content: center; /* Changed from space-between to center */
+    align-items: center;
+    padding: 0 20px;
+    gap: 30px; /* Add gap between left and right content */
+    margin-top: 0px; /* Adjust this value to move content down more */
+}
+
+.left-content {
+    width: 45%; /* Slightly reduced from 50% */
+    max-width: 580px;
+    text-align: left;
+    animation: fadeIn 1.2s ease-in-out;
+    margin-left: 0; /* Removed margin */
+    margin-top: 0px; /* Move text slightly up */
+}
+
+.left-content h1 {
+    color: #fff;
+    font-size: 60px;
+    font-weight: 800;
+    margin-bottom: 30px;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+    line-height: 1.1;
+}
+
+.left-content p {
+    color: #fff;
+    font-size: 24px;
+    font-weight: 400;
+    line-height: 1.5;
+    margin-bottom: 40px;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.hero-btns {
+    display: flex;
+    gap: 20px;
+    justify-content: flex-start; /* Changed from center to flex-start for left alignment */
+    position: relative; /* Add position relative */
+    z-index: 20; /* Add a higher z-index to ensure buttons are clickable */
+}
+
+.btn--large {
+    padding: 14px 32px;
+    font-size: 18px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.btn--primary {
+    background-color: rgb(210, 45, 60);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 8px rgba(210, 45, 60, 0.3);
+}
+
+.btn--primary:hover {
+    background-color: rgb(180, 35, 50);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(210, 45, 60, 0.4);
+}
+
+.btn--outline {
+    background-color: transparent;
+    color: white; /* Changed from rgb(210, 45, 60) to white */
+    border: 2px solid white; /* Changed from rgb(210, 45, 60) to white */
+    position: relative; /* Ensure the button has position context */
+    z-index: 25; /* Give the outline button specifically a higher z-index */
+}
+
+.btn--outline:hover {
+    background-color: rgba(255, 255, 255, 0.2); /* Changed for a subtle hover effect */
+    color: white; /* Keep white on hover */
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(255, 255, 255, 0.2); /* Adjusted shadow color */
+}
+
+.right-content {
+    width: 50%; /* Increased from 45% */
+    display: flex;
+    justify-content: flex-start; /* Changed to flex-start to bring it closer to the text */
+    align-items: center;
+    animation: fadeIn 1.5s ease-in-out;
+    margin-top: -40px; /* Move slider further up */
+    margin-left: -50px; /* Increased from -20px to move closer to text */
+}
+
+/* Curve Slider */
+.curve-slider {
+    width: 120%; /* Increased from 110% */
+    height: 450px; /* Increased from 420px */
+    position: relative;
+    perspective: 1200px;
+    overflow: visible;
+}
+
+.slides-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+}
+
+.curve-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.8s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transform: translateX(-100%) rotateY(-15deg) scale(0.9); /* Changed from 100% to -100% */
+}
+
+/* Active slide - fully visible but shifted to the left */
+.curve-slide.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-10%) rotateY(-15deg) scale(1); /* Move active slide more to the left */
+    z-index: 2;
+    margin-top: 1rem;
+}
+
+/* Previous slide - showing exactly 20% at the left edge */
+.curve-slide.prev {
+    opacity: 0.01;
+    visibility: visible;
+    transform: translateX(-80%) rotateY(-15deg) scale(0.9);
+    z-index: 1;
+    filter: blur(1px);
+    cursor: pointer; /* Add pointer cursor to indicate it's clickable */
+    transition: all 0.4s ease; /* Make the hover transition faster */
+}
+
+.curve-slide.prev:hover {
+    opacity: 0.4; /* Increase opacity on hover for better feedback */
+    filter: blur(0); /* Remove blur on hover */
+    transform: translateX(-78%) rotateY(-12deg) scale(0.92); /* Slight movement on hover */
+}
+
+/* Next slide - showing exactly 20% at the right edge */
+.curve-slide.next {
+    opacity: 0.3;
+    visibility: visible;
+    transform: translateX(80%) rotateY(-15deg) scale(0.9); /* Position it so only 20% is visible */
+    z-index: 1;
+    filter: blur(1px);
+    cursor: pointer; /* Add pointer cursor to indicate it's clickable */
+    transition: all 0.4s ease; /* Make the hover transition faster */
+}
+
+.curve-slide.next:hover {
+    opacity: 0.5; /* Increase opacity on hover for better feedback */
+    filter: blur(0); /* Remove blur on hover */
+    transform: translateX(78%) rotateY(-12deg) scale(0.92); /* Slight movement on hover */
+}
+
+.feature-image {
+    max-width: 100%;
+    height: auto;
+    max-height: 380px; /* Increased from 360px */
+    border-radius: 18px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    transform: perspective(1000px) rotateY(-15deg);
+    transition: transform 0.5s ease;
+}
+
+.feature-image:hover {
+    transform: perspective(1000px) rotateY(-5deg) translateY(-10px);
+}
+
+.feature-video {
+    width: 100%;
+    height: 400px; /* Fixed height instead of max-height */
+    border-radius: 18px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    transform: perspective(1000px) rotateY(-15deg);
+    transition: transform 0.5s ease;
+    object-fit: cover; /* Ensure the video covers the area properly */
+    object-position: center; /* Center the video content */
+    background-color: rgba(0, 0, 0, 0.2); /* Add a subtle background for videos with transparent areas */
+}
+
+.feature-video:hover {
+    transform: perspective(1000px) rotateY(-5deg) translateY(-10px);
+}
+
+/* Add a container for the video to maintain consistent dimensions */
+.video-container {
+    width: 100%;
+    height: 380px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 60px; /* Increased from 40px */
+}
+
+.feature-card {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(5px);
+    border-radius: 18px;
+    padding: 45px; /* Increased from 40px */
+    width: 95%; /* Increased from 90% */
+    height: 85%; /* Increased from 80% */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    color: white;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    transform: perspective(1000px) rotateY(-15deg);
+    transition: transform 0.5s ease;
+    margin-top: 80px; /* Increased from 60px to leave more room for title */
+}
+
+/* Adjust the hover effects to work with the new positioning */
+.curve-slide.active .feature-image:hover,
+.curve-slide.active .feature-card:hover,
+.curve-slide.active .feature-video:hover {
+    transform: perspective(1000px) rotateY(-5deg) translateY(-10px);
+    z-index: 3;
+}
+
+.feature-card h3 {
+    font-size: 34px; /* Increased from 32px */
+    font-weight: 700;
+    margin-bottom: 25px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.feature-card p {
+    font-size: 24px; /* Increased from 22px */
+    line-height: 1.6;
+    font-weight: 400;
+}
+
+/* Enhanced 3D Title styling with improved positioning and animation */
+.feature-title-3d {
+    position: absolute;
+    left: -4%;
+    top: -2%; /* Restored original positioning */
+    transform: perspective(1000px) translateZ(70px) rotateY(-9deg) rotateX(5deg); /* Restored original 3D effect */
+    font-family: 'Poppins-Black', sans-serif;
+    font-size: 1.65rem;
+    font-weight: 900;
+    margin-left: 5rem;
+    color: rgb(255, 255, 255);
+    line-height: 1.2;
+    z-index: 50;
+    pointer-events: none;
+    text-align: left; /* Ensure left alignment for desktop */
+    width: 100%;
+    max-width: 90%;
+    white-space: normal;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+    opacity: 0;
+    visibility: hidden;
+    animation: titleFloat 4s ease-in-out infinite;
+    word-spacing: 0.3em;
+    letter-spacing: 0.05em;
+}
+
+/* Title words styling for desktop */
+.title-word {
+    display: inline;
+    margin-right: 0.2em;
+    white-space: normal;
+}
+
+/* Keep the desktop title line styles */
+.title-line {
+    display: block;
+    margin-bottom: 0.3em;
+    letter-spacing: 0.05em;
+    padding: 0 10px;
+    word-spacing: 0.3em;
+    word-break: normal; /* Prevent unwanted breaks */
+    overflow-wrap: break-word;
+}
+
+/* Animation for the entire title to float up and down */
+@keyframes titleFloat {
+    0%, 100% {
+        transform: perspective(1000px) translateZ(70px) translateY(0) rotateY(-9deg) rotateX(5deg);
+    }
+    50% {
+        transform: perspective(1000px) translateZ(70px) translateY(-15px) rotateY(-9deg) rotateX(8deg); /* More pronounced upward movement */
+    }
+}
+
+/* Show title ONLY on active slide */
+.curve-slide.active .feature-title-3d {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Explicitly hide title on prev and next slides */
+.curve-slide.prev .feature-title-3d,
+.curve-slide.next .feature-title-3d {
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* Add styling for line breaks in title with better spacing */
+.title-line {
+    display: block;
+    margin-bottom: 0.3em; /* Increased spacing between lines */
+    letter-spacing: 0.05em; /* Increased letter spacing for readability */
+    padding: 0 10px; /* Add horizontal padding */
+    word-spacing: 0.3em; /* Increased from default */
+}
+
+/* Enhanced character styling for individual floating */
+.title-char {
+    display: inline-block;
+    color: rgb(255, 132, 132);
+    filter: brightness(1.4);
+    animation: charFloat 4s ease-in-out infinite; /* Changed to separate animation */
+    animation-delay: calc(0.05s * var(--index, 0));
+    transition: all 0.3s ease;
+    margin: 0 0.02em; /* Increased spacing between characters */
+}
+
+/* Individual character floating with more pronounced movement */
+@keyframes charFloat {
+    0%, 100% {
+        transform: translateY(0) rotateY(0deg);
+    }
+    50% {
+        transform: translateY(-8px) rotateY(5deg); /* Increased vertical movement */
+    }
+}
+
+/* Enhanced the feature content for better 3D effect */
+.feature-content-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transform-style: preserve-3d;
+    perspective: 1200px; /* Added explicit perspective for better 3D positioning */
+    isolation: isolate; /* Add isolation to create a new stacking context */
+}
+
+/* Hide old slider components */
+.simple-slider, .slider-nav, .slider-dots, .dot {
+    display: none;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media screen and (max-width: 1200px) {
+    .left-content {
+        width: 45%;
+    }
+    
+    .right-content {
+        width: 50%;
+        margin-left: -40px;
+    }
+    
+    .curve-slider {
+        height: 380px;  /* Adjusted for this breakpoint */
+    }
+    
+    .feature-card h3 {
+        font-size: 28px;
+    }
+    
+    .feature-card p {
+        font-size: 20px;
+    }
+    
+    .hero-content {
+        margin-top: -10px; /* Slightly less shift on smaller screens */
+    }
+    
+    .feature-title-3d {
+        font-size: 3.4rem;
+    }
+}
+
+@media screen and (max-width: 960px) {
+    .hero-content {
+        gap: 20px;
+    }
+    
+    .left-content {
+        width: 50%;
+    }
+    
+    .right-content {
+        width: 45%;
+        margin-left: -20px;
+    }
+    
+    .left-content h1 {
+        font-size: 48px;
+    }
+    
+    .left-content p {
+        font-size: 20px;
+    }
+    
+    video {
+        object-position: 20% center; /* Adjusted for medium screens - moved left from 70% */
+    }
+    
+    .curve-slider {
+        height: 340px;  /* Adjusted for this breakpoint */
+    }
+    
+    .feature-card {
+        padding: 30px;
+    }
+    
+    .feature-card h3 {
+        font-size: 26px;
+        margin-bottom: 20px;
+    }
+    
+    .feature-card p {
+        font-size: 18px;
+    }
+    
+    /* Adjust previous slide visibility on smaller screens */
+    .curve-slide.prev {
+        transform: translateX(-85%) rotateY(-15deg) scale(0.9); /* Show only 15% on smaller screens */
+    }
+    
+    .curve-slide.prev:hover {
+        transform: translateX(-83%) rotateY(-12deg) scale(0.92); /* Adjust hover on smaller screens */
+    }
+    
+    /* Adjust next slide visibility on smaller screens */
+    .curve-slide.next {
+        transform: translateX(80%) rotateY(-15deg) scale(0.9); /* Keep consistent on smaller screens */
+    }
+    
+    /* Adjust for smaller screens */
+    .curve-slide.active {
+        transform: translateX(-5%) rotateY(-15deg) scale(1); /* Less shift on smaller screens */
+    }
+    
+    .hero-content {
+        margin-top: -25px;
+    }
+    
+    .feature-title-3d {
+        font-size: 2.8rem;
+        top: -2%;
+        left: 5%;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .hero-content {
+        flex-direction: column;
+        justify-content: center;
+        gap: 30px;
+        margin-top: 0; /* Reset on mobile for better vertical centering */
+    }
+    
+    .left-content {
+        width: 100%;
+        text-align: center;
+        padding: 0 15px;
+        margin-bottom: 0; /* Removed margin */
+        margin-top: 0;
+    }
+    
+    .left-content h1 {
+        font-size: 42px;
+    }
+    
+    .left-content p {
+        font-size: 18px;
+    }
+    
+    .hero-btns {
+        justify-content: center; /* Keep center alignment on mobile for better appearance */
+    }
+    
+    .btn--large {
+        padding: 12px 15px;
+        font-size: 16px;
+        width: 47%; /* Almost half the container width */
+        min-width: 140px;
+    }
+    
+    .right-content {
+        width: 100%;
+        margin-top: 20px; /* Add positive margin to move content down */
+        margin-left: 0;
+        padding: 0 10px; /* Reduced padding */
+    }
+    
+    .curve-slider {
+        height: 280px; /* Reduced height */
+        max-width: 100%; /* Use full width of container */
+        width: 100%; /* Ensure full width */
+        perspective: 600px; /* Reduced perspective for better mobile viewing */
+        margin-top:2rem;
+        position: relative;
+        overflow: visible;
+    }
+    
+    /* Remove mobile swipe indicators */
+    .curve-slider::before,
+    .curve-slider::after {
+        display: none; /* Hide the arrow indicators */
+    }
+    
+    /* Center the slide on mobile with no rotation */
+    .curve-slide.active {
+        transform: translateX(0) rotateY(0deg) scale(1);
+        width: 100%;
+        height: 100%;
+    }
+    
+    /* Properly position the title above the video on mobile with improved spacing */
+    .feature-title-3d {
+        position: absolute;
+        font-size: 1.3rem;
+        top: -80px;
+        margin-top: 200px;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        transform: none !important;
+        margin: 0;
+        padding: 10px 20px;
+        color: white;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+        z-index: 5;
+        line-height: 1.5;
+        word-spacing: normal !important;
+        letter-spacing: 0.03em;
+        animation: none; /* Disable animations on mobile */
+    }
+    
+    /* Mobile-specific title word styling */
+    .title-word {
+        display: inline-block;
+        margin-right: 0.4em;
+        white-space: nowrap;
+    }
+    
+    /* Add more spacing between title words */
+    .title-line {
+        word-break: keep-all !important; /* Prevent breaking words */
+        overflow-wrap: normal; /* Don't wrap in the middle of words */
+        white-space: normal; /* Allow text to wrap between words only */
+        display: inline-block; /* Keep words together */
+        width: auto; /* Let content determine width */
+        margin-bottom: 0.4em;
+        margin-right: 0.4em; /* Add space between words */
+    }
+    
+    /* Separate title characters better */
+    .title-char {
+        margin: 0 0.04em !important; /* Force larger space between characters */
+    }
+    
+    /* Add proper spacing between words without breaking them */
+    .title-word {
+        display: inline-block;
+        margin-right: 0.4em; /* Space between words */
+        white-space: nowrap; /* Keep each word on one line */
+    }
+    
+    /* Move the video container further down for more space from title */
+    .video-container {
+        width: 100%;
+        height: auto;
+        margin-top: 140px; /* Increased to create more space from title */
+        max-height: 280px;
+    }
+    
+    /* Fix specific hyphenated title problems */
+    .title-line {
+        word-break: keep-all; /* Don't break words at hyphens */
+        hyphens: manual; /* Only break at explicit hyphens */
+    }
+    
+    /* Mobile swipe indicators - visual cues for swiping */
+    .curve-slider::before,
+    .curve-slider::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        width: 30px;
+        height: 30px;
+        border-top: 3px solid rgba(255, 255, 255, 0.6);
+        border-left: 3px solid rgba(255, 255, 255, 0.6);
+        z-index: 10;
+        opacity: 0.7;
+    }
+    
+    .curve-slider::before {
+        left: 10px;
+        transform: translateY(-50%) rotate(-45deg);
+    }
+    
+    .curve-slider::after {
+        right: 10px;
+        transform: translateY(-50%) rotate(135deg);
+        content: 'Swipe to see more';
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(0, 0, 0, 0.5);
+        color: white;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 12px;
+        opacity: 0.8;
+        animation: fadeInOut 3s infinite;
+    }
+    
+    @keyframes fadeInOut {
+        0%, 100% { opacity: 0.3; }
+        50% { opacity: 0.8; }
+    }
+    
+    /* Hide previous slide completely on mobile */
+    .curve-slide.prev {
+        opacity: 0;
+        visibility: hidden;
+    }
+    
+    /* Hide next slide completely on mobile */
+    .curve-slide.next {
+        opacity: 0;
+        visibility: hidden;
+    }
+    
+    /* Center the slide on mobile */
+    .curve-slide.active {
+        transform: translateX(0) rotateY(0deg) scale(1); /* Remove rotation for better mobile visibility */
+        width: 100%; /* Ensure it uses full width */
+        height: 100%; /* Ensure it uses full height */
+    }
+    
+    /* Reduce title size and adjust position */
+    .feature-title-3d {
+        font-size: 1.5rem; /* Smaller font size */
+        top: -85px;
+        left: 0;
+        width: 100%; /* Use full width */
+        text-align: center; /* Center the title */
+        transform: none; /* Remove perspective transformation */
+        animation: none; /* Disable floating animation on mobile */
+    }
+    
+    /* Fix the video container on mobile */
+    .video-container {
+        width: 100%;
+        height: auto;
+        margin-top: 90px; /* Increased to accommodate taller title area */
+        max-height: 280px;
+    }
+    
+    /* Make the feature video more visible on mobile */
+    .feature-video {
+        width: 100%;
+        height: 240px; /* Increased from 180px */
+        transform: none; /* Remove perspective transformation */
+        border-radius: 10px; /* Smaller radius on mobile */
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .feature-video:hover {
+        transform: translateY(-5px); /* Simpler hover effect */
+    }
+    
+    /* Make feature card more readable on mobile */
+    .feature-card {
+        width: 100%;
+        height: auto; /* Let height adjust to content */
+        padding: 20px 15px; /* More horizontal padding, less vertical */
+        transform: none; /* Remove perspective transformation */
+        margin-top: 30px;
+        min-height: 150px; /* Ensure minimum height */
+    }
+    
+    .feature-card p {
+        font-size: 14px; /* Smaller text for mobile */
+        line-height: 1.4;
+    }
+    
+    /* Make clearer spacing for title lines */
+    .title-line {
+        margin-bottom: 0.4em; /* More space between lines on mobile */
+    }
+    
+    /* Fix title character animation */
+    .title-char {
+        font-size: 1.2rem; /* Smaller for better fit */
+        letter-spacing: 0.02em; /* Slightly tighter spacing */
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .left-content h1 {
+        font-size: 32px;
+    }
+    
+    .left-content p {
+        font-size: 16px;
+        margin-bottom: 30px;
+    }
+    
+    video {
+        object-position: 25% center; /* Adjusted for mobile - moved left from 75% */
+    }
+    
+    .curve-slider {
+        height: 240px; /* Even smaller for very small screens */
+    }
+    
+    /* Further adjust spacing for very small screens */
+    .feature-title-3d {
+        font-size: 1.1rem;
+        top: -100px; /* Adjusted for smaller screens */
+        word-spacing: 0.6em !important; /* Slightly less spacing but still adequate */
+    }
+    
+    /* Further reduce title size */
+    .feature-title-3d {
+        font-size: 1.1rem; /* Smaller font size */
+        top: -80px;
+        white-space: normal; /* Ensure text wraps */
+        line-height: 1.5; /* Better line height for small screens */
+        padding: 10px 15px;
+    }
+    
+    /* Add special handling for titles with hyphens */
+    .feature-title-3d::after {
+        content: ' '; /* Add an invisible extra space */
+        display: inline-block;
+        width: 0;
+    }
+    
+    /* Further optimize video size and position */
+    .video-container {
+        max-height: 260px;
+        margin-top: 70px; /* Adjusted based on smaller title size */
+    }
+    
+    /* Adjust title character size for very small screens */
+    .title-char {
+        font-size: 1.1rem; /* Even smaller for better fit */
+    }
+    
+    /* Make long title text wrap better on small screens */
+    .title-line {
+        margin-bottom: 0.3em;
+        padding: 0 5px;
+        max-width: 100%;
+        overflow-wrap: break-word;
+    }
+}
+
+/* Add a special class for very long titles */
+.long-title .title-line {
+    font-size: 0.9em; /* Make long titles slightly smaller */
+    letter-spacing: 0; /* Remove letter spacing for long titles */
+}
+
+/* Mobile swipe animation to draw attention to swipe capability */
+@keyframes swipeHint {
+    0%, 100% {
+        opacity: 0.4;
+        transform: translateY(-50%) translateX(0) rotate(-45deg);
+    }
+    50% {
+        opacity: 0.8;
+        transform: translateY(-50%) translateX(-5px) rotate(-45deg);
+    }
+}
+
+@keyframes swipeHintRight {
+    0%, 100% {
+        opacity: 0.4;
+        transform: translateY(-50%) translateX(0) rotate(135deg);
+    }
+    50% {
+        opacity: 0.8;
+        transform: translateY(-50%) translateX(5px) rotate(135deg);
+    }
+}
+
+/* Add orientation-specific styles for landscape mobile */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+    .hero-container {
+        height: auto;
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+    
+    .hero-content {
+        flex-direction: row; /* Keep side-by-side layout in landscape */
+        gap: 15px;
+        align-items: center;
+        padding: 30px 15px;
+    }
+    
+    .left-content {
+        width: 45%;
+    }
+    
+    .right-content {
+        width: 55%;
+    }
+    
+    .left-content h1 {
+        font-size: 28px;
+        margin-bottom: 10px;
+    }
+    
+    .left-content p {
+        font-size: 14px;
+        margin-bottom: 15px;
+    }
+    
+    .curve-slider {
+        height: 220px;
+    }
+    
+    .video-container {
+        height: auto;
+        max-height: 180px;
+        margin-top: 30px;
+    }
+    
+    .feature-video {
+        height: 160px;
+    }
+    
+    .feature-title-3d {
+        font-size: 1.5rem;
+        top: -25px;
+    }
+}

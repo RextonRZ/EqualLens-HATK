@@ -1,0 +1,330 @@
+.footer-container {
+    background: linear-gradient(180deg, #fdf2f2 0%, #fff 100%);
+    padding: 4rem 0 2rem 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-top: 0; /* Changed from 500px to fix spacing */
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.footer-subscription {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 24px;
+    padding: 24px;
+    color: #333;
+    max-width: 800px;
+}
+
+.footer-subscription > p {
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande',
+        'Lucida Sans', Arial, sans-serif;
+}
+
+
+.footer-input {
+    padding: 10px 20px;
+    border-radius: 4px;
+    margin-top: 50px;
+    margin-right: 30px; /* Increased spacing between input and button */
+    outline: none;
+    font-size: 16px;
+    border: 1px solid #dfdfdf;
+    width: 300px;
+    transition: all 0.3s ease;
+}
+
+.footer-input:focus {
+    border-color: rgb(210, 45, 60); /* Updated to darker red */
+    box-shadow: 0 0 0 2px rgba(210, 45, 60, 0.2);
+}
+
+.input-areas form {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center; /* Added to vertically align items */
+    gap: 16px; /* Added gap between elements */
+}
+
+.footer-links {
+    width: 100%;
+    max-width: 1200px;
+    display: flex;
+    justify-content: center; /* Center the link wrappers */
+    padding: 0 20px;
+    gap: 0; /* Remove gap between link wrappers */
+}
+
+.footer-logo-image {
+  height: 180px;
+  width: auto;
+  transition: all 0.3s ease;
+  margin-bottom:-4rem;
+}
+
+.footer-link-wrapper {
+    display: flex;
+    justify-content: center; /* Center the columns */
+    flex: 1; /* Make each wrapper take equal space */
+    max-width: 500px; /* Limit maximum width */
+    gap: 10px; /* Reduce gap between columns within a wrapper */
+}
+
+.footer-link-items {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 16px 25px; /* Increased horizontal margin from 15px to 25px */
+    text-align: left;
+    width: auto; /* Let content determine width */
+    min-width: 180px; /* Set minimum width */
+    box-sizing: border-box;
+}
+
+.footer-link-items h2 {
+    margin-bottom: 22px; /* Increase bottom margin slightly */
+    color: rgb(210, 45, 60);
+    font-size: 22px; /* Increase font size */
+    font-weight: 600;
+}
+
+.footer-link-items a {
+    color: #444; /* Darken text color for better readability */
+    text-decoration: none;
+    margin-bottom: 1.1rem; /* Increase spacing between links */
+    transition: all 0.3s ease;
+    font-size: 20px; /* Increase font size */
+    line-height: 1.4; /* Add line height for better readability */
+}
+
+.footer-link-items a:hover {
+    color: rgb(210, 45, 60); /* Darker red color */
+    transform: translateX(3px);
+}
+
+.footer-email-form h2 {
+    margin-bottom: 2rem;
+}
+
+.footer-input::placeholder {
+    color: #b1b1b1;
+}
+
+/* Social Icons */
+.social-icon-link {
+    color: rgb(210, 45, 60);
+    font-size: 28px; /* Increase icon size */
+    transition: all 0.3s ease;
+    margin: 0 10px; /* Add more horizontal spacing */
+}
+
+.social-icon-link:hover {
+    color: rgb(232, 72, 85);
+    transform: translateY(-3px);
+}
+
+.social-media {
+    max-width: 1200px; /* Increased from 1000px */
+    width: 100%;
+}
+
+.social-media-wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 95%;
+    max-width: 1200px;
+    margin: 40px auto 0 auto;
+    padding-top: 20px;
+    border-top: 1px solid rgba(232, 72, 85, 0.2);
+}
+
+.social-icons {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom:-4rem;
+    width: 300px; /* Increase space between social icons */
+}
+
+.social-logo {
+    color: rgb(210, 45, 60); /* Darker red color */
+    justify-self: start;
+    margin-left: 20px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 2.2rem; /* Increased from 2rem */
+    display: flex;
+    align-items: center;
+    font-weight: bold;
+}
+
+.social-logo:hover {
+    transform: scale(1.03);
+    transition: all 0.3s ease;
+}
+
+.website-rights {
+    color: #444; /* Darker text for better visibility */
+    font-size: 18px; /* Increase font size */
+    margin-bottom:-4rem;
+    font-weight: 500; /* Make copyright text semi-bold */
+}
+
+@media screen and (max-width: 820px) {
+    .footer-links {
+        padding-top: 2rem;
+    }
+
+    .footer-input {
+        width: 100%;
+        margin-right: 0; /* Remove right margin on mobile */
+        margin-bottom: 20px; /* Add bottom margin instead */
+    }
+
+    .btn {
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    .footer-link-wrapper {
+        flex-direction: column;
+    }
+
+    .social-media-wrap {
+        flex-direction: column;
+        gap: 25px; /* Increase spacing between elements */
+        padding-top: 30px; /* More space above footer bottom elements */
+    }
+
+    .website-rights {
+        margin-bottom: 0; /* Remove negative margin */
+        margin-top: 10px; /* Add space above copyright */
+    }
+
+    .social-icons {
+        margin-bottom: 0; /* Remove negative margin */
+        margin-top: 10px; /* Add space above social icons */
+        width: 280px;
+    }
+
+    .footer-logo-image {
+        margin-bottom: -30px; /* Remove negative margin */
+        height: 120px; /* Make logo smaller on mobile */
+        margin-top: -20px; /* Move logo up a bit */
+    }
+
+    .footer-container {
+        padding: 3rem 0 2rem 0;
+    }
+}
+
+@media screen and (max-width: 960px) {
+    .footer-links {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .footer-link-wrapper {
+        max-width: 100%;
+        width: 100%;
+    }
+    
+    .footer-link-items {
+        margin: 16px 25px; /* More horizontal space on tablet */
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .footer-links {
+        flex-direction: column;
+        width: 100%;
+        padding: 0 15px;
+    }
+    
+    .footer-link-wrapper {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* Two equal columns */
+        width: 100%;
+        max-width: 480px; /* Limit max width for better appearance */
+        gap: 15px 45px; /* Increased horizontal gap from 30px to 45px */
+        margin-bottom: 10px;
+        padding: 0 15px; /* Add padding to wrapper */
+    }
+    
+    .footer-link-items {
+        margin: 10px 10px; /* Add some horizontal margin */
+        padding-left: 10px; /* Add left padding */
+        padding-right: 10px; /* Add right padding */
+        padding-bottom: 15px; /* Better vertical spacing between sections */
+    }
+    
+    .footer-link-items h2 {
+        font-size: 19px;
+        margin-bottom: 12px;
+        position: relative;
+    }
+    
+    .footer-link-items h2::after {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        left: 0;
+        width: 30px;
+        height: 2px;
+        background-color: rgba(210, 45, 60, 0.5);
+    }
+    
+    .footer-link-items a {
+        font-size: 16px;
+        margin-bottom: 8px; /* Less spacing between links */
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .footer-link-wrapper {
+        grid-template-columns: 1fr; /* Single column */
+        max-width: 280px;
+        gap: 5px;
+        padding: 0 20px; /* Increased padding */
+    }
+    
+    .footer-link-items {
+        text-align: center;
+        align-items: center; /* Center links */
+        margin: 10px 15px; /* Increased horizontal margin */
+        padding-bottom: 15px;
+    }
+    
+    .footer-link-items h2::after {
+        left: 50%;
+        transform: translateX(-50%);
+        width: 50px;
+    }
+    
+    .footer-link-items:not(:last-child) {
+        border-bottom: 1px solid rgba(210, 45, 60, 0.1);
+        padding-bottom: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .social-icons {
+        width: 240px;
+    }
+    
+    .footer-logo-image {
+        height: 110px;
+        margin-top: 0;
+    }
+    
+    .website-rights {
+        font-size: 16px;
+    }
+}

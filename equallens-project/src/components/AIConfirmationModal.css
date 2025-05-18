@@ -1,0 +1,776 @@
+/* Modal overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+/* Base modal styles */
+.ai-confirm-modal-content {
+    width: 800px;
+    max-width: 90%;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    background: #ffffff;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    /* Limit max height to prevent overflow */
+}
+
+/* Modal header */
+.ai-modal-header {
+    padding: 15px;
+    text-align: right;
+    background-color: #ffffff;
+    border-radius: 12px 12px 0 0;
+    border-bottom: none;
+}
+
+.ai-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #888;
+}
+
+.ai-modal-close:hover {
+    color: #333;
+}
+
+/* Icon styling */
+.ai-icon-container {
+    display: flex;
+    justify-content: center;
+    margin: 0 auto;
+    padding-top: 5px;
+}
+
+.ai-icon-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    background-color: #FFF1F1;
+    border-radius: 50%;
+    color: #D32F2F;
+}
+
+/* Title styling */
+.ai-confirm-title-warning {
+    color: #D32F2F;
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-align: center;
+    margin-top: 15px;
+    margin-bottom: 10px;
+}
+
+/* Scrollable container for main content */
+.ai-confirm-modal-scroll-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    max-height: calc(100vh - 220px);
+    /* Adjust based on header + footer height */
+    padding: 0 5px;
+    /* Add padding for scrollbar */
+}
+
+/* Body styling */
+.ai-confirm-modal-body {
+    padding: 10px 25px 20px;
+    background-color: #ffffff;
+}
+
+.ai-confirm-description {
+    text-align: center;
+    color: #4F4F4F;
+    font-size: 0.95rem;
+    margin-bottom: 20px;
+    margin-top: 10px;
+}
+
+/* Flagged files container */
+.ai-flagged-files-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 5px 2px;
+}
+
+/* Individual file card */
+.ai-flagged-file-card {
+    background: #FFF;
+    border: 1px solid #EEE;
+    border-left: 4px solid #D32F2F;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.ai-file-header {
+    display: flex;
+    align-items: center;
+    background: #FFF5F5;
+    padding: 10px 15px;
+    border-bottom: 1px solid #FFE0E0;
+}
+
+.ai-file-icon {
+    color: #D32F2F;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+}
+
+.ai-file-icon svg {
+    width: 20px;
+    height: 20px;
+    color: #D32F2F;
+}
+
+.ai-file-name {
+    font-weight: 600;
+    color: #333;
+    flex-grow: 1;
+    font-size: 0.95rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-grow: 1;
+    font-weight: 500;
+    margin-left: 10px;
+
+}
+
+.ai-confidence {
+    margin-left: auto;
+}
+
+.confidence-pill {
+    background-color: #D32F2F;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+.ai-file-reason {
+    padding: 12px 15px;
+    font-size: 0.9rem;
+    color: #555;
+    line-height: 1.5;
+}
+
+/* Styling for the overall "Assessment" and "Gemini's Analysis Summary" text */
+.ai-file-reason strong {
+    /* Targets <strong>Assessment:</strong>, <strong>Gemini's Analysis Summary:</strong>, etc. */
+    font-weight: 600;
+    color: #333;
+    display: inline-block;
+    /* Allows margin-bottom if needed */
+    margin-bottom: 4px;
+    /* Adds a bit of space below these main titles */
+}
+
+.ai-file-reason strong:first-of-type {
+    display: block;
+    margin-bottom: 15px;
+}
+
+/* Labels for AI-generated and Fabrication concern */
+.ai-file-reason ul:first-of-type {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    list-style-type: none;
+    padding: 0;
+    margin: 0 0 20px 0;
+}
+
+.ai-file-reason ul:first-of-type li {
+    background-color: #FFF;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Style the AI-generated tag */
+.ai-file-reason ul:first-of-type li:first-child {
+    color: #D32F2F;
+    border: 1px solid #FFD8D8;
+}
+
+/* Style the Fabrication concern tag */
+.ai-file-reason ul:first-of-type li:nth-child(2) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Style for "Key Indicators" heading */
+.ai-file-reason h4,
+.ai-file-reason strong:nth-of-type(2) {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin: 15px 0;
+    display: block;
+}
+
+/* AI Writing Style Section - Blue container */
+.ai-file-reason .gemini-reason-section[data-reason-type="ai-indicators"] {
+    background-color: #fde3e3;
+    /* Pastel blue */
+    border: 1px solid #fbbbbb;
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin-bottom: 15px;
+}
+
+/* Content Fabrication Section - Orange container */
+.ai-file-reason .gemini-reason-section[data-reason-type="fabrication-details"] {
+    background-color: #fdf9f3;
+    /* Pastel orange */
+    border: 1px solid #FFE0B2;
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin-bottom: 15px;
+}
+
+/* Section headings inside the colored containers */
+.ai-file-reason .gemini-reason-section h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #333;
+    margin-top: 0;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Bullet point lists within the sections */
+.ai-file-reason .gemini-reason-section ul {
+    list-style-type: none;
+    padding-left: 5px;
+    margin: 0;
+}
+
+.ai-file-reason .gemini-reason-section li {
+    font-size: 0.9rem;
+    color: #444;
+    margin-bottom: 8px;
+    padding-left: 18px;
+    position: relative;
+    line-height: 1.4;
+}
+
+.ai-file-reason .gemini-reason-section li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #888;
+}
+
+/* Paragraph styling for content fabrication text */
+.ai-file-reason .gemini-reason-section p {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    color: #444;
+    line-height: 1.4;
+}
+
+/* Make the confidence pill more visible */
+.confidence-pill {
+    background-color: #D32F2F;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+.ai-file-reason ul {
+    margin: 5px 0 10px 0;
+    /* Adjust top/bottom margin for summary list */
+    padding-left: 20px;
+    list-style-type: disc;
+    /* Ensure bullets are visible */
+}
+
+.ai-file-reason li {
+    margin-bottom: 5px;
+    font-size: 0.88rem;
+    /* Slightly smaller for list items */
+    line-height: 1.5;
+}
+
+/* Styling for the "Detailed Breakdown from Gemini" sections */
+.ai-file-reason .gemini-reason-section {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #d0d0d0;
+    /* Softer dashed line */
+}
+
+.ai-file-reason .gemini-reason-section:first-of-type {
+    /* If it's the first detailed section after the summary, adjust top spacing/border */
+    margin-top: 10px;
+    /* border-top: none; /* Optionally remove border if it's the very first detailed item */
+}
+
+
+.ai-file-reason h4 {
+    /* Targets "AI-Generated Content Indicators:", "Fabrication Concern Details:" */
+    font-size: 0.9rem;
+    /* Consistent with .ai-file-reason base font-size */
+    font-weight: 700;
+    /* Make it bolder */
+    color: #4A4A4A;
+    /* Darker grey for sub-titles */
+    margin-bottom: 6px;
+    margin-top: 0;
+    /* Remove default h4 top margin */
+}
+
+
+.ai-file-reason .gemini-reason-text {
+    font-size: 0.87rem;
+    /* Slightly smaller for readability of potentially long text */
+    color: #505050;
+    line-height: 1.6;
+    padding-left: 5px;
+    /* Slight indent for the reason text itself */
+}
+
+/* If Gemini's reasons themselves contain lists or bold text from its own formatting */
+.ai-file-reason .gemini-reason-text ul {
+    margin-top: 8px;
+    margin-bottom: 8px;
+    padding-left: 15px;
+    /* Indent further for nested lists */
+}
+
+.ai-file-reason .gemini-reason-text li {
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+}
+
+.ai-file-reason .gemini-reason-text p {
+    /* In case Gemini's reason is wrapped in <p> */
+    margin-bottom: 8px;
+    margin-top: 0;
+}
+
+.ai-file-reason .gemini-reason-text strong,
+.ai-file-reason .gemini-reason-text b {
+    /* For bold text within Gemini's own reasons */
+    font-weight: 600;
+    /* Ensure it's not overly bold if parent is already bold */
+    color: #333;
+}
+
+/* Footer styling - keep fixed at bottom */
+.ai-modal-footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 30px;
+    border-top: 1px solid #EEEEEE;
+    background-color: #ffffff;
+    border-radius: 0 0 12px 12px;
+}
+
+/* Button styling */
+.ai-review-button,
+.ai-continue-button {
+    min-width: 160px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.ai-review-button {
+    background: #F5F5F5;
+    border: 1px solid #E0E0E0;
+    color: #4F4F4F;
+}
+
+.ai-continue-button {
+    background: #F9645F;
+    border: 1px solid #F9645F;
+    color: white;
+}
+
+.ai-review-button:hover:not(:disabled) {
+    background: #EEEEEE;
+    transform: translateY(-2px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+.ai-continue-button:hover:not(:disabled) {
+    background: #F75550;
+    transform: translateY(-2px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* Scrollbar styling */
+.ai-confirm-modal-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ai-confirm-modal-scroll-container::-webkit-scrollbar-track {
+    background: rgba(249, 100, 95, 0.05);
+    border-radius: 8px;
+}
+
+.ai-confirm-modal-scroll-container::-webkit-scrollbar-thumb {
+    background: rgba(249, 100, 95, 0.15);
+    border-radius: 8px;
+}
+
+.ai-confirm-modal-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(249, 100, 95, 0.25);
+}
+
+/* Basic styling for the AI Detection explanation */
+.ai-detection-summary {
+    padding: 0;
+    /* Remove padding */
+    margin-bottom: 0;
+    /* Remove margin */
+    background-color: transparent;
+    /* Remove background */
+    border-radius: 0;
+    /* Remove border radius */
+}
+
+.assessment-labels-container {
+    display: flex;
+    justify-content: flex-end;
+    /* Right align */
+    align-items: center;
+    gap: 10px;
+    /* Space between tags */
+    margin-bottom: 10px;
+}
+
+.ai-assessment-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.assessment-label {
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 5px 10px;
+    border-radius: 4px;
+    color: white;
+}
+
+.ai-label {
+    background-color: #d9534f;
+    /* Reddish for AI */
+}
+
+.human-label {
+    background-color: #5cb85c;
+    /* Greenish for Human */
+}
+
+.error-label {
+    background-color: #f0ad4e;
+    /* Orange for Error/Undetermined */
+}
+
+
+.assessment-score {
+    font-size: 1em;
+    color: #555;
+    font-weight: bold;
+}
+
+.assessment-fabrication {
+    font-size: 0.95em;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.fabrication-level {
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: white;
+    font-size: 0.9em;
+}
+
+.fab-high {
+    background-color: #D32F2F;
+}
+
+.fab-medium {
+    background-color: #FF9800;
+}
+
+.fab-low {
+    background-color: #4CAF50;
+}
+
+.fab-n\/a {
+    background-color: #9E9E9E;
+}
+
+
+.ai-detailed-breakdown {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px dashed #ccc;
+}
+
+.ai-detailed-breakdown h4 {
+    font-size: 1.1em;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.indicator-section {
+    margin-bottom: 15px;
+    padding-left: 10px;
+    border-left: 3px solid #eee;
+}
+
+.indicator-section.style-indicators {
+    border-left-color: #3498db;
+    /* Blue for style */
+}
+
+.indicator-section.fabrication-indicators {
+    border-left-color: #e67e22;
+    /* Orange for fabrication */
+}
+
+.indicator-section.human-style-confirmed p,
+.indicator-section.low-fabrication p {
+    font-style: italic;
+    color: #555;
+}
+
+
+.indicator-section h5 {
+    font-size: 1em;
+    color: #444;
+    margin-bottom: 5px;
+}
+
+.indicator-section ul {
+    list-style-type: disc;
+    margin-left: 20px;
+    padding-left: 0;
+}
+
+.indicator-section li {
+    font-size: 0.9em;
+    color: #555;
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+.indicator-section li strong {
+    /* For the quoted part */
+    color: #2c3e50;
+}
+
+.error-tag {
+    color: #F57C00;
+    border: 1px solid #FFE0B2;
+}
+
+.assessment-error {
+    color: #c0392b;
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin: 5px 0;
+}
+
+.assessment-labels-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    /* Reduced from the previous value */
+    width: 100%;
+}
+
+.assessment-label-item {
+    display: flex;
+    align-items: center;
+}
+
+.assessment-tag {
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    background: #FFF;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: inline-flex;
+    align-items: center;
+    margin: 4px 0;
+    /* Add vertical margin */
+}
+
+.suspect-ai-generated-tag {
+    color: #FFA500; /* Orange background */
+    border: 1px solid #FFD8D8;
+    border-radius: 20px;
+  }
+
+.ai-generated-tag {
+    color: #D32F2F;
+    border: 1px solid #FFD8D8;
+    border-radius: 20px;
+}
+
+.fabrication-tag {
+    display: flex;
+    align-items: center;
+    color: #333;
+    border: 1px solid #E0E0E0;
+    border-radius: 20px;
+}
+
+.fabrication-level-tag {
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: white;
+    margin-left: 8px;
+}
+
+.key-indicators-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 12px;
+}
+
+.indicator-container {
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin-bottom: 12px;
+}
+
+.ai-style-indicator {
+    background-color: #fff6f6;
+    /* Pastel blue */
+    border: 1px solid #fed1d1;
+}
+
+.content-fabrication-indicator {
+    background-color: #fffaf0; /* Warmer color for fabrication */
+    border: 1px solid #ffe0b2;
+}
+
+.indicator-heading {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.indicator-confidence {
+    font-size: 0.8rem;
+    color: #555;
+    font-weight: normal;
+}
+
+.indicator-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    /* Responsive grid layout */
+    gap: 12px;
+}
+
+.indicator-list li {
+    background-color: #fff;
+    border-radius: 15px;
+    padding: 15px;
+    /* Consistent padding */
+    position: relative;
+    line-height: 1.4;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f0dada;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    /* Equal height */
+    min-height: 50px;
+    /* Minimum height for all cards */
+    justify-content: center;
+    /* Center content vertically */
+}
+
+.indicator-list li strong {
+    color: #333;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+}
+
+/* Style the explanation */
+.indicator-list li span.explanation {
+    color: #666;
+    font-size: 0.85rem;
+    display: block;
+    /* Ensure it takes its own line */
+}
+
+/* Remove this rule as it conflicts with the "no bullets" styling */
+.indicator-list li::before {
+    display: none;
+}
+
+.content-authentic {
+    font-style: italic;
+    color: #555;
+    margin: 0;
+    padding: 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+/* Adjust for smaller screens */
+@media (max-width: 768px) {
+    .indicator-list {
+        grid-template-columns: 1fr; /* Single column on mobile */
+    }
+    
+    .indicator-list li {
+        min-height: 80px; /* Slightly smaller minimum height on mobile */
+    }
+}

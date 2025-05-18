@@ -1,0 +1,115 @@
+.info-tooltip-container {
+  display: inline-block;
+  position: relative;
+  margin-left: 8px;
+  vertical-align: middle;
+  margin-top: -10px;
+}
+
+.info-tooltip-trigger {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.info-tooltip-trigger:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #555;
+}
+
+.info-tooltip-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.info-tooltip-modal {
+  background-color: #fff;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.3s ease;
+}
+
+.info-tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.info-tooltip-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #333;
+}
+
+.info-tooltip-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #666;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.info-tooltip-close:hover {
+  background-color: #f1f1f1;
+  color: #333;
+}
+
+.info-tooltip-content {
+  padding: 1.5rem;
+  color: #555;
+  line-height: 1.6;
+}
+
+/* Skill tag for inferred skills */
+.skill-tag.inferred {
+  background-color: #f8f0ff;
+  color: #8250c8;
+  position: relative;
+}
+
+.skill-tag.inferred:after {
+  content: "(AI)";
+  font-size: 0.7rem;
+  margin-left: 4px;
+  opacity: 0.8;
+  vertical-align: super;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

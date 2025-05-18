@@ -1,0 +1,57 @@
+:root {
+    --bar-width: 200px;
+    --bar-height: 12px;
+    --ball-size: 48px;
+    --animation-duration: 1.5s;
+}
+
+.loading-animation {
+    position: relative;
+    width: var(--bar-width);
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3; /* Ensure it is above other elements */
+}
+
+/* Wrapper for both bar and ball */
+.seesaw-container {
+    position: absolute;
+    width: var(--bar-width);
+    height: var(--bar-height);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    top: 205px;
+    animation: seesaw var(--animation-duration) ease-in-out infinite alternate both;
+}
+
+/* Bar */
+.bar {
+    width: var(--bar-width);
+    height: var(--bar-height);
+    border-radius: 50px;
+    background: #F9645F;
+}
+
+/* Ball */
+.ball {
+    position: absolute;
+    width: var(--ball-size);
+    height: var(--ball-size);
+    border-radius: 50%;
+    background: #F9645F;
+    top: calc(-97px); /* Position ball above the bar */
+    animation: ball-move var(--animation-duration) ease-in-out infinite alternate both;
+}
+
+@keyframes seesaw {
+    0% { transform: rotate(-30deg); }
+    100% { transform: rotate(30deg); }
+}
+
+@keyframes ball-move {
+    0% { transform: translateX(90px) rotate(360deg); }
+    100% { transform: translateX(-90px) rotate(-360deg); }
+}
