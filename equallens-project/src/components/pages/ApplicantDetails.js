@@ -14,6 +14,7 @@ import 'chart.js/auto';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { Chart } from 'chart.js';
 import DetailedScoringModal from '../DetailedScoringModal';
+import InferredSkillModal from '../InferredSkillModal'; // Added: Import the new modal
 
 // LoadingAnimation component for consistent loading UI across the application
 const LoadingAnimation = () => {
@@ -192,15 +193,15 @@ const sortItemsByRelevance = (items, relevanceData) => {
 };
 
 // Render Skills Tab Content with relevance indicators and debugging
-const SkillsTabContent = ({ detail, handleRegenerateProfile }) => {
+const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkillModal }) => { // Added onOpenInferredSkillModal
     const relevanceAnalysis = detail?.detailed_profile?.relevance_analysis || {};
 
     // Debug information
-    console.log("Relevance analysis available:", !!relevanceAnalysis);
-    console.log("Relevance data categories:", Object.keys(relevanceAnalysis));
-    if (relevanceAnalysis.soft_skills) {
-        console.log("Example soft skill item:", relevanceAnalysis.soft_skills[0]);
-    }
+    // console.log("Relevance analysis available:", !!relevanceAnalysis);
+    // console.log("Relevance data categories:", Object.keys(relevanceAnalysis));
+    // if (relevanceAnalysis.soft_skills) {
+    //     console.log("Example soft skill item:", relevanceAnalysis.soft_skills[0]);
+    // }
 
     // Sort skills by relevance
     const softSkills = sortItemsByRelevance(
@@ -224,7 +225,7 @@ const SkillsTabContent = ({ detail, handleRegenerateProfile }) => {
         tech: technicalSkills.filter(s => s.relevant).length,
         lang: languages.filter(s => s.relevant).length
     };
-    console.log("Items marked as relevant:", relevantCount);
+    // console.log("Items marked as relevant:", relevantCount);
 
     // Check if we need to show the relevance legend
     const hasRelevantItems = relevantCount.soft > 0 || relevantCount.tech > 0 || relevantCount.lang > 0;
@@ -251,11 +252,14 @@ const SkillsTabContent = ({ detail, handleRegenerateProfile }) => {
                         </div>
                         <div className="skills-display">
                             {softSkills.map((skill, index) => {
-                                const isInferred = detail.detailed_profile.inferred_soft_skills &&
-                                    detail.detailed_profile.inferred_soft_skills.includes(skill.content);
+                                const isInferred = detail.detailed_profile.inferred_soft_skills?.includes(skill.content);
                                 return (
-                                    <span key={`soft-${index}`}
-                                        className={`skill-tag ${isInferred ? 'inferred' : ''} ${skill.relevant ? 'relevant' : ''}`}>
+                                    <span
+                                        key={`soft-${index}`}
+                                        className={`skill-tag ${isInferred ? 'inferred interactive-inferred' : ''} ${skill.relevant ? 'relevant' : ''}`}
+                                        onClick={isInferred ? () => onOpenInferredSkillModal(skill.content, 'soft') : undefined}
+                                        style={isInferred ? { cursor: 'pointer' } : {}}
+                                    >
                                         {skill.relevant && <span className="relevance-star">⭐ </span>}
                                         {skill.content}
                                     </span>
@@ -276,11 +280,14 @@ const SkillsTabContent = ({ detail, handleRegenerateProfile }) => {
                         </div>
                         <div className="skills-display">
                             {technicalSkills.map((skill, index) => {
-                                const isInferred = detail.detailed_profile.inferred_technical_skills &&
-                                    detail.detailed_profile.inferred_technical_skills.includes(skill.content);
+                                const isInferred = detail.detailed_profile.inferred_technical_skills?.includes(skill.content);
                                 return (
-                                    <span key={`tech-${index}`}
-                                        className={`skill-tag ${isInferred ? 'inferred' : ''} ${skill.relevant ? 'relevant' : ''}`}>
+                                    <span
+                                        key={`tech-${index}`}
+                                        className={`skill-tag ${isInferred ? 'inferred interactive-inferred' : ''} ${skill.relevant ? 'relevant' : ''}`}
+                                        onClick={isInferred ? () => onOpenInferredSkillModal(skill.content, 'technical') : undefined}
+                                        style={isInferred ? { cursor: 'pointer' } : {}}
+                                    >
                                         {skill.relevant && <span className="relevance-star">⭐ </span>}
                                         {skill.content}
                                     </span>
@@ -301,11 +308,14 @@ const SkillsTabContent = ({ detail, handleRegenerateProfile }) => {
                         </div>
                         <div className="skills-display">
                             {languages.map((language, index) => {
-                                const isInferred = detail.detailed_profile.inferred_languages &&
-                                    detail.detailed_profile.inferred_languages.includes(language.content);
+                                const isInferred = detail.detailed_profile.inferred_languages?.includes(language.content);
                                 return (
-                                    <span key={`lang-${index}`}
-                                        className={`skill-tag ${isInferred ? 'inferred' : ''} ${language.relevant ? 'relevant' : ''}`}>
+                                    <span
+                                        key={`lang-${index}`}
+                                        className={`skill-tag ${isInferred ? 'inferred interactive-inferred' : ''} ${language.relevant ? 'relevant' : ''}`}
+                                        onClick={isInferred ? () => onOpenInferredSkillModal(language.content, 'language') : undefined}
+                                        style={isInferred ? { cursor: 'pointer' } : {}}
+                                    >
                                         {language.relevant && <span className="relevance-star">⭐ </span>}
                                         {language.content}
                                     </span>
@@ -678,7 +688,7 @@ const fetchApplicants = async (jobId) => {
             throw new Error(`Network response was not ok: ${response.status}`);
         }
         const applicantsData = await response.json();
-        console.log("Fetched applicants data:", applicantsData);
+        // console.log("Fetched applicants data:", applicantsData);
         return applicantsData;
     } catch (err) {
         console.error("Error fetching applicants:", err);
@@ -694,7 +704,7 @@ const generateApplicantDetail = async (candidateId) => {
             throw new Error(`Network response was not ok: ${response.status}`);
         }
         const applicantDetails = await response.json();
-        console.log("Generated applicant detail:", applicantDetails);
+        // console.log("Generated applicant detail:", applicantDetails);
         return applicantDetails;
     } catch (err) {
         console.error("Error generating applicant details:", err);
@@ -710,7 +720,7 @@ const fetchJob = async (jobId) => {
             throw new Error(`Failed to fetch updated job data: ${jobResponse.status}`);
         }
         const updatedJobData = await jobResponse.json();
-        console.log("Fetched updated job data:", updatedJobData);
+        // console.log("Fetched updated job data:", updatedJobData);
         return updatedJobData;
     } catch (err) {
         console.error("Error fetching job data:", err);
@@ -956,16 +966,21 @@ export default function ApplicantDetails() {
     const [job, setJob] = useState(null);
     const [detail, setDetail] = useState(null);
     const [job_id, setJob_id] = useState(null);
-    const [totalScore, setTotalScore] = useState(0);
-    const [outcomeScore, setOutcomeScore] = useState(0);
-    const [prompt, setPrompt] = useState("");
+    // const [totalScore, setTotalScore] = useState(0); // Unused, can be removed
+    // const [outcomeScore, setOutcomeScore] = useState(0); // Unused, can be removed
+    // const [prompt, setPrompt] = useState(""); // Unused, can be removed if job.prompt is always used
     const [showDetailedBreakdownModal, setShowDetailedBreakdownModal] = useState(false);
     const [showQuestionReminderModal, setShowQuestionReminderModal] = useState(false);
     const [activeDetailTab, setActiveDetailTab] = useState('skills');
     const [selectedScoreDetail, setSelectedScoreDetail] = useState(null);
     const [preloadedLogo, setPreloadedLogo] = useState(null);
     const [preloadedCroppedLogo, setPreloadedCroppedLogo] = useState(null);
-    let id = null;
+    let id = null; // This will be set inside useEffect, consider if it needs to be state or ref
+
+    // Added: State for InferredSkillModal
+    const [showInferredSkillModal, setShowInferredSkillModal] = useState(false);
+    const [currentInferredSkillData, setCurrentInferredSkillData] = useState({ name: '', explanation: '' });
+
 
     const handleScoreCardClick = (title, score, explanation, color) => {
         setSelectedScoreDetail({ title, score, explanation, color });
@@ -974,6 +989,31 @@ export default function ApplicantDetails() {
     const closeScoreDetailModal = () => {
         setSelectedScoreDetail(null);
     };
+
+    // Added: Handlers for InferredSkillModal
+    const handleOpenInferredSkillModal = (skillName, category) => {
+        let explanation = '';
+        // Assumption: Backend provides detailed explanations for inferred skills in this structure
+        // e.g., detail.detailed_profile.inferred_skill_explanations.soft_skills["Leadership"] = "Inferred from managing project teams..."
+        if (detail?.detailed_profile?.inferred_skill_explanations) {
+            const explanations = detail.detailed_profile.inferred_skill_explanations;
+            if (category === 'soft' && explanations.soft_skills) {
+                explanation = explanations.soft_skills[skillName];
+            } else if (category === 'technical' && explanations.technical_skills) {
+                explanation = explanations.technical_skills[skillName];
+            } else if (category === 'language' && explanations.languages) {
+                explanation = explanations.languages[skillName];
+            }
+        }
+        setCurrentInferredSkillData({ name: skillName, explanation: explanation || '' });
+        setShowInferredSkillModal(true);
+    };
+
+    const handleCloseInferredSkillModal = () => {
+        setShowInferredSkillModal(false);
+        setCurrentInferredSkillData({ name: '', explanation: '' });
+    };
+
 
     useEffect(() => {
         setIsLoading(true);
@@ -984,15 +1024,15 @@ export default function ApplicantDetails() {
         setJob(null);
         setDetail(null);
         setJob_id(null);
-        setTotalScore(0);
-        setOutcomeScore(0);
-        setPrompt("");
+        // setTotalScore(0); // Unused
+        // setOutcomeScore(0); // Unused
+        // setPrompt(""); // Unused
 
         const fetchData = async () => {
             const pathSegments = location.pathname.split("/");
             id = pathSegments[pathSegments.length - 1];
-            const jobId = pathSegments[pathSegments.length - 2];
-            setJob_id(jobId);
+            const jobIdFromUrl = pathSegments[pathSegments.length - 2]; // Renamed to avoid conflict
+            setJob_id(jobIdFromUrl);
 
             if (!id) {
                 setModalMessage("Candidate ID not found in URL.");
@@ -1003,7 +1043,7 @@ export default function ApplicantDetails() {
                 return;
             }
 
-            if (!jobId) {
+            if (!jobIdFromUrl) {
                 setModalMessage("Job ID not found in URL.");
                 setShowErrorModal(true);
                 setTimeout(() => {
@@ -1012,13 +1052,9 @@ export default function ApplicantDetails() {
                 return;
             }
 
-            if (!id || !jobId) {
-                return;
-            }
-
             try {
-                const applicants = await fetchApplicants(jobId);
-                const jobData = await fetchJob(jobId);
+                const applicants = await fetchApplicants(jobIdFromUrl);
+                const jobData = await fetchJob(jobIdFromUrl);
 
                 if (!applicants || applicants.length === 0) {
                     throw new Error("No applicants found for this job.");
@@ -1037,26 +1073,22 @@ export default function ApplicantDetails() {
 
                 let detailData;
 
-                console.log("Candidate data:", candidateData);
+                // console.log("Candidate data:", candidateData);
 
-                if (!candidateData.detailed_profile || candidateData.detailed_profile === "") {
-                    detailData = await handleCreateDetail(jobId);
-
-                    console.log("Generated detail text:", detailData);
+                if (!candidateData.detailed_profile || candidateData.detailed_profile === "" || (typeof candidateData.detailed_profile === 'string' && candidateData.detailed_profile.trim() === "")) {
+                    detailData = await handleCreateDetail(jobIdFromUrl); // Pass jobId for context
+                    // console.log("Generated detail text:", detailData);
                 } else {
-                    try {
-                        if (candidateData && candidateData.detailed_profile && candidateData.detailed_profile.summary) {
-                            detailData = { detailed_profile: candidateData.detailed_profile };
-                            setDetail(detailData);
-                        } else {
-                            console.warn("Detail text found but didn't have the expected structure, regenerating...");
-                            detailData = await handleCreateDetail(jobId);
-                        }
-                    } catch (error) {
-                        console.warn("Failed to parse existing detail text, regenerating...", error);
-                        detailData = await handleCreateDetail(jobId);
+                     // Check if it's an object and has a summary, otherwise, it might be old string format
+                    if (typeof candidateData.detailed_profile === 'object' && candidateData.detailed_profile !== null && candidateData.detailed_profile.summary) {
+                        detailData = { detailed_profile: candidateData.detailed_profile };
+                        setDetail(detailData);
+                    } else {
+                        console.warn("Detail text found but was not a valid object or lacked summary, regenerating...");
+                        detailData = await handleCreateDetail(jobIdFromUrl); // Pass jobId for context
                     }
                 }
+                if(detailData) setDetail(detailData); // Ensure detail is set if regenerated
 
                 setIsLoading(false);
 
@@ -1064,15 +1096,16 @@ export default function ApplicantDetails() {
                 console.error("Comprehensive error fetching candidate:", err);
                 setModalMessage(`Error: ${err.message}`);
                 setShowErrorModal(true);
-                setTimeout(() => {
-                    navigate(-1);
-                }, 3000);
+                // setTimeout(() => {
+                //     navigate(-1);
+                // }, 3000); // Commented out for easier debugging if needed
                 setIsLoading(false);
             }
         };
 
         fetchData();
-    }, [navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [navigate, location.pathname]); // id is not stable here, location.pathname is better
 
     useEffect(() => {
         const loadImages = async () => {
@@ -1106,20 +1139,21 @@ export default function ApplicantDetails() {
         loadImages();
     }, []);
 
-    const handleCreateDetail = async (jobId) => {
-        if (!id) {
-            setModalMessage("Candidate ID not found in URL.");
+    const handleCreateDetail = async (currentJobId) => { // Added currentJobId parameter
+        const pathSegments = location.pathname.split("/"); // Re-get ID if needed, though `id` from outer scope should be set
+        const candidateId = pathSegments[pathSegments.length - 1];
+
+        if (!candidateId) {
+            setModalMessage("Candidate ID not found in URL for detail creation.");
             setShowErrorModal(true);
-            setTimeout(() => {
-                navigate(-1);
-            }, 3000);
+            // setTimeout(() => { navigate(-1); }, 3000); // Removed for easier debugging
             return;
         }
 
-        // Use jobId in the URL if available
-        let apiUrl = `http://localhost:8000/api/candidates/detail/${id}`;
-        if (jobId) {
-            apiUrl += `?job_id=${jobId}`;
+        // Use currentJobId in the URL for context, especially for relevance
+        let apiUrl = `http://localhost:8000/api/candidates/detail/${candidateId}`;
+        if (currentJobId) {
+            apiUrl += `?job_id=${currentJobId}`;
         }
 
         const response = await fetch(apiUrl);
@@ -1128,28 +1162,39 @@ export default function ApplicantDetails() {
             throw new Error(`Failed to generate candidate detail: ${response.status}`);
         }
 
-        const detailData = await response.json();
-        setDetail(detailData);
+        const newDetailData = await response.json();
+        setDetail(newDetailData); // Set the detail state here
 
-        console.log("Updating applicant with detailed profile:", detailData);
-        console.log("Relevance analysis included:", !!detailData.detailed_profile?.relevance_analysis);
+        // console.log("Updating applicant with detailed profile:", newDetailData);
+        // console.log("Relevance analysis included:", !!newDetailData.detailed_profile?.relevance_analysis);
 
-        await fetch(`http://localhost:8000/api/candidates/candidate/${id}`, {
+        // Fetch current applicant data to merge, or use existing applicant state
+        const currentApplicant = applicant || (await fetchApplicants(currentJobId)).find(cand => cand.candidateId.toString() === candidateId);
+        if (!currentApplicant) {
+            throw new Error("Could not retrieve current applicant data for update.");
+        }
+
+        await fetch(`http://localhost:8000/api/candidates/candidate/${candidateId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                ...applicant,
-                detailed_profile: detailData.detailed_profile
+                ...currentApplicant, // Spread existing applicant data
+                detailed_profile: newDetailData.detailed_profile // Update with new profile
             })
         });
+        setApplicant(prev => ({...prev, detailed_profile: newDetailData.detailed_profile})); // Update local applicant state too
 
-        return detailData;
+        return newDetailData;
     }
 
     const handleRegenerateProfile = async () => {
-        if (!id || !job_id) {
+        const pathSegments = location.pathname.split("/");
+        const candidateId = pathSegments[pathSegments.length - 1];
+        // job_id state should be up-to-date
+
+        if (!candidateId || !job_id) {
             setModalMessage("Missing candidate ID or job ID for regeneration.");
             setShowErrorModal(true);
             return;
@@ -1158,8 +1203,8 @@ export default function ApplicantDetails() {
         try {
             setIsRegenerating(true);
 
-            // Force profile regeneration by calling API with job_id
-            const apiUrl = `http://localhost:8000/api/candidates/detail/${id}?job_id=${job_id}&force=true`;
+            // Force profile regeneration by calling API with job_id and force=true
+            const apiUrl = `http://localhost:8000/api/candidates/detail/${candidateId}?job_id=${job_id}&force=true`;
 
             const response = await fetch(apiUrl);
 
@@ -1167,29 +1212,37 @@ export default function ApplicantDetails() {
                 throw new Error(`Failed to regenerate profile: ${response.status}`);
             }
 
-            const detailData = await response.json();
-            setDetail(detailData);
+            const newDetailData = await response.json();
+            setDetail(newDetailData); // Update detail state
 
             // Check if relevance analysis was generated
-            const hasRelevanceData = !!detailData.detailed_profile?.relevance_analysis;
+            const hasRelevanceData = !!newDetailData.detailed_profile?.relevance_analysis;
+
+            // Fetch current applicant data to merge
+            const currentApplicant = applicant || (await fetchApplicants(job_id)).find(cand => cand.candidateId.toString() === candidateId);
+             if (!currentApplicant) {
+                throw new Error("Could not retrieve current applicant data for update during regeneration.");
+            }
 
             // Update the applicant with new profile data
-            await fetch(`http://localhost:8000/api/candidates/candidate/${id}`, {
+            await fetch(`http://localhost:8000/api/candidates/candidate/${candidateId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    ...applicant,
-                    detailed_profile: detailData.detailed_profile
+                    ...currentApplicant, // Spread existing applicant data
+                    detailed_profile: newDetailData.detailed_profile // Update with new profile
                 })
             });
+            setApplicant(prev => ({...prev, detailed_profile: newDetailData.detailed_profile})); // Update local applicant state
+
 
             // Show success message based on results
             if (hasRelevanceData) {
                 setModalMessage("Profile regenerated successfully with job relevance analysis!");
             } else {
-                setModalMessage("Profile regenerated, but job relevance analysis is still missing. Please check server logs.");
+                setModalMessage("Profile regenerated, but job relevance analysis might be missing. Please check job context or server logs.");
             }
             setShowSuccessModal(true);
 
@@ -1277,15 +1330,15 @@ export default function ApplicantDetails() {
         setProcessingAction(true);
 
         try {
-            console.log(applicant)
+            // console.log(applicant)
             if (confirmAction === 'accept') {
                 const payload = { // Construct payload separately for logging
                 applicationId: applicant.applicationId,
                 candidateId: applicant.candidateId,
                 jobId: job_id, // Make sure job_id is a valid string
-                email: applicant.extractedText.entities.applicant_mail || null // Send null if no email
+                email: applicant.extractedText?.entities?.applicant_mail || applicant.extractedText?.applicant_mail || null // Send null if no email
             };
-            console.log("Sending to /generate-link:", JSON.stringify(payload)); // Log the payload
+            // console.log("Sending to /generate-link:", JSON.stringify(payload)); // Log the payload
 
             const response = await fetch('http://localhost:8000/api/interviews/generate-link', {
                 method: 'POST',
@@ -1307,14 +1360,15 @@ export default function ApplicantDetails() {
                 }
             }
 
-                const data = await response.json();
+                // const data = await response.json(); // data not used
                 setModalMessage(`Interview invitation has been sent to the candidate. The link will expire in 7 days.`);
                 setShowSuccessModal(true);
 
-                setApplicant({
-                    ...applicant,
+                setApplicant(prevApplicant => ({
+                    ...prevApplicant,
                     status: 'interview scheduled'
-                });
+                }));
+
 
                 setTimeout(() => {
                     setShowSuccessModal(false);
@@ -1331,7 +1385,7 @@ export default function ApplicantDetails() {
                         applicationId: applicant.applicationId,
                         candidateId: applicant.candidateId,
                         jobId: job_id,
-                        email: applicant.extractedText?.applicant_mail || ''
+                        email: applicant.extractedText?.entities?.applicant_mail || applicant.extractedText?.applicant_mail || ''
                     })
                 });
 
@@ -1342,10 +1396,10 @@ export default function ApplicantDetails() {
                 setModalMessage('Rejection email has been sent to the candidate.');
                 setShowSuccessModal(true);
 
-                setApplicant({
-                    ...applicant,
+                setApplicant(prevApplicant => ({
+                    ...prevApplicant,
                     status: 'rejected'
-                });
+                }));
             }
         } catch (error) {
             console.error("Error processing candidate action:", error);
@@ -2290,7 +2344,7 @@ export default function ApplicantDetails() {
         );
     };
 
-    if (isLoading || processingAction) {
+    if (isLoading || processingAction || isRegenerating) { // Added isRegenerating
         return (
             <div className="detail-container" style={{
                 display: 'flex',
@@ -2302,7 +2356,7 @@ export default function ApplicantDetails() {
                 <div className="loading-indicator" style={{ textAlign: 'center' }}>
                     <LoadingAnimation />
                     <p style={{ marginTop: '20px' }}>
-                        {processingAction ? "Processing your request..." : "Loading profile details..."}
+                        {processingAction ? "Processing your request..." : (isRegenerating ? "Regenerating profile..." : "Loading profile details...")}
                     </p>
                 </div>
             </div>
@@ -2355,6 +2409,15 @@ export default function ApplicantDetails() {
                     color={selectedScoreDetail.color}
                 />
             )}
+            {/* Added: Render InferredSkillModal */}
+            {showInferredSkillModal && (
+                <InferredSkillModal
+                    isOpen={showInferredSkillModal}
+                    onClose={handleCloseInferredSkillModal}
+                    skillName={currentInferredSkillData.name}
+                    explanation={currentInferredSkillData.explanation}
+                />
+            )}
 
             {!isLoading && applicant && detail && (
                 <div className="applicant-detail-view">
@@ -2394,14 +2457,15 @@ export default function ApplicantDetails() {
                         {/* Combined container for summary and assessment */}
                         <div className="combined-container">
                             {/* Summary section */}
-                            {detail.detailed_profile.summary ? (
+                            {detail.detailed_profile?.summary ? ( // Added optional chaining
                                 <div className="info-group">
                                     <p className="info-label">Overall Summary:</p>
                                     <div className="experience-container">
                                         <div className="experience-card">{renderHTMLContent(detail.detailed_profile.summary)}</div>
                                     </div>
                                 </div>
-                            ) : <div></div>}
+                            ) : <div>Loading summary or not available...</div>}
+
 
                             {/* Ranking criteria as a title above assessment */}
                             {job?.prompt && job.prompt !== "" && (
@@ -2865,7 +2929,11 @@ export default function ApplicantDetails() {
                             <div className="candidate-tab-content">
                                 {/* Skills Tab Content */}
                                 {activeDetailTab === 'skills' && (
-                                    <SkillsTabContent detail={detail} handleRegenerateProfile={handleRegenerateProfile} />
+                                    <SkillsTabContent
+                                        detail={detail}
+                                        handleRegenerateProfile={handleRegenerateProfile}
+                                        onOpenInferredSkillModal={handleOpenInferredSkillModal} // Pass handler
+                                    />
                                 )}
 
                                 {/* Education Tab Content */}
