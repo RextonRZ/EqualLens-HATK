@@ -342,6 +342,10 @@ class GeminiService:
             1. StudyLevel: Assess the candidate's level of study and education.
             2. Awards: Evaluate the candidate's awards and achievements which would benefit the job description.
             3. CourseworkResearch: Assess the relevance of the candidate's coursework and research that relates to the job.
+        - CulturalFit:
+            1. CollaborationStyle: Evaluate how well the candidate demonstrates the ability to work with others, such as leadership roles, teamwork, or group project experience.
+            2. GrowthMindset: Assess the candidate's willingness to learn, improve, and adapt through certifications, awards, or self-initiated learning.
+            3. CommunityEngagement: Evaluate the candidate's involvement in community, volunteering, or organizational activities that showcase cultural adaptability and inclusive contributions.
 
         VERY IMPORTANT:
         - Base all evaluations on the job description and the candidate's profile details at all times.
@@ -358,7 +362,10 @@ class GeminiService:
                 "certification": <integer 0-10>,
                 "studyLevel": <integer 0-10>,
                 "awards": <integer 0-10>,
-                "courseworkResearch": <integer 0-10>
+                "courseworkResearch": <integer 0-10>,
+                "collaborationStyle": <integer 0-10>,
+                "growthMindset": <integer 0-10>,
+                "communityEngagement": <integer 0-10>
             }},
             "reasoning": {{
                 "relevance": "<brief explanation>",
@@ -369,7 +376,10 @@ class GeminiService:
                 "certification": "<brief explanation>",
                 "studyLevel": "<brief explanation>",
                 "awards": "<brief explanation>",
-                "courseworkResearch": "<brief explanation>"
+                "courseworkResearch": "<brief explanation>",
+                "collaborationStyle": "<brief explanation>",
+                "growthMindset": "<brief explanation>",
+                "communityEngagement": "<brief explanation>"
             }}
         }}
         """
@@ -379,6 +389,8 @@ class GeminiService:
             formatted_text = f"Job Description:\n{job_description}\n\nResume Information:\n"
             for key, value in extracted_text.items():
                 formatted_text += f"{key}: {value}\n\n"
+                
+            logger.info(f"Displaying formatted text for Gemini:\n{formatted_text}...")  
 
             # Send the prompt to Gemini
             response = await self.model.generate_content_async(
@@ -406,6 +418,8 @@ class GeminiService:
                     required_criteria.extend(["jobExp", "projectCocurricularExp", "certification"])
                 if "education" in criteria.lower():
                     required_criteria.extend(["studyLevel", "awards", "courseworkResearch"])
+                if "cultural fit" in criteria.lower():
+                    required_criteria.extend(["collaborationStyle", "growthMindset", "communityEngagement"])
 
                 # Filter rank_score and reasoning to include only relevant criteria
                 rank_score = {key: rank_score[key] for key in required_criteria if key in rank_score}
@@ -489,6 +503,11 @@ class GeminiService:
                     "studyLevel": 0.40,
                     "awards": 0.30,
                     "courseworkResearch": 0.30
+                },
+                "culturalFit": {
+                    "collaborationStyle": 0.40,
+                    "growthMindset": 0.30,
+                    "communityEngagement": 0.30
                 }
             }
 
@@ -512,7 +531,8 @@ class GeminiService:
                         main_criteria_present = {
                             "skills": "skills" in prompt_lower,
                             "experience": "experience" in prompt_lower,
-                            "education": "education" in prompt_lower
+                            "education": "education" in prompt_lower,
+                            "culturalFit": "cultural fit" in prompt_lower or "cultural" in prompt_lower
                         }
                         
                         # If no criteria mentioned explicitly, assume all are equally important
