@@ -152,116 +152,112 @@ const renderHTMLContentWithStructure = (content) => {
 
 // Helper function to sort and filter items based on relevance
 const sortItemsByRelevance = (items, relevanceData) => {
-    if (!relevanceData || !Array.isArray(items)) {
-        return items || [];
+    if (!relevanceData || !Array.isArray(relevanceData)) { // Check if relevanceData itself is an array
+        // If items is already structured, just sort by existing relevance or default to 0
+        if (items && Array.isArray(items) && items.every(item => typeof item === 'object' && 'content' in item)) {
+            return items.sort((a,b) => (b.relevance || 0) - (a.relevance || 0));
+        }
+        // If items are simple strings or other, map them to the default structure
+        return (items || []).map(item => ({
+            content: typeof item === 'object' && item !== null && 'content' in item ? item.content : String(item),
+            inferred: typeof item === 'object' && item !== null && 'inferred' in item ? item.inferred : false,
+            relevance: 0,
+            relevant: false
+        }));
     }
 
-    // Create a map of item to relevance data
     const relevanceMap = {};
     relevanceData.forEach(data => {
-        if (data.item) {
+        if (data.item) { // Assuming relevanceData items have an "item" string key that matches skillObj.content
             relevanceMap[data.item] = {
                 relevance: data.relevance || 0,
                 relevant: data.relevant || false
             };
         }
     });
-
-    // Map items to include relevance data
+    
     return items
-        .map(item => {
-            // For string items (like skills)
-            if (typeof item === 'string') {
-                return {
-                    content: item,
-                    relevance: relevanceMap[item]?.relevance || 0,
-                    relevant: relevanceMap[item]?.relevant || false
-                };
-            }
-            // For structured items (like education or experience entries)
-            else {
-                // Extract the first line as a key for matching
-                const firstLine = item.split('\n')[0];
-                return {
-                    content: item,
-                    relevance: relevanceMap[firstLine]?.relevance || 0,
-                    relevant: relevanceMap[firstLine]?.relevant || false
-                };
-            }
+        .map(itemObj => { // Expects items to be like [{content: "SkillA", inferred: false}, {content: "SkillB", inferred: true}]
+            const contentKey = typeof itemObj === 'object' && itemObj !== null && typeof itemObj.content === 'string' ? itemObj.content : String(itemObj);
+            const mappedRelevance = relevanceMap[contentKey] || { relevance: 0, relevant: false };
+            
+            return {
+                content: contentKey,
+                inferred: typeof itemObj === 'object' && itemObj !== null ? itemObj.inferred : false, // Preserve inferred status
+                relevance: mappedRelevance.relevance,
+                relevant: mappedRelevance.relevant
+            };
         })
         .sort((a, b) => b.relevance - a.relevance);
 };
 
+
 // Render Skills Tab Content with relevance indicators and debugging
-const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkillModal }) => { // Added onOpenInferredSkillModal
+const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkillModal }) => { 
     const relevanceAnalysis = detail?.detailed_profile?.relevance_analysis || {};
+    
+    const combinedSoftSkills = [
+        ...(detail?.detailed_profile?.soft_skills || []).map(s => ({ content: s, inferred: false })),
+        ...(detail?.detailed_profile?.inferred_soft_skills || []).map(s => ({ content: s, inferred: true }))
+    ];
+    const softSkills = sortItemsByRelevance(combinedSoftSkills, relevanceAnalysis.soft_skills);
 
-    // Debug information
-    // console.log("Relevance analysis available:", !!relevanceAnalysis);
-    // console.log("Relevance data categories:", Object.keys(relevanceAnalysis));
-    // if (relevanceAnalysis.soft_skills) {
-    //     console.log("Example soft skill item:", relevanceAnalysis.soft_skills[0]);
-    // }
+    const combinedTechnicalSkills = [
+        ...(detail?.detailed_profile?.technical_skills || []).map(s => ({ content: s, inferred: false })),
+        ...(detail?.detailed_profile?.inferred_technical_skills || []).map(s => ({ content: s, inferred: true }))
+    ];
+    const technicalSkills = sortItemsByRelevance(combinedTechnicalSkills, relevanceAnalysis.technical_skills);
+    
+    const combinedLanguages = [
+        ...(detail?.detailed_profile?.languages || []).map(s => ({ content: s, inferred: false })),
+        ...(detail?.detailed_profile?.inferred_languages || []).map(s => ({ content: s, inferred: true }))
+    ];
+    const languages = sortItemsByRelevance(combinedLanguages, relevanceAnalysis.languages);
 
-    // Sort skills by relevance
-    const softSkills = sortItemsByRelevance(
-        [...(detail.detailed_profile.soft_skills || []), ...(detail.detailed_profile.inferred_soft_skills || [])],
-        relevanceAnalysis.soft_skills || []
-    );
-
-    const technicalSkills = sortItemsByRelevance(
-        [...(detail.detailed_profile.technical_skills || []), ...(detail.detailed_profile.inferred_technical_skills || [])],
-        relevanceAnalysis.technical_skills || []
-    );
-
-    const languages = sortItemsByRelevance(
-        [...(detail.detailed_profile.languages || []), ...(detail.detailed_profile.inferred_languages || [])],
-        relevanceAnalysis.languages || []
-    );
-
-    // Log info about how many items are marked as relevant
-    const relevantCount = {
-        soft: softSkills.filter(s => s.relevant).length,
-        tech: technicalSkills.filter(s => s.relevant).length,
-        lang: languages.filter(s => s.relevant).length
-    };
-    // console.log("Items marked as relevant:", relevantCount);
-
-    // Check if we need to show the relevance legend
-    const hasRelevantItems = relevantCount.soft > 0 || relevantCount.tech > 0 || relevantCount.lang > 0;
+    const hasRelevantItems = softSkills.some(s => s.relevant) || 
+                             technicalSkills.some(s => s.relevant) || 
+                             languages.some(s => s.relevant);
 
     return (
         <div className="applicant-info-container">
             <div className="applicant-info">
-                {/* Relevance legend - only show if we have relevant items */}
                 {hasRelevantItems && (
                     <div className="relevance-legend">
                         <span className="relevance-legend-icon">⭐</span>
                         <span className="relevance-legend-text">Indicates high relevance to job requirements</span>
                     </div>
                 )}
+                {/* REMOVED InferredSkillModal rendering from here */}
 
                 {/* Soft Skills */}
                 {softSkills.length > 0 && (
                     <div className="info-group" style={{ marginBottom: "10px" }}>
                         <div className="skills-group-header">
                             <p className="info-label">Soft Skills:</p>
-                            {detail.detailed_profile.inferred_soft_skills && detail.detailed_profile.inferred_soft_skills.length > 0 && (
-                                <InfoTooltip />
+                            {(detail.detailed_profile.inferred_soft_skills && detail.detailed_profile.inferred_soft_skills.length > 0) && (
+                                <InfoTooltip 
+                                    text="AI-inferred skills based on resume context. Click an inferred skill (marked with i) for its specific justification." 
+                                />
                             )}
                         </div>
                         <div className="skills-display">
-                            {softSkills.map((skill, index) => {
-                                const isInferred = detail.detailed_profile.inferred_soft_skills?.includes(skill.content);
+                            {softSkills.map((skillObj, index) => {
+                                const skillName = skillObj.content;
+                                const categoryKey = 'soft_skills';
+                                const uiCategoryTitle = 'Inferred Soft Skill Justification';
+                                const explanationExists = detail?.detailed_profile?.inferred_skills_explanations?.[categoryKey]?.[skillName];
+                                const isInteractive = skillObj.inferred && explanationExists;
+                                
                                 return (
                                     <span
                                         key={`soft-${index}`}
-                                        className={`skill-tag ${isInferred ? 'inferred interactive-inferred' : ''} ${skill.relevant ? 'relevant' : ''}`}
-                                        onClick={isInferred ? () => onOpenInferredSkillModal(skill.content, 'soft') : undefined}
-                                        style={isInferred ? { cursor: 'pointer' } : {}}
+                                        className={`skill-tag ${skillObj.inferred ? 'inferred' : ''} ${skillObj.relevant ? 'relevant' : ''} ${isInteractive ? 'interactive-inferred' : ''}`}
+                                        onClick={isInteractive ? () => onOpenInferredSkillModal(skillName, categoryKey, uiCategoryTitle) : undefined}
+                                        style={isInteractive ? { cursor: 'pointer' } : {}}
+                                        title={isInteractive ? `Click to see justification for '${skillName}'` : undefined}
                                     >
-                                        {skill.relevant && <span className="relevance-star">⭐ </span>}
-                                        {skill.content}
+                                        {skillObj.relevant && <span className="relevance-star">⭐ </span>}
+                                        {skillName}
                                     </span>
                                 );
                             })}
@@ -274,22 +270,29 @@ const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkill
                     <div className="info-group" style={{ marginBottom: "10px" }}>
                         <div className="skills-group-header">
                             <p className="info-label">Technical Skills:</p>
-                            {detail.detailed_profile.inferred_technical_skills && detail.detailed_profile.inferred_technical_skills.length > 0 && (
-                                <InfoTooltip />
+                            {(detail.detailed_profile.inferred_technical_skills && detail.detailed_profile.inferred_technical_skills.length > 0) && (
+                                <InfoTooltip 
+                                    text="AI-inferred skills based on resume context. Click an inferred skill (marked with i) for its specific justification."
+                                />
                             )}
                         </div>
                         <div className="skills-display">
-                            {technicalSkills.map((skill, index) => {
-                                const isInferred = detail.detailed_profile.inferred_technical_skills?.includes(skill.content);
+                            {technicalSkills.map((skillObj, index) => {
+                                const skillName = skillObj.content;
+                                const categoryKey = 'technical_skills';
+                                const uiCategoryTitle = 'Inferred Technical Skill Justification';
+                                const explanationExists = detail?.detailed_profile?.inferred_skills_explanations?.[categoryKey]?.[skillName];
+                                const isInteractive = skillObj.inferred && explanationExists;
                                 return (
                                     <span
                                         key={`tech-${index}`}
-                                        className={`skill-tag ${isInferred ? 'inferred interactive-inferred' : ''} ${skill.relevant ? 'relevant' : ''}`}
-                                        onClick={isInferred ? () => onOpenInferredSkillModal(skill.content, 'technical') : undefined}
-                                        style={isInferred ? { cursor: 'pointer' } : {}}
+                                        className={`skill-tag ${skillObj.inferred ? 'inferred' : ''} ${skillObj.relevant ? 'relevant' : ''} ${isInteractive ? 'interactive-inferred' : ''}`}
+                                        onClick={isInteractive ? () => onOpenInferredSkillModal(skillName, categoryKey, uiCategoryTitle) : undefined}
+                                        style={isInteractive ? { cursor: 'pointer' } : {}}
+                                        title={isInteractive ? `Click to see justification for '${skillName}'` : undefined}
                                     >
-                                        {skill.relevant && <span className="relevance-star">⭐ </span>}
-                                        {skill.content}
+                                        {skillObj.relevant && <span className="relevance-star">⭐ </span>}
+                                        {skillName}
                                     </span>
                                 );
                             })}
@@ -302,22 +305,29 @@ const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkill
                     <div className="info-group" style={{ marginBottom: "10px" }}>
                         <div className="skills-group-header">
                             <p className="info-label">Languages:</p>
-                            {detail.detailed_profile.inferred_languages && detail.detailed_profile.inferred_languages.length > 0 && (
-                                <InfoTooltip />
+                            {(detail.detailed_profile.inferred_languages && detail.detailed_profile.inferred_languages.length > 0) && (
+                                 <InfoTooltip 
+                                    text="AI-inferred languages based on resume context. Click an inferred language (marked with i) for its specific justification."
+                                 />
                             )}
                         </div>
                         <div className="skills-display">
-                            {languages.map((language, index) => {
-                                const isInferred = detail.detailed_profile.inferred_languages?.includes(language.content);
+                            {languages.map((skillObj, index) => {
+                                const skillName = skillObj.content;
+                                const categoryKey = 'languages';
+                                const uiCategoryTitle = 'Inferred Language Justification';
+                                const explanationExists = detail?.detailed_profile?.inferred_skills_explanations?.[categoryKey]?.[skillName];
+                                const isInteractive = skillObj.inferred && explanationExists;
                                 return (
                                     <span
                                         key={`lang-${index}`}
-                                        className={`skill-tag ${isInferred ? 'inferred interactive-inferred' : ''} ${language.relevant ? 'relevant' : ''}`}
-                                        onClick={isInferred ? () => onOpenInferredSkillModal(language.content, 'language') : undefined}
-                                        style={isInferred ? { cursor: 'pointer' } : {}}
+                                        className={`skill-tag ${skillObj.inferred ? 'inferred' : ''} ${skillObj.relevant ? 'relevant' : ''} ${isInteractive ? 'interactive-inferred' : ''}`}
+                                        onClick={isInteractive ? () => onOpenInferredSkillModal(skillName, categoryKey, uiCategoryTitle) : undefined}
+                                        style={isInteractive ? { cursor: 'pointer' } : {}}
+                                        title={isInteractive ? `Click to see justification for '${skillName}'` : undefined}
                                     >
-                                        {language.relevant && <span className="relevance-star">⭐ </span>}
-                                        {language.content}
+                                        {skillObj.relevant && <span className="relevance-star">⭐ </span>}
+                                        {skillName}
                                     </span>
                                 );
                             })}
@@ -328,6 +338,11 @@ const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkill
         </div>
     );
 };
+
+
+// ... (Rest of EducationTabContent, ExperienceTabContent, ApplicantRadarChart, fetch functions, modals etc. remain UNCHANGED from your provided file) ...
+// ... MAKE SURE TO COPY THE REST OF YOUR FILE FROM HERE DOWNWARDS ...
+
 
 // Education Tab Content with relevance indicators
 const EducationTabContent = ({ detail }) => {
@@ -966,20 +981,20 @@ export default function ApplicantDetails() {
     const [job, setJob] = useState(null);
     const [detail, setDetail] = useState(null);
     const [job_id, setJob_id] = useState(null);
-    // const [totalScore, setTotalScore] = useState(0); // Unused, can be removed
-    // const [outcomeScore, setOutcomeScore] = useState(0); // Unused, can be removed
-    // const [prompt, setPrompt] = useState(""); // Unused, can be removed if job.prompt is always used
     const [showDetailedBreakdownModal, setShowDetailedBreakdownModal] = useState(false);
     const [showQuestionReminderModal, setShowQuestionReminderModal] = useState(false);
     const [activeDetailTab, setActiveDetailTab] = useState('skills');
     const [selectedScoreDetail, setSelectedScoreDetail] = useState(null);
     const [preloadedLogo, setPreloadedLogo] = useState(null);
     const [preloadedCroppedLogo, setPreloadedCroppedLogo] = useState(null);
-    let id = null; // This will be set inside useEffect, consider if it needs to be state or ref
+    const idRef = useRef(null); 
 
-    // Added: State for InferredSkillModal
     const [showInferredSkillModal, setShowInferredSkillModal] = useState(false);
-    const [currentInferredSkillData, setCurrentInferredSkillData] = useState({ name: '', explanation: '' });
+    const [currentInferredSkillData, setCurrentInferredSkillData] = useState({ 
+        skillName: '', 
+        categoryTitle: '',
+        explanationDetail: null 
+    });
 
 
     const handleScoreCardClick = (title, score, explanation, color) => {
@@ -990,29 +1005,35 @@ export default function ApplicantDetails() {
         setSelectedScoreDetail(null);
     };
 
-    // Added: Handlers for InferredSkillModal
-    const handleOpenInferredSkillModal = (skillName, category) => {
-        let explanation = '';
-        // Assumption: Backend provides detailed explanations for inferred skills in this structure
-        // e.g., detail.detailed_profile.inferred_skill_explanations.soft_skills["Leadership"] = "Inferred from managing project teams..."
-        if (detail?.detailed_profile?.inferred_skill_explanations) {
-            const explanations = detail.detailed_profile.inferred_skill_explanations;
-            if (category === 'soft' && explanations.soft_skills) {
-                explanation = explanations.soft_skills[skillName];
-            } else if (category === 'technical' && explanations.technical_skills) {
-                explanation = explanations.technical_skills[skillName];
-            } else if (category === 'language' && explanations.languages) {
-                explanation = explanations.languages[skillName];
-            }
+    const handleOpenInferredSkillModal = (skillName, categoryKey, uiCategoryTitle) => { 
+        let detailForModal = {
+            explanation: "Justification details are being processed or are unavailable for this skill.",
+            evidence_sentence: "",
+            highlighted_keywords: []
+        };
+
+        if (detail?.detailed_profile?.inferred_skills_explanations &&
+            detail.detailed_profile.inferred_skills_explanations[categoryKey] &&
+            detail.detailed_profile.inferred_skills_explanations[categoryKey][skillName]) {
+            
+            detailForModal = detail.detailed_profile.inferred_skills_explanations[categoryKey][skillName];
+        } else {
+            console.warn(`Explanation detail object not found for skill "${skillName}" in category "${categoryKey}". Using default.`);
         }
-        setCurrentInferredSkillData({ name: skillName, explanation: explanation || '' });
+
+        setCurrentInferredSkillData({ 
+            skillName: skillName, 
+            categoryTitle: uiCategoryTitle, 
+            explanationDetail: detailForModal 
+        });
         setShowInferredSkillModal(true);
     };
 
     const handleCloseInferredSkillModal = () => {
         setShowInferredSkillModal(false);
-        setCurrentInferredSkillData({ name: '', explanation: '' });
+        setCurrentInferredSkillData({ skillName: '', categoryTitle: '', explanationDetail: null });
     };
+
 
 
     useEffect(() => {
@@ -1024,31 +1045,25 @@ export default function ApplicantDetails() {
         setJob(null);
         setDetail(null);
         setJob_id(null);
-        // setTotalScore(0); // Unused
-        // setOutcomeScore(0); // Unused
-        // setPrompt(""); // Unused
 
         const fetchData = async () => {
             const pathSegments = location.pathname.split("/");
-            id = pathSegments[pathSegments.length - 1];
-            const jobIdFromUrl = pathSegments[pathSegments.length - 2]; // Renamed to avoid conflict
+            const candidateIdFromUrl = pathSegments[pathSegments.length - 1];
+            idRef.current = candidateIdFromUrl; 
+            const jobIdFromUrl = pathSegments[pathSegments.length - 2];
             setJob_id(jobIdFromUrl);
 
-            if (!id) {
+            if (!candidateIdFromUrl) {
                 setModalMessage("Candidate ID not found in URL.");
                 setShowErrorModal(true);
-                setTimeout(() => {
-                    navigate(-1);
-                }, 3000);
+                setIsLoading(false); 
                 return;
             }
 
             if (!jobIdFromUrl) {
                 setModalMessage("Job ID not found in URL.");
                 setShowErrorModal(true);
-                setTimeout(() => {
-                    navigate(-1);
-                }, 3000);
+                setIsLoading(false); 
                 return;
             }
 
@@ -1057,55 +1072,49 @@ export default function ApplicantDetails() {
                 const jobData = await fetchJob(jobIdFromUrl);
 
                 if (!applicants || applicants.length === 0) {
-                    throw new Error("No applicants found for this job.");
+                    setModalMessage("No applicants found for this job. Please check the Job ID or try again.");
+                    setShowErrorModal(true);
+                    setIsLoading(false);
+                    return; 
                 }
 
                 const candidateData = applicants.find(candidate =>
-                    candidate.candidateId && candidate.candidateId.toString() === id
+                    candidate.candidateId && candidate.candidateId.toString() === candidateIdFromUrl
                 );
 
                 if (!candidateData) {
-                    throw new Error(`Candidate with ID ${id} not found in the applicants list.`);
+                    setModalMessage(`Candidate with ID ${candidateIdFromUrl} not found for this job. Please verify and try again.`);
+                    setShowErrorModal(true);
+                    setIsLoading(false);
+                    return; 
                 }
 
                 setApplicant(candidateData);
                 setJob(jobData);
 
-                let detailData;
-
-                // console.log("Candidate data:", candidateData);
-
-                if (!candidateData.detailed_profile || candidateData.detailed_profile === "" || (typeof candidateData.detailed_profile === 'string' && candidateData.detailed_profile.trim() === "")) {
-                    detailData = await handleCreateDetail(jobIdFromUrl); // Pass jobId for context
-                    // console.log("Generated detail text:", detailData);
+                let detailDataToSet;
+                if (!candidateData.detailed_profile || 
+                    (typeof candidateData.detailed_profile === 'object' && candidateData.detailed_profile !== null && !candidateData.detailed_profile.summary) ||
+                    (typeof candidateData.detailed_profile === 'string' && candidateData.detailed_profile.trim() === "")) {
+                    detailDataToSet = await handleCreateDetail(jobIdFromUrl, candidateIdFromUrl);
                 } else {
-                     // Check if it's an object and has a summary, otherwise, it might be old string format
-                    if (typeof candidateData.detailed_profile === 'object' && candidateData.detailed_profile !== null && candidateData.detailed_profile.summary) {
-                        detailData = { detailed_profile: candidateData.detailed_profile };
-                        setDetail(detailData);
-                    } else {
-                        console.warn("Detail text found but was not a valid object or lacked summary, regenerating...");
-                        detailData = await handleCreateDetail(jobIdFromUrl); // Pass jobId for context
-                    }
+                    detailDataToSet = { detailed_profile: candidateData.detailed_profile };
                 }
-                if(detailData) setDetail(detailData); // Ensure detail is set if regenerated
-
+                
+                setDetail(detailDataToSet);
                 setIsLoading(false);
 
             } catch (err) {
                 console.error("Comprehensive error fetching candidate:", err);
-                setModalMessage(`Error: ${err.message}`);
+                setModalMessage(`Error loading profile: ${err.message}. Please try refreshing.`);
                 setShowErrorModal(true);
-                // setTimeout(() => {
-                //     navigate(-1);
-                // }, 3000); // Commented out for easier debugging if needed
                 setIsLoading(false);
             }
         };
 
         fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [navigate, location.pathname]); // id is not stable here, location.pathname is better
+    }, [navigate, location.pathname]);
 
     useEffect(() => {
         const loadImages = async () => {
@@ -1115,7 +1124,7 @@ export default function ApplicantDetails() {
                 await new Promise((resolve, reject) => {
                     logoImg.onload = resolve;
                     logoImg.onerror = reject;
-                    setTimeout(reject, 3000); // Timeout
+                    setTimeout(reject, 3000); 
                 });
                 setPreloadedLogo(logoImg);
             } catch (err) {
@@ -1124,12 +1133,11 @@ export default function ApplicantDetails() {
 
             try {
                 const croppedLogoImg = new Image();
-                // IMPORTANT: Ensure this path is correct and the image exists in your public folder
                 croppedLogoImg.src = '/equalLensLogoDarkCropped.png';
                 await new Promise((resolve, reject) => {
                     croppedLogoImg.onload = resolve;
                     croppedLogoImg.onerror = reject;
-                    setTimeout(reject, 3000); // Timeout
+                    setTimeout(reject, 3000); 
                 });
                 setPreloadedCroppedLogo(croppedLogoImg);
             } catch (err) {
@@ -1139,61 +1147,42 @@ export default function ApplicantDetails() {
         loadImages();
     }, []);
 
-    const handleCreateDetail = async (currentJobId) => { // Added currentJobId parameter
-        const pathSegments = location.pathname.split("/"); // Re-get ID if needed, though `id` from outer scope should be set
-        const candidateId = pathSegments[pathSegments.length - 1];
-
-        if (!candidateId) {
-            setModalMessage("Candidate ID not found in URL for detail creation.");
+    const handleCreateDetail = async (currentJobId, candidateIdForDetail) => { 
+        if (!candidateIdForDetail) {
+            setModalMessage("Candidate ID missing for detail creation.");
             setShowErrorModal(true);
-            // setTimeout(() => { navigate(-1); }, 3000); // Removed for easier debugging
-            return;
+            return null; 
         }
 
-        // Use currentJobId in the URL for context, especially for relevance
-        let apiUrl = `http://localhost:8000/api/candidates/detail/${candidateId}`;
+        let apiUrl = `http://localhost:8000/api/candidates/detail/${candidateIdForDetail}`;
         if (currentJobId) {
-            apiUrl += `?job_id=${currentJobId}`;
+            apiUrl += `?job_id=${currentJobId}&force=true`; 
+        } else {
+            apiUrl += `?force=true`; 
         }
-
-        const response = await fetch(apiUrl);
-
-        if (!response.ok) {
-            throw new Error(`Failed to generate candidate detail: ${response.status}`);
+        
+        try {
+            const response = await fetch(apiUrl);
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error("Failed to generate candidate detail:", response.status, errorText);
+                throw new Error(`Failed to generate candidate detail: ${response.status} - ${errorText}`);
+            }
+            const newDetailData = await response.json();
+            
+            setApplicant(prev => prev ? {...prev, detailed_profile: newDetailData.detailed_profile} : null);
+            return newDetailData; 
+        } catch (error) {
+            console.error("Error in handleCreateDetail:", error);
+            setModalMessage(`Error creating detail: ${error.message}`);
+            setShowErrorModal(true);
+            return null; 
         }
-
-        const newDetailData = await response.json();
-        setDetail(newDetailData); // Set the detail state here
-
-        // console.log("Updating applicant with detailed profile:", newDetailData);
-        // console.log("Relevance analysis included:", !!newDetailData.detailed_profile?.relevance_analysis);
-
-        // Fetch current applicant data to merge, or use existing applicant state
-        const currentApplicant = applicant || (await fetchApplicants(currentJobId)).find(cand => cand.candidateId.toString() === candidateId);
-        if (!currentApplicant) {
-            throw new Error("Could not retrieve current applicant data for update.");
-        }
-
-        await fetch(`http://localhost:8000/api/candidates/candidate/${candidateId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                ...currentApplicant, // Spread existing applicant data
-                detailed_profile: newDetailData.detailed_profile // Update with new profile
-            })
-        });
-        setApplicant(prev => ({...prev, detailed_profile: newDetailData.detailed_profile})); // Update local applicant state too
-
-        return newDetailData;
     }
 
-    const handleRegenerateProfile = async () => {
-        const pathSegments = location.pathname.split("/");
-        const candidateId = pathSegments[pathSegments.length - 1];
-        // job_id state should be up-to-date
 
+    const handleRegenerateProfile = async () => {
+        const candidateId = idRef.current; 
         if (!candidateId || !job_id) {
             setModalMessage("Missing candidate ID or job ID for regeneration.");
             setShowErrorModal(true);
@@ -1202,53 +1191,29 @@ export default function ApplicantDetails() {
 
         try {
             setIsRegenerating(true);
-
-            // Force profile regeneration by calling API with job_id and force=true
             const apiUrl = `http://localhost:8000/api/candidates/detail/${candidateId}?job_id=${job_id}&force=true`;
-
             const response = await fetch(apiUrl);
 
             if (!response.ok) {
-                throw new Error(`Failed to regenerate profile: ${response.status}`);
+                const errorText = await response.text();
+                throw new Error(`Failed to regenerate profile: ${response.status} - ${errorText}`);
             }
 
             const newDetailData = await response.json();
-            setDetail(newDetailData); // Update detail state
+            setDetail(newDetailData);
+            setApplicant(prev => prev ? {...prev, detailed_profile: newDetailData.detailed_profile} : null);
 
-            // Check if relevance analysis was generated
             const hasRelevanceData = !!newDetailData.detailed_profile?.relevance_analysis;
-
-            // Fetch current applicant data to merge
-            const currentApplicant = applicant || (await fetchApplicants(job_id)).find(cand => cand.candidateId.toString() === candidateId);
-             if (!currentApplicant) {
-                throw new Error("Could not retrieve current applicant data for update during regeneration.");
-            }
-
-            // Update the applicant with new profile data
-            await fetch(`http://localhost:8000/api/candidates/candidate/${candidateId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    ...currentApplicant, // Spread existing applicant data
-                    detailed_profile: newDetailData.detailed_profile // Update with new profile
-                })
-            });
-            setApplicant(prev => ({...prev, detailed_profile: newDetailData.detailed_profile})); // Update local applicant state
-
-
-            // Show success message based on results
             if (hasRelevanceData) {
                 setModalMessage("Profile regenerated successfully with job relevance analysis!");
             } else {
-                setModalMessage("Profile regenerated, but job relevance analysis might be missing. Please check job context or server logs.");
+                setModalMessage("Profile regenerated. Job relevance analysis might be pending or missing if no job context was available.");
             }
             setShowSuccessModal(true);
 
         } catch (error) {
             console.error("Error regenerating profile:", error);
-            setModalMessage(`Error: ${error.message}`);
+            setModalMessage(`Error regenerating profile: ${error.message}`);
             setShowErrorModal(true);
         } finally {
             setIsRegenerating(false);
@@ -1283,7 +1248,7 @@ export default function ApplicantDetails() {
 
         if (action === 'accept') {
             if (status === 'interview scheduled' || status === 'interview completed') {
-                setModalMessage("This candidate already has an interview scheduled.");
+                setModalMessage("This candidate already has an interview scheduled or completed.");
                 setShowInfoModal(true);
                 return false;
             } else if (status === 'rejected') {
@@ -1297,12 +1262,11 @@ export default function ApplicantDetails() {
                 setShowInfoModal(true);
                 return false;
             } else if (status === 'interview completed') {
-                setModalMessage("This candidate has already completed their interview.");
+                setModalMessage("This candidate has already completed their interview. You might want to update their status differently.");
                 setShowInfoModal(true);
                 return false;
             }
         }
-
         return true;
     };
 
@@ -1310,7 +1274,6 @@ export default function ApplicantDetails() {
         if (!checkApplicationStatus('accept')) {
             return;
         }
-
         setConfirmAction('accept');
         setModalMessage("Are you sure you want to invite this candidate for an interview? The interview link will expire in 3 days.");
         setShowConfirmModal(true);
@@ -1330,76 +1293,60 @@ export default function ApplicantDetails() {
         setProcessingAction(true);
 
         try {
-            // console.log(applicant)
+            const applicantEmail = applicant?.extractedText?.entities?.applicant_mail || 
+                                   applicant?.extractedText?.applicant_mail || 
+                                   detail?.detailed_profile?.extractedText?.entities?.applicant_mail || 
+                                   null;
+
             if (confirmAction === 'accept') {
-                const payload = { // Construct payload separately for logging
-                applicationId: applicant.applicationId,
-                candidateId: applicant.candidateId,
-                jobId: job_id, // Make sure job_id is a valid string
-                email: applicant.extractedText?.entities?.applicant_mail || applicant.extractedText?.applicant_mail || null // Send null if no email
-            };
-            // console.log("Sending to /generate-link:", JSON.stringify(payload)); // Log the payload
+                const payload = { 
+                    applicationId: applicant.applicationId,
+                    candidateId: applicant.candidateId,
+                    jobId: job_id, 
+                    email: applicantEmail
+                };
+            
+                const response = await fetch('http://localhost:8000/api/interviews/generate-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
-            const response = await fetch('http://localhost:8000/api/interviews/generate-link', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text(); // Get raw error text
-                try {
-                    const errorJson = JSON.parse(errorText); // Try to parse as JSON
-                    console.error('Failed to generate interview link. Status:', response.status, 'Error:', errorJson);
-                    throw new Error(`Failed to generate interview link: ${errorJson.detail ? JSON.stringify(errorJson.detail) : errorText}`);
-                } catch (e) {
-                    console.error('Failed to generate interview link. Status:', response.status, 'Raw Error:', errorText);
-                    throw new Error(`Failed to generate interview link: ${errorText}`);
+                if (!response.ok) {
+                    const errorText = await response.text(); 
+                    try {
+                        const errorJson = JSON.parse(errorText); 
+                        throw new Error(`Failed to generate interview link: ${errorJson.detail ? JSON.stringify(errorJson.detail) : errorText}`);
+                    } catch (e) {
+                        throw new Error(`Failed to generate interview link: ${errorText}`);
+                    }
                 }
-            }
 
-                // const data = await response.json(); // data not used
                 setModalMessage(`Interview invitation has been sent to the candidate. The link will expire in 7 days.`);
                 setShowSuccessModal(true);
-
-                setApplicant(prevApplicant => ({
-                    ...prevApplicant,
-                    status: 'interview scheduled'
-                }));
-
-
-                setTimeout(() => {
-                    setShowSuccessModal(false);
-                    setShowQuestionReminderModal(true);
-                }, 1500);
+                setApplicant(prevApplicant => ({ ...prevApplicant, status: 'interview scheduled' }));
+                setTimeout(() => { setShowSuccessModal(false); setShowQuestionReminderModal(true); }, 1500);
 
             } else if (confirmAction === 'reject') {
                 const response = await fetch(`http://localhost:8000/api/interviews/reject`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         applicationId: applicant.applicationId,
                         candidateId: applicant.candidateId,
                         jobId: job_id,
-                        email: applicant.extractedText?.entities?.applicant_mail || applicant.extractedText?.applicant_mail || ''
+                        email: applicantEmail
                     })
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to reject candidate');
+                    const errorText = await response.text();
+                    throw new Error(`Failed to reject candidate: ${errorText}`);
                 }
 
                 setModalMessage('Rejection email has been sent to the candidate.');
                 setShowSuccessModal(true);
-
-                setApplicant(prevApplicant => ({
-                    ...prevApplicant,
-                    status: 'rejected'
-                }));
+                setApplicant(prevApplicant => ({ ...prevApplicant, status: 'rejected' }));
             }
         } catch (error) {
             console.error("Error processing candidate action:", error);
@@ -1410,78 +1357,31 @@ export default function ApplicantDetails() {
         }
     };
 
-    // Export function
     const exportGraphDataToCSV = () => {
         if (!applicant || !applicant.rank_score || !job) {
             setModalMessage("No candidate data available for export.");
             setShowErrorModal(true);
             return;
         }
-
-        // Define the weights for calculations
         const weights = {
-            "skills": {
-                "relevance": 0.50,
-                "proficiency": 0.35,
-                "additionalSkill": 0.15
-            },
-            "experience": {
-                "jobExp": 0.50,
-                "projectCocurricularExp": 0.30,
-                "certification": 0.20
-            },
-            "education": {
-                "studyLevel": 0.40,
-                "awards": 0.30,
-                "courseworkResearch": 0.30
-            }
+            "skills": { "relevance": 0.50, "proficiency": 0.35, "additionalSkill": 0.15 },
+            "experience": { "jobExp": 0.50, "projectCocurricularExp": 0.30, "certification": 0.20 },
+            "education": { "studyLevel": 0.40, "awards": 0.30, "courseworkResearch": 0.30 }
         };
-
-        // Get the selected criteria from job prompt
         const selectedCriteria = [];
         if (job.prompt.includes("Skills")) selectedCriteria.push("skills");
         if (job.prompt.includes("Experience")) selectedCriteria.push("experience");
         if (job.prompt.includes("Education")) selectedCriteria.push("education");
-
-        // Map internal keys to display names
         const criteriaDisplayNames = {
-            "skills": {
-                "relevance": "Relevance to Job",
-                "proficiency": "Proficiency Level",
-                "additionalSkill": "Additional Skills"
-            },
-            "experience": {
-                "jobExp": "Job Experience",
-                "projectCocurricularExp": "Projects & Co-curricular",
-                "certification": "Certifications"
-            },
-            "education": {
-                "studyLevel": "Level of Study",
-                "awards": "Awards & Achievements",
-                "courseworkResearch": "Relevant Coursework"
-            }
+            "skills": { "relevance": "Relevance to Job", "proficiency": "Proficiency Level", "additionalSkill": "Additional Skills" },
+            "experience": { "jobExp": "Job Experience", "projectCocurricularExp": "Projects & Co-curricular", "certification": "Certifications" },
+            "education": { "studyLevel": "Level of Study", "awards": "Awards & Achievements", "courseworkResearch": "Relevant Coursework" }
         };
-
-        // Get scores for all criteria
         const scores = {
-            "skills": {
-                "relevance": applicant.rank_score.relevance || 0,
-                "proficiency": applicant.rank_score.proficiency || 0,
-                "additionalSkill": applicant.rank_score.additionalSkill || 0
-            },
-            "experience": {
-                "jobExp": applicant.rank_score.jobExp || 0,
-                "projectCocurricularExp": applicant.rank_score.projectCocurricularExp || 0,
-                "certification": applicant.rank_score.certification || 0
-            },
-            "education": {
-                "studyLevel": applicant.rank_score.studyLevel || 0,
-                "awards": applicant.rank_score.awards || 0,
-                "courseworkResearch": applicant.rank_score.courseworkResearch || 0
-            }
+            "skills": { "relevance": applicant.rank_score.relevance || 0, "proficiency": applicant.rank_score.proficiency || 0, "additionalSkill": applicant.rank_score.additionalSkill || 0 },
+            "experience": { "jobExp": applicant.rank_score.jobExp || 0, "projectCocurricularExp": applicant.rank_score.projectCocurricularExp || 0, "certification": applicant.rank_score.certification || 0 },
+            "education": { "studyLevel": applicant.rank_score.studyLevel || 0, "awards": applicant.rank_score.awards || 0, "courseworkResearch": applicant.rank_score.courseworkResearch || 0 }
         };
-
-        // Calculate weighted scores
         const weightedScores = {};
         Object.keys(scores).forEach(mainCriteria => {
             weightedScores[mainCriteria] = {};
@@ -1489,70 +1389,43 @@ export default function ApplicantDetails() {
                 weightedScores[mainCriteria][subCriteria] = scores[mainCriteria][subCriteria] * weights[mainCriteria][subCriteria];
             });
         });
-
-        // Prepare CSV content
         let csvContent = "data:text/csv;charset=utf-8,";
-
-        // For each selected criteria, create pairwise and all-three comparisons
         selectedCriteria.forEach(criteria => {
             const subCriteria = Object.keys(scores[criteria]);
             const displayNames = criteriaDisplayNames[criteria];
-
-            // Add section header
             csvContent += `\n${criteria.toUpperCase()} CRITERIA ANALYSIS\n\n`;
-
-            // Generate pairwise comparison data
             for (let i = 0; i < subCriteria.length; i++) {
                 for (let j = i + 1; j < subCriteria.length; j++) {
                     const crit1 = subCriteria[i];
                     const crit2 = subCriteria[j];
-
-                    // Add pairwise header
                     csvContent += `${displayNames[crit1]} vs ${displayNames[crit2]}\n`;
                     csvContent += "Criteria,Raw Score,Weighted Score,Weight\n";
-
-                    // Add data for first criteria
                     csvContent += `${displayNames[crit1]},${scores[criteria][crit1]},${weightedScores[criteria][crit1]},${weights[criteria][crit1]}\n`;
-
-                    // Add data for second criteria
                     csvContent += `${displayNames[crit2]},${scores[criteria][crit2]},${weightedScores[criteria][crit2]},${weights[criteria][crit2]}\n\n`;
                 }
             }
-
-            // Generate all three subcriteria comparison
             csvContent += `All ${criteria} Subcriteria Comparison\n`;
             csvContent += "Criteria,Raw Score,Weighted Score,Weight\n";
-
             subCriteria.forEach(sub => {
                 csvContent += `${displayNames[sub]},${scores[criteria][sub]},${weightedScores[criteria][sub]},${weights[criteria][sub]}\n`;
             });
             csvContent += "\n";
         });
-
-        // Add overall summary for selected criteria
         csvContent += "OVERALL SUMMARY\n";
         csvContent += "Criteria,Category,Raw Score,Weighted Score,Weight\n";
-
         selectedCriteria.forEach(criteria => {
             const subCriteria = Object.keys(scores[criteria]);
             const displayNames = criteriaDisplayNames[criteria];
-
             subCriteria.forEach(sub => {
                 csvContent += `${criteria},${displayNames[sub]},${scores[criteria][sub]},${weightedScores[criteria][sub]},${weights[criteria][sub]}\n`;
             });
         });
-
-        // Create download link
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `${applicant.candidateId || "candidate"}_graph_data.csv`);
+        link.setAttribute("download", `${applicant?.candidateId || "candidate"}_graph_data.csv`);
         document.body.appendChild(link);
-
-        // Trigger download
         link.click();
-
-        // Clean up
         document.body.removeChild(link);
     };
 
@@ -1560,534 +1433,206 @@ export default function ApplicantDetails() {
         setShowExportModal(false);
         setModalMessage("Generating PDF report...");
         setShowInfoModal(true);
-
         Chart.register(ChartDataLabels);
-
         try {
-            // Create PDF with better compression
-            const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'pt',
-                format: 'a4',
-                compress: true
-            });
-
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4', compress: true });
             pdf.setFont("helvetica");
-
-            // Define signature colors using the correct brand color
             const signatureColors = {
-                primary: '#F9645F',
-                skills: '#8250c8',         // Keep existing purple color for skills
-                experience: '#dd20c1',     // Keep existing pink color for experience
-                education: '#0066cc',      // Keep existing blue color for education
-                gradient: {
-                    start: '#F9645F',
-                    mid: '#ff8783',
-                    end: '#ffa799'
-                }
+                primary: '#F9645F', skills: '#8250c8', experience: '#dd20c1', education: '#0066cc',
+                gradient: { start: '#F9645F', mid: '#ff8783', end: '#ffa799' }
             };
-
-            // First page with gradient-like styling
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
-
-            // Add decorative header bar
             pdf.setFillColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
             pdf.rect(0, 0, pageWidth, 12, 'F');
-
-            // Add decorative footer bar
-            pdf.setFillColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
             pdf.rect(0, pageHeight - 12, pageWidth, 12, 'F');
-
-            // Add title with better layout - centered in page
             const contentStartY = pageHeight * 0.3;
-
-            pdf.setFontSize(32); // Larger title
+            pdf.setFontSize(32);
             pdf.setTextColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
             pdf.text(`Resume Assessment Report`, pageWidth / 2, contentStartY, { align: 'center' });
-
-            pdf.setFontSize(20); // Larger subtitle text
+            pdf.setFontSize(20);
             pdf.setTextColor(60, 60, 60);
-            pdf.text(`Candidate: ${applicant.candidateId || "Unspecified"}`, pageWidth / 2, contentStartY + 70, { align: 'center' });
+            pdf.text(`Candidate: ${applicant?.candidateId || "Unspecified"}`, pageWidth / 2, contentStartY + 70, { align: 'center' });
             pdf.text(`Position: ${job?.jobTitle || "Unknown Position"}`, pageWidth / 2, contentStartY + 110, { align: 'center' });
             pdf.text(`Date: ${new Date().toLocaleDateString()}`, pageWidth / 2, contentStartY + 150, { align: 'center' });
-
-            // Add overall score prominently
-            if (applicant.rank_score?.final_score) {
+            if (applicant?.rank_score?.final_score) {
                 pdf.setFillColor(245, 245, 245);
                 pdf.roundedRect(pageWidth / 2 - 85, contentStartY + 190, 170, 80, 8, 8, 'F');
-
                 pdf.setFontSize(18);
                 pdf.setTextColor(80, 80, 80);
                 pdf.text("Overall Score", pageWidth / 2, contentStartY + 220, { align: 'center' });
-
                 pdf.setFontSize(28);
                 pdf.setTextColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
                 pdf.text(`${applicant.rank_score.final_score.toFixed(1)}/100`, pageWidth / 2, contentStartY + 255, { align: 'center' });
             }
-
-            // Use preloaded logo
             if (preloadedLogo) {
                 try {
-                    const logoWidth = 120;
-                    const logoHeight = (preloadedLogo.height * logoWidth) / preloadedLogo.width; // Maintain aspect ratio
+                    const logoWidth = 120; const logoHeight = (preloadedLogo.height * logoWidth) / preloadedLogo.width;
                     pdf.addImage(preloadedLogo, 'PNG', (pageWidth - logoWidth) / 2, pageHeight - 100, logoWidth, logoHeight);
                 } catch (imgErr) {
                     console.warn("Error adding preloaded logo:", imgErr);
-                    // Fallback text
-                    pdf.setFontSize(16);
-                    pdf.setTextColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
+                    pdf.setFontSize(16); pdf.setTextColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
                     pdf.text('EqualLens', pageWidth / 2, pageHeight - 50, { align: 'center' });
                 }
             } else {
-                // Fallback text if preloading failed
-                pdf.setFontSize(16);
-                pdf.setTextColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
+                pdf.setFontSize(16); pdf.setTextColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
                 pdf.text('EqualLens', pageWidth / 2, pageHeight - 50, { align: 'center' });
             }
-
-            // Define reusable header and footer
             const addHeaderAndFooter = (pageNum) => {
                 if (pageNum <= 1) return;
-
-                // Header bar
                 pdf.setFillColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
                 pdf.rect(0, 0, pageWidth, 6, 'F');
-
-                // Use preloaded cropped logo
                 if (preloadedCroppedLogo) {
                     try {
-                        // Adjust width/height as needed, maintaining aspect ratio
-                        const logoWidth = 60;
-                        const logoHeight = (preloadedCroppedLogo.height * logoWidth) / preloadedCroppedLogo.width;
-                        pdf.addImage(
-                            preloadedCroppedLogo,
-                            'PNG',
-                            40, // x position
-                            15, // y position
-                            logoWidth,
-                            logoHeight
-                        );
+                        const logoWidth = 60; const logoHeight = (preloadedCroppedLogo.height * logoWidth) / preloadedCroppedLogo.width;
+                        pdf.addImage(preloadedCroppedLogo, 'PNG', 40, 15, logoWidth, logoHeight);
                     } catch (imgErr) {
                         console.warn("Error adding preloaded cropped logo:", imgErr);
-                        // Fallback text
-                        pdf.setFontSize(14);
-                        pdf.setTextColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
+                        pdf.setFontSize(14); pdf.setTextColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
                         pdf.text("EqualLens Assessment", 60, 40);
                     }
                 } else {
-                    // Fallback text if preloading failed
-                    pdf.setFontSize(14);
-                    pdf.setTextColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
+                    pdf.setFontSize(14); pdf.setTextColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
                     pdf.text("EqualLens Assessment", 60, 40);
                 }
-
-                // Footer with page number
                 pdf.setFillColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
                 pdf.rect(0, pageHeight - 6, pageWidth, 6, 'F');
-
-                pdf.setFontSize(12);
-                pdf.setTextColor(80, 80, 80);
+                pdf.setFontSize(12); pdf.setTextColor(80, 80, 80);
                 pdf.text(`Page ${pageNum}`, pageWidth - 40, pageHeight - 20, { align: 'right' });
             };
-
-            // Add radar chart on a new page
-            pdf.addPage();
-            addHeaderAndFooter(2);
-
-            // Add attractive section title
-            pdf.setFillColor(248, 249, 250);
-            pdf.rect(0, 50, pageWidth, 50, 'F');
-
+            pdf.addPage(); addHeaderAndFooter(2);
+            pdf.setFillColor(248, 249, 250); pdf.rect(0, 50, pageWidth, 50, 'F');
             pdf.setTextColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
-            pdf.setFontSize(22);
-            pdf.text("Overall Profile Assessment", pageWidth / 2, 80, { align: 'center' });
-
-            // Get radar chart with optimized quality
+            pdf.setFontSize(22); pdf.text("Overall Profile Assessment", pageWidth / 2, 80, { align: 'center' });
             const radarElement = document.querySelector('.radar-chart-container');
             if (radarElement) {
                 const radarCanvas = await html2canvas(radarElement, {
-                    scale: 2, // OPTIMIZATION: Reduced scale from 3 to 2
-                    backgroundColor: '#ffffff',
-                    // Adjust height/width/x/y carefully if needed based on visual output
-                    height: radarElement.offsetHeight + 60, // May need adjustment after changing scale
-                    width: radarElement.offsetWidth + 60,  // May need adjustment
-                    x: -30, // May need adjustment
-                    y: -30, // May need adjustment
-                    useCORS: true,
-                    allowTaint: true,
-                    logging: false
+                    scale: 2, backgroundColor: '#ffffff', height: radarElement.offsetHeight + 60,
+                    width: radarElement.offsetWidth + 60, x: -30, y: -30, useCORS: true, allowTaint: true, logging: false
                 });
-
-                // Use JPEG for potentially faster encoding and smaller size
-                const radarImgData = radarCanvas.toDataURL('image/jpeg', 0.9); // OPTIMIZATION: Use JPEG
+                const radarImgData = radarCanvas.toDataURL('image/jpeg', 0.9);
                 const imgProps = pdf.getImageProperties(radarImgData);
-                const pdfWidth = pageWidth * 0.85;
-                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-                const x = (pageWidth - pdfWidth) / 2;
-                const y = 120;
-                pdf.addImage(radarImgData, 'JPEG', x, y, pdfWidth, pdfHeight); // Use 'JPEG'
-
-                pdf.setFontSize(14);
-                pdf.setTextColor(80, 80, 80);
-                pdf.text(
-                    "This radar chart visualizes the candidate's scores across all assessed criteria. " +
-                    "Higher values indicate stronger qualifications in that area.",
-                    pageWidth / 2,
-                    y + pdfHeight + 40,
-                    { align: 'center', maxWidth: pageWidth * 0.8 }
-                );
+                const pdfWidth = pageWidth * 0.85; const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                const x = (pageWidth - pdfWidth) / 2; const y = 120;
+                pdf.addImage(radarImgData, 'JPEG', x, y, pdfWidth, pdfHeight);
+                pdf.setFontSize(14); pdf.setTextColor(80, 80, 80);
+                pdf.text("This radar chart visualizes the candidate's scores across all assessed criteria. Higher values indicate stronger qualifications in that area.",
+                    pageWidth / 2, y + pdfHeight + 40, { align: 'center', maxWidth: pageWidth * 0.8 });
             }
-
-            // Set up data for charts
-            const selectedCriteria = [];
-            if (job.prompt.includes("Skills")) selectedCriteria.push("skills");
-            if (job.prompt.includes("Experience")) selectedCriteria.push("experience");
-            if (job.prompt.includes("Education")) selectedCriteria.push("education");
-
-            const weights = {
+            const selectedCriteriaPDF = [];
+            if (job?.prompt?.includes("Skills")) selectedCriteriaPDF.push("skills");
+            if (job?.prompt?.includes("Experience")) selectedCriteriaPDF.push("experience");
+            if (job?.prompt?.includes("Education")) selectedCriteriaPDF.push("education");
+            const weightsPDF = {
                 "skills": { "relevance": 0.50, "proficiency": 0.35, "additionalSkill": 0.15 },
                 "experience": { "jobExp": 0.50, "projectCocurricularExp": 0.30, "certification": 0.20 },
                 "education": { "studyLevel": 0.40, "awards": 0.30, "courseworkResearch": 0.30 }
             };
-
-            const criteriaDisplayNames = {
-                "skills": {
-                    "relevance": "Relevance to Job",
-                    "proficiency": "Proficiency Level",
-                    "additionalSkill": "Additional Skills"
-                },
-                "experience": {
-                    "jobExp": "Job Experience",
-                    "projectCocurricularExp": "Projects & Co-curricular",
-                    "certification": "Certifications"
-                },
-                "education": {
-                    "studyLevel": "Level of Study",
-                    "awards": "Awards & Achievements",
-                    "courseworkResearch": "Relevant Coursework"
-                }
+            const criteriaDisplayNamesPDF = {
+                "skills": { "relevance": "Relevance to Job", "proficiency": "Proficiency Level", "additionalSkill": "Additional Skills" },
+                "experience": { "jobExp": "Job Experience", "projectCocurricularExp": "Projects & Co-curricular", "certification": "Certifications" },
+                "education": { "studyLevel": "Level of Study", "awards": "Awards & Achievements", "courseworkResearch": "Relevant Coursework" }
             };
-
-            const scores = {
-                "skills": {
-                    "relevance": applicant.rank_score.relevance || 0,
-                    "proficiency": applicant.rank_score.proficiency || 0,
-                    "additionalSkill": applicant.rank_score.additionalSkill || 0
-                },
-                "experience": {
-                    "jobExp": applicant.rank_score.jobExp || 0,
-                    "projectCocurricularExp": applicant.rank_score.projectCocurricularExp || 0,
-                    "certification": applicant.rank_score.certification || 0
-                },
-                "education": {
-                    "studyLevel": applicant.rank_score.studyLevel || 0,
-                    "awards": applicant.rank_score.awards || 0,
-                    "courseworkResearch": applicant.rank_score.courseworkResearch || 0
-                }
+            const scoresPDF = {
+                "skills": { "relevance": applicant?.rank_score?.relevance || 0, "proficiency": applicant?.rank_score?.proficiency || 0, "additionalSkill": applicant?.rank_score?.additionalSkill || 0 },
+                "experience": { "jobExp": applicant?.rank_score?.jobExp || 0, "projectCocurricularExp": applicant?.rank_score?.projectCocurricularExp || 0, "certification": applicant?.rank_score?.certification || 0 },
+                "education": { "studyLevel": applicant?.rank_score?.studyLevel || 0, "awards": applicant?.rank_score?.awards || 0, "courseworkResearch": applicant?.rank_score?.courseworkResearch || 0 }
             };
-
-            // Helper function to add a unified reasoning container for all subcriteria
             const addUnifiedReasoningContainer = (criteria, x, y, width) => {
-                const subCriteria = Object.keys(scores[criteria]);
-                const displayNames = criteriaDisplayNames[criteria];
+                const subCriteria = Object.keys(scoresPDF[criteria]);
+                const displayNames = criteriaDisplayNamesPDF[criteria];
                 const themeColor = signatureColors[criteria];
-
-                // Set up styling
-                const fontSize = 11;
-                const lineHeight = 14;
-                const headerSize = 13;
-                const contentStartY = y + 40; // Space for header
-
-                // Add combined reasoning title
-                pdf.setFontSize(headerSize);
-                pdf.setTextColor(hexToRgb(themeColor).r, hexToRgb(themeColor).g, hexToRgb(themeColor).b);
+                const fontSize = 11; const lineHeight = 14; const headerSize = 13; const contentStartY = y + 40;
+                pdf.setFontSize(headerSize); pdf.setTextColor(hexToRgb(themeColor).r, hexToRgb(themeColor).g, hexToRgb(themeColor).b);
                 pdf.text("Assessment Reasoning", x + width / 2, y + 20, { align: 'center' });
-
-                // Calculate height based on content
-                let totalHeight = 70; // Starting padding + title
-
+                let totalHeight = 70;
                 const reasoningTexts = [];
                 subCriteria.forEach(sub => {
-                    const text = applicant.reasoning?.[sub] || `No reasoning provided for ${displayNames[sub]}`;
+                    const text = applicant?.reasoning?.[sub] || `No reasoning provided for ${displayNames[sub]}`;
                     const splitText = pdf.splitTextToSize(text, width - 50);
-                    reasoningTexts.push({
-                        title: displayNames[sub],
-                        text: splitText,
-                        lines: splitText.length
-                    });
-                    totalHeight += 30 + (splitText.length * lineHeight); // 30 for subheading + lines
+                    reasoningTexts.push({ title: displayNames[sub], text: splitText, lines: splitText.length });
+                    totalHeight += 30 + (splitText.length * lineHeight);
                 });
-
-                // Draw outer container (shadow)
-                pdf.setFillColor(240, 240, 240);
-                pdf.roundedRect(x + 3, y + 3, width, totalHeight, 8, 8, 'F');
-
-                // Draw main container
-                pdf.setFillColor(250, 250, 250);
-                pdf.roundedRect(x, y, width, totalHeight, 8, 8, 'F');
-
-                // Draw border
+                pdf.setFillColor(240, 240, 240); pdf.roundedRect(x + 3, y + 3, width, totalHeight, 8, 8, 'F');
+                pdf.setFillColor(250, 250, 250); pdf.roundedRect(x, y, width, totalHeight, 8, 8, 'F');
                 pdf.setDrawColor(hexToRgb(themeColor).r, hexToRgb(themeColor).g, hexToRgb(themeColor).b, 0.5);
-                pdf.setLineWidth(0.75);
-                pdf.roundedRect(x, y, width, totalHeight, 8, 8, 'S');
-
-                // Add content for each subcriteria
+                pdf.setLineWidth(0.75); pdf.roundedRect(x, y, width, totalHeight, 8, 8, 'S');
                 let currentY = contentStartY;
-
                 reasoningTexts.forEach((item, index) => {
-                    // Add subheading
-                    pdf.setFontSize(fontSize + 1);
-                    pdf.setTextColor(hexToRgb(themeColor).r, hexToRgb(themeColor).g, hexToRgb(themeColor).b);
-                    pdf.text(`${item.title}: ${scores[criteria][subCriteria[index]].toFixed(1)}/10`, x + 25, currentY);
-                    currentY += 20;
-
-                    // Add reasoning text
-                    pdf.setFontSize(fontSize);
-                    pdf.setTextColor(60, 60, 60);
-                    pdf.text(item.text, x + 25, currentY);
-                    currentY += item.lines * lineHeight + 20; // Add spacing after each section
+                    pdf.setFontSize(fontSize + 1); pdf.setTextColor(hexToRgb(themeColor).r, hexToRgb(themeColor).g, hexToRgb(themeColor).b);
+                    pdf.text(`${item.title}: ${scoresPDF[criteria][subCriteria[index]].toFixed(1)}/10`, x + 25, currentY); currentY += 20;
+                    pdf.setFontSize(fontSize); pdf.setTextColor(60, 60, 60);
+                    pdf.text(item.text, x + 25, currentY); currentY += item.lines * lineHeight + 20;
                 });
-
                 return totalHeight;
             };
-
-            // Create pages for each criterion with compact charts and combined reasoning
-            for (let criteriaIndex = 0; criteriaIndex < selectedCriteria.length; criteriaIndex++) {
-                const criteria = selectedCriteria[criteriaIndex];
-
-                pdf.addPage();
-                addHeaderAndFooter(criteriaIndex + 3);
-
-                // Add section header with background
-                pdf.setFillColor(248, 249, 250);
-                pdf.rect(0, 50, pageWidth, 50, 'F');
-
+            for (let criteriaIndex = 0; criteriaIndex < selectedCriteriaPDF.length; criteriaIndex++) {
+                const criteria = selectedCriteriaPDF[criteriaIndex];
+                pdf.addPage(); addHeaderAndFooter(criteriaIndex + 3);
+                pdf.setFillColor(248, 249, 250); pdf.rect(0, 50, pageWidth, 50, 'F');
                 pdf.setTextColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
-                pdf.setFontSize(22);
-                pdf.text(
-                    `${criteria.charAt(0).toUpperCase() + criteria.slice(1)} Assessment`,
-                    pageWidth / 2,
-                    80,
-                    { align: 'center' }
-                );
-
-                // Get subcriteria and create pairwise comparison charts
-                const subCriteria = Object.keys(scores[criteria]);
-                const displayNames = criteriaDisplayNames[criteria];
-                const chartColor = signatureColors[criteria]; // Use specific color for this criteria
-
-                // Generate pairs for comparison
+                pdf.setFontSize(22); pdf.text(`${criteria.charAt(0).toUpperCase() + criteria.slice(1)} Assessment`, pageWidth / 2, 80, { align: 'center' });
+                const subCriteria = Object.keys(scoresPDF[criteria]);
+                const displayNames = criteriaDisplayNamesPDF[criteria];
+                const chartColor = signatureColors[criteria];
                 const pairs = [];
                 for (let i = 0; i < subCriteria.length; i++) {
-                    for (let j = i + 1; j < subCriteria.length; j++) {
-                        pairs.push([subCriteria[i], subCriteria[j]]);
-                    }
+                    for (let j = i + 1; j < subCriteria.length; j++) { pairs.push([subCriteria[i], subCriteria[j]]); }
                 }
-
-                // Chart dimensions - keep the same size, just closer together
-                const chartWidth = pageWidth * 0.85;
-                const chartHeight = 180; // Maintain original chart height
-                const chartGap = 35; // Reduced spacing between charts (from original 70)
-
-                // Create canvases for charts
+                const chartWidth = pageWidth * 0.85; const chartHeight = 180; const chartGap = 35;
                 const canvases = [];
                 for (let i = 0; i < pairs.length; i++) {
-                    const canvas = document.createElement('canvas');
-                    canvas.id = `chart-${criteria}-${i}`;
-                    canvas.width = 800;
-                    canvas.height = 400;
-                    canvas.style.display = 'none';
-                    document.body.appendChild(canvas);
-                    canvases.push(canvas);
-
-                    const [crit1, crit2] = pairs[i];
-                    const ctx = canvas.getContext('2d');
-
+                    const canvas = document.createElement('canvas'); canvas.id = `chart-${criteria}-${i}`;
+                    canvas.width = 800; canvas.height = 400; canvas.style.display = 'none'; document.body.appendChild(canvas); canvases.push(canvas);
+                    const [crit1, crit2] = pairs[i]; const ctx = canvas.getContext('2d');
                     new Chart(ctx, {
                         type: 'bar',
                         data: {
                             labels: [displayNames[crit1], displayNames[crit2]],
                             datasets: [
-                                {
-                                    label: 'Raw Score',
-                                    data: [
-                                        scores[criteria][crit1],
-                                        scores[criteria][crit2]
-                                    ],
-                                    backgroundColor: hexToRgba(chartColor, 0.6),
-                                    borderColor: chartColor,
-                                    borderWidth: 1,
-                                    borderRadius: 8,
-                                    barPercentage: 0.5,
-                                    categoryPercentage: 0.7
-                                },
-                                {
-                                    label: 'Weighted Score',
-                                    data: [
-                                        scores[criteria][crit1] * weights[criteria][crit1],
-                                        scores[criteria][crit2] * weights[criteria][crit2]
-                                    ],
-                                    backgroundColor: hexToRgba(chartColor, 0.3),
-                                    borderColor: chartColor,
-                                    borderWidth: 1,
-                                    borderRadius: 8,
-                                    barPercentage: 0.5,
-                                    categoryPercentage: 0.7
-                                }
+                                { label: 'Raw Score', data: [scoresPDF[criteria][crit1], scoresPDF[criteria][crit2]], backgroundColor: hexToRgba(chartColor, 0.6), borderColor: chartColor, borderWidth: 1, borderRadius: 8, barPercentage: 0.5, categoryPercentage: 0.7 },
+                                { label: 'Weighted Score', data: [scoresPDF[criteria][crit1] * weightsPDF[criteria][crit1], scoresPDF[criteria][crit2] * weightsPDF[criteria][crit2]], backgroundColor: hexToRgba(chartColor, 0.3), borderColor: chartColor, borderWidth: 1, borderRadius: 8, barPercentage: 0.5, categoryPercentage: 0.7 }
                             ]
                         },
                         options: {
                             indexAxis: 'y',
                             plugins: {
-                                title: {
-                                    display: true,
-                                    text: `${displayNames[crit1]} vs ${displayNames[crit2]}`,
-                                    font: { size: 32, family: "'Helvetica', 'Arial', sans-serif" },
-                                    color: '#333333',
-                                    padding: {
-                                        top: 10,
-                                        bottom: 20
-                                    }
-                                },
-                                legend: {
-                                    position: 'top',
-                                    labels: {
-                                        font: { size: 24, family: "'Helvetica', 'Arial', sans-serif" },
-                                        boxWidth: 18,
-                                        padding: 20
-                                    }
-                                },
-                                tooltip: {
-                                    callbacks: {
-                                        footer: (tooltipItems) => {
-                                            const item = tooltipItems[0];
-                                            const subcritName = item.label === displayNames[crit1] ? crit1 : crit2;
-                                            return `Weight: ${weights[criteria][subcritName]}`;
-                                        }
-                                    },
-                                    titleFont: { size: 24 },
-                                    bodyFont: { size: 20, family: "'Helvetica', 'Arial', sans-serif" }
-                                },
-                                datalabels: {
-                                    color: '#333',
-                                    anchor: 'end',
-                                    align: 'end',
-                                    offset: 4,
-                                    font: {
-                                        size: 20,
-                                        weight: 'bold',
-                                        family: "'Helvetica', 'Arial', sans-serif"
-                                    },
-                                    formatter: (value) => {
-                                        return value.toFixed(1);
-                                    },
-                                    display: function (context) {
-                                        return context.dataset.data[context.dataIndex] > 0;
-                                    }
-                                }
+                                title: { display: true, text: `${displayNames[crit1]} vs ${displayNames[crit2]}`, font: { size: 32, family: "'Helvetica', 'Arial', sans-serif" }, color: '#333333', padding: { top: 10, bottom: 20 } },
+                                legend: { position: 'top', labels: { font: { size: 24, family: "'Helvetica', 'Arial', sans-serif" }, boxWidth: 18, padding: 20 } },
+                                tooltip: { callbacks: { footer: (tooltipItems) => { const item = tooltipItems[0]; const subcritName = item.label === displayNames[crit1] ? crit1 : crit2; return `Weight: ${weightsPDF[criteria][subcritName]}`; } }, titleFont: { size: 24 }, bodyFont: { size: 20, family: "'Helvetica', 'Arial', sans-serif" } },
+                                datalabels: { color: '#333', anchor: 'end', align: 'end', offset: 4, font: { size: 20, weight: 'bold', family: "'Helvetica', 'Arial', sans-serif" }, formatter: (value) => value.toFixed(1), display: function (context) { return context.dataset.data[context.dataIndex] > 0; } }
                             },
                             scales: {
-                                x: {
-                                    beginAtZero: true,
-                                    max: 10,
-                                    title: {
-                                        display: true,
-                                        text: 'Score',
-                                        font: { size: 24, family: "'Helvetica', 'Arial', sans-serif" }
-                                    },
-                                    ticks: {
-                                        font: { size: 24, family: "'Helvetica', 'Arial', sans-serif" }
-                                    }
-                                },
-                                y: {
-                                    ticks: {
-                                        font: { size: 24, family: "'Helvetica', 'Arial', sans-serif" },
-                                        color: '#333333'
-                                    }
-                                }
+                                x: { beginAtZero: true, max: 10, title: { display: true, text: 'Score', font: { size: 24, family: "'Helvetica', 'Arial', sans-serif" } }, ticks: { font: { size: 24, family: "'Helvetica', 'Arial', sans-serif" } } },
+                                y: { ticks: { font: { size: 24, family: "'Helvetica', 'Arial', sans-serif" }, color: '#333333' } }
                             },
-                            maintainAspectRatio: true,
-                            responsive: true,
-                            devicePixelRatio: 2
+                            maintainAspectRatio: true, responsive: true, devicePixelRatio: 2
                         }
                     });
                 }
-
-                // Wait for charts to render
                 await new Promise(resolve => setTimeout(resolve, 800));
-
-                // Position charts with minimal spacing between them
-                const yPositions = [
-                    120,                                // First chart
-                    120 + chartHeight + chartGap,       // Second chart with minimal spacing
-                    120 + (chartHeight + chartGap) * 2  // Third chart with minimal spacing
-                ];
-
-                // Add each chart
+                const yPositions = [120, 120 + chartHeight + chartGap, 120 + (chartHeight + chartGap) * 2];
                 for (let i = 0; i < canvases.length; i++) {
                     const chartImg = canvases[i].toDataURL('image/png', 1.0);
-                    const x = (pageWidth - chartWidth) / 2;
-                    const y = yPositions[i];
-
-                    pdf.addImage(
-                        chartImg,
-                        'PNG',
-                        x,
-                        y,
-                        chartWidth,
-                        chartHeight
-                    );
+                    const x = (pageWidth - chartWidth) / 2; const y = yPositions[i];
+                    pdf.addImage(chartImg, 'PNG', x, y, chartWidth, chartHeight);
                 }
-
-                // Add single unified reasoning container after all charts
                 const lastChartBottom = yPositions[canvases.length - 1] + chartHeight + 50;
-
-                // If there's not enough space for reasoning on this page, add a new page
                 if (lastChartBottom > pageHeight - 150) {
-                    pdf.addPage();
-                    addHeaderAndFooter(criteriaIndex + selectedCriteria.length + 3);
-
-                    // Add section title on the new page
-                    pdf.setFillColor(248, 249, 250);
-                    pdf.rect(0, 50, pageWidth, 50, 'F');
-
+                    pdf.addPage(); addHeaderAndFooter(criteriaIndex + selectedCriteriaPDF.length + 3);
+                    pdf.setFillColor(248, 249, 250); pdf.rect(0, 50, pageWidth, 50, 'F');
                     pdf.setTextColor(hexToRgb(signatureColors.primary).r, hexToRgb(signatureColors.primary).g, hexToRgb(signatureColors.primary).b);
-                    pdf.setFontSize(22);
-                    pdf.text(
-                        `${criteria.charAt(0).toUpperCase() + criteria.slice(1)} Reasoning`,
-                        pageWidth / 2,
-                        80,
-                        { align: 'center' }
-                    );
-
-                    // Add reasoning container at the top of the new page
-                    addUnifiedReasoningContainer(
-                        criteria,
-                        (pageWidth - chartWidth) / 2,
-                        120,
-                        chartWidth
-                    );
+                    pdf.setFontSize(22); pdf.text(`${criteria.charAt(0).toUpperCase() + criteria.slice(1)} Reasoning`, pageWidth / 2, 80, { align: 'center' });
+                    addUnifiedReasoningContainer(criteria, (pageWidth - chartWidth) / 2, 120, chartWidth);
                 } else {
-                    // Add reasoning on the same page
-                    addUnifiedReasoningContainer(
-                        criteria,
-                        (pageWidth - chartWidth) / 2,
-                        lastChartBottom,
-                        chartWidth
-                    );
+                    addUnifiedReasoningContainer(criteria, (pageWidth - chartWidth) / 2, lastChartBottom, chartWidth);
                 }
-
-                // Clean up
                 canvases.forEach(canvas => document.body.removeChild(canvas));
             }
-
-            // Save the optimized PDF
-            pdf.save(`${applicant.candidateId || "candidate"}_assessment.pdf`);
+            pdf.save(`${applicant?.candidateId || "candidate"}_assessment.pdf`);
             setShowInfoModal(false);
             setModalMessage("PDF report generated successfully!");
             setShowSuccessModal(true);
-
         } catch (error) {
             console.error("Error generating PDF:", error);
             setShowInfoModal(false);
@@ -2096,17 +1641,11 @@ export default function ApplicantDetails() {
         }
     };
 
-    // Helper function to convert hex to RGB
     function hexToRgb(hex) {
         const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
-        } : { r: 0, g: 0, b: 0 };
+        return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : { r: 0, g: 0, b: 0 };
     }
 
-    // Helper function for rgba colors
     function hexToRgba(hex, alpha) {
         const { r, g, b } = hexToRgb(hex);
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
@@ -2240,13 +1779,10 @@ export default function ApplicantDetails() {
                         className="status-button primary-button"
                         onClick={() => {
                             setShowQuestionReminderModal(false);
-                            // Pass candidateId as a query parameter
                             if (job_id && applicant && applicant.candidateId) {
                                 navigate(`/add-interview-questions?jobId=${job_id}&candidateId=${applicant.candidateId}`);
                             } else {
-                                // Fallback or error handling if IDs are missing
                                 console.error("Missing job ID or candidate ID for navigation.");
-                                // Optionally navigate without candidateId or show an error
                                 navigate(`/add-interview-questions?jobId=${job_id || ''}`);
                             }
                         }}
@@ -2266,24 +1802,19 @@ export default function ApplicantDetails() {
                 className="status-modal-overlay"
                 role="dialog"
                 aria-modal="true"
-                onClick={() => setShowExportModal(false)} // Close when clicking outside
+                onClick={() => setShowExportModal(false)} 
             >
                 <div
                     className="status-modal"
                     style={{ maxWidth: "400px" }}
-                    onClick={e => e.stopPropagation()} // Prevent closing when clicking inside
+                    onClick={e => e.stopPropagation()} 
                 >
                     <div
                         className="status-icon"
                         aria-hidden="true"
                         style={{
-                            backgroundColor: "#FEE9E9",
-                            width: "80px",
-                            height: "80px",
-                            borderRadius: "50%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center"
+                            backgroundColor: "#FEE9E9", width: "80px", height: "80px",
+                            borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center"
                         }}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#F9645F" viewBox="0 0 16 16">
@@ -2297,24 +1828,14 @@ export default function ApplicantDetails() {
                         <button
                             className="status-button csv-button"
                             style={{ backgroundColor: '#38B2AC' }}
-                            onClick={() => {
-                                setShowExportModal(false);
-                                exportGraphDataToCSV();
-                            }}
+                            onClick={() => { setShowExportModal(false); exportGraphDataToCSV(); }}
                         >
                             CSV with Tables
                         </button>
-                        <button
-                            className="status-button pdf-button"
-                            style={{ backgroundColor: '#485EDB' }}
-                            onClick={exportToPDF}
-                        >
+                        <button className="status-button pdf-button" style={{ backgroundColor: '#485EDB' }} onClick={exportToPDF} >
                             PDF with Graphs
                         </button>
-                        <button
-                            className="status-button secondary-button"
-                            onClick={() => setShowExportModal(false)}
-                        >
+                        <button className="status-button secondary-button" onClick={() => setShowExportModal(false)} >
                             Cancel
                         </button>
                     </div>
@@ -2325,34 +1846,17 @@ export default function ApplicantDetails() {
 
     const getStatusBadge = () => {
         if (!applicant || !applicant.status) return null;
-
         const status = applicant.status.toLowerCase();
         let badgeClass = 'status-badge new';
-
-        if (status === 'interview scheduled') {
-            badgeClass = 'status-badge interview';
-        } else if (status === 'interview completed') {
-            badgeClass = 'status-badge completed';
-        } else if (status === 'rejected') {
-            badgeClass = 'status-badge rejected';
-        }
-
-        return (
-            <div className="applicant-status-badge">
-                <span className={badgeClass}>{applicant.status}</span>
-            </div>
-        );
+        if (status === 'interview scheduled') badgeClass = 'status-badge interview';
+        else if (status === 'interview completed') badgeClass = 'status-badge completed';
+        else if (status === 'rejected') badgeClass = 'status-badge rejected';
+        return (<div className="applicant-status-badge"><span className={badgeClass}>{applicant.status}</span></div>);
     };
 
-    if (isLoading || processingAction || isRegenerating) { // Added isRegenerating
+    if (isLoading || processingAction || isRegenerating) { 
         return (
-            <div className="detail-container" style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: '80vh',
-                backgroundColor: 'rgb(255, 255, 255)'
-            }}>
+            <div className="detail-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', backgroundColor: 'rgb(255, 255, 255)' }}>
                 <div className="loading-indicator" style={{ textAlign: 'center' }}>
                     <LoadingAnimation />
                     <p style={{ marginTop: '20px' }}>
@@ -2363,17 +1867,19 @@ export default function ApplicantDetails() {
         );
     }
 
-    if (error) {
+    if (!applicant || !detail) {
         return (
-            <div className="detail-container">
-                <div className="error-message">
-                    <h3>Error</h3>
-                    <p>{error}</p>
-                    <button onClick={() => window.location.reload()}>Retry</button>
-                </div>
+            <div className="detail-container" style={{ padding: '20px', textAlign: 'center' }}>
+                <h2>Profile Not Found</h2>
+                <p>{error || "The applicant's profile details could not be loaded. Please try again or go back."}</p>
+                <button className="back-button" style={{marginTop: '20px'}} onClick={handleBackToJob}>
+                    Go Back
+                </button>
+                {showErrorModal && <ErrorModal />} 
             </div>
         );
     }
+
 
     return (
         <div className="detail-container">
@@ -2383,48 +1889,28 @@ export default function ApplicantDetails() {
             {showConfirmModal && <ConfirmModal />}
             {showInfoModal && <InfoModal />}
             {showDetailedBreakdownModal && (
-                <DetailedBreakdownModal
-                    job={job}
-                    applicant={applicant}
-                    setShowDetailedBreakdownModal={setShowDetailedBreakdownModal}
-                />
+                <DetailedBreakdownModal job={job} applicant={applicant} setShowDetailedBreakdownModal={setShowDetailedBreakdownModal} />
             )}
             {showQuestionReminderModal && <QuestionReminderModal />}
-            {showScoringStandardModal && (
-                <ScoringStandardModal onClose={() => setShowScoringStandardModal(false)} />
-            )}
-            {showDetailedScoringModal && (
-                <DetailedScoringModal
-                    applicant={applicant}
-                    onClose={() => setShowDetailedScoringModal(false)}
-                />
-            )}
+            {showScoringStandardModal && (<ScoringStandardModal onClose={() => setShowScoringStandardModal(false)} /> )}
+            {showDetailedScoringModal && ( <DetailedScoringModal applicant={applicant} onClose={() => setShowDetailedScoringModal(false)} /> )}
             {selectedScoreDetail && (
-                <ScoreDetailModal
-                    isOpen={!!selectedScoreDetail}
-                    onClose={closeScoreDetailModal}
-                    title={selectedScoreDetail.title}
-                    score={selectedScoreDetail.score}
-                    explanation={selectedScoreDetail.explanation}
-                    color={selectedScoreDetail.color}
-                />
+                <ScoreDetailModal isOpen={!!selectedScoreDetail} onClose={closeScoreDetailModal} title={selectedScoreDetail.title} score={selectedScoreDetail.score} explanation={selectedScoreDetail.explanation} color={selectedScoreDetail.color} />
             )}
-            {/* Added: Render InferredSkillModal */}
             {showInferredSkillModal && (
                 <InferredSkillModal
                     isOpen={showInferredSkillModal}
                     onClose={handleCloseInferredSkillModal}
-                    skillName={currentInferredSkillData.name}
-                    explanation={currentInferredSkillData.explanation}
+                    skillName={currentInferredSkillData.skillName} 
+                    categoryTitle={currentInferredSkillData.categoryTitle} 
+                    explanationDetail={currentInferredSkillData.explanationDetail} // Pass the whole object
                 />
             )}
 
             {!isLoading && applicant && detail && (
                 <div className="applicant-detail-view">
                     <button className="back-button" onClick={handleBackToJob}>
-                        <svg className="back-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
-                        </svg>
+                        <svg className="back-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
                         Back to Job Details
                     </button>
                     <div className="applicant-detail-header">
@@ -2433,31 +1919,14 @@ export default function ApplicantDetails() {
                             {getStatusBadge()}
                         </div>
                         <div className="applicant-action-buttons">
-                            <button
-                                className="accept-button"
-                                onClick={handleAcceptCandidate}
-                                disabled={applicant.status === 'interview scheduled' ||
-                                    applicant.status === 'interview completed' ||
-                                    applicant.status === 'rejected'}
-                            >
-                                Accept
-                            </button>
-                            <button
-                                className="reject-button"
-                                onClick={handleRejectCandidate}
-                                disabled={applicant.status === 'rejected' ||
-                                    applicant.status === 'interview completed'}
-                            >
-                                Reject
-                            </button>
+                            <button className="accept-button" onClick={handleAcceptCandidate} disabled={applicant.status === 'interview scheduled' || applicant.status === 'interview completed' || applicant.status === 'rejected'} > Accept </button>
+                            <button className="reject-button" onClick={handleRejectCandidate} disabled={applicant.status === 'rejected' || applicant.status === 'interview completed'} > Reject </button>
                         </div>
                     </div>
 
                     <div className="applicant-detail-content">
-                        {/* Combined container for summary and assessment */}
                         <div className="combined-container">
-                            {/* Summary section */}
-                            {detail.detailed_profile?.summary ? ( // Added optional chaining
+                            {detail.detailed_profile?.summary ? ( 
                                 <div className="info-group">
                                     <p className="info-label">Overall Summary:</p>
                                     <div className="experience-container">
@@ -2467,59 +1936,28 @@ export default function ApplicantDetails() {
                             ) : <div>Loading summary or not available...</div>}
 
 
-                            {/* Ranking criteria as a title above assessment */}
                             {job?.prompt && job.prompt !== "" && (
                                 <div className="ranking-criteria-header">
                                     <div className="ranking-criteria-inline">
                                         <p className="info-label">Ranking Criteria:</p>
-                                        <span className="ranking-criteria-content">
-                                            {job?.prompt ? job.prompt : "No criteria reference"}
-                                        </span>
-
+                                        <span className="ranking-criteria-content">{job?.prompt ? job.prompt : "No criteria reference"}</span>
                                         <div className="criteria-buttons">
-                                            <button
-                                                className="export-csvv-button"
-                                                onClick={() => setShowExportModal(true)}
-                                                title="Export candidate assessment data"
-                                            >
-                                                Export Scores
-                                            </button>
-                                            <button
-                                                className="view-breakdown-button"
-                                                onClick={handleShowDetailedBreakdown}
-                                            >
-                                                View Detailed Assessment
-                                            </button>
-                                            <button
-                                                className="show-detailed-scoring-button"
-                                                onClick={() => setShowDetailedScoringModal(true)}
-                                            >
-                                                Show Detailed Scoring
-                                            </button>
+                                            <button className="export-csvv-button" onClick={() => setShowExportModal(true)} title="Export candidate assessment data"> Export Scores </button>
+                                            <button className="view-breakdown-button" onClick={handleShowDetailedBreakdown}> View Detailed Assessment </button>
+                                            <button className="show-detailed-scoring-button" onClick={() => setShowDetailedScoringModal(true)}> Show Detailed Scoring </button>
                                         </div>
                                     </div>
                                 </div>
                             )}
 
-                            {/* Assessment section with Radar chart and breakdown */}
                             <div className="assessment-section">
-                                {/* Left side - Radar chart */}
                                 <div className="assessment-chart">
-                                    <ApplicantRadarChart
-                                        applicant={applicant}
-                                        job={job}
-                                    />
+                                    <ApplicantRadarChart applicant={applicant} job={job} />
                                 </div>
-
-                                {/* Right side - Score breakdown */}
                                 <div className="assessment-breakdown">
-                                    {/* Add a header for the breakdown section */}
                                     <div className="assessment-breakdown-header">
                                         <p className="info-label">Score Breakdown:</p>
-                                        <div
-                                            className="scoring-info-panel"
-                                            onClick={() => setShowScoringStandardModal(true)}
-                                        >
+                                        <div className="scoring-info-panel" onClick={() => setShowScoringStandardModal(true)} >
                                             <div className="scoring-info-left">
                                                 <div className="scoring-icon">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -2532,368 +1970,54 @@ export default function ApplicantDetails() {
                                                 </div>
                                             </div>
                                             <div className="scoring-info-arrow">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                                    <path fillRule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z" />
-                                                </svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fillRule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z" /></svg>
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* Dynamically display labels based on selected criteria */}
                                     <div className="criteria-labels-row">
-                                        {(job?.prompt?.includes("Skills") || !job?.prompt) && (
-                                            <div className="criteria-label">
-                                                <span className="skills-label">Skills</span>
-                                            </div>
-                                        )}
-                                        {(job?.prompt?.includes("Experience") || !job?.prompt) && (
-                                            <div className="criteria-label">
-                                                <span className="experience-label">Experience</span>
-                                            </div>
-                                        )}
-                                        {(job?.prompt?.includes("Education") || !job?.prompt) && (
-                                            <div className="criteria-label">
-                                                <span className="education-label">Education</span>
-                                            </div>
-                                        )}
+                                        {(job?.prompt?.includes("Skills") || !job?.prompt) && (<div className="criteria-label"><span className="skills-label">Skills</span></div>)}
+                                        {(job?.prompt?.includes("Experience") || !job?.prompt) && (<div className="criteria-label"><span className="experience-label">Experience</span></div> )}
+                                        {(job?.prompt?.includes("Education") || !job?.prompt) && ( <div className="criteria-label"><span className="education-label">Education</span></div>)}
                                     </div>
-
-                                    {/* Dynamically adjust columns based on selected criteria */}
                                     {(!job?.prompt || job?.prompt === "") ? (
                                         <div className="breakdown-columns three-columns">
-                                            {/* Skills column */}
                                             <div className="breakdown-column">
-                                                <div className="score-card">
-                                                    <h4>Relevance to Job</h4>
-                                                    <div className="progress-bar-container">
-                                                        <div
-                                                            className="progress-bar unranked"
-                                                            style={{ width: '100%', backgroundColor: '#d9d9d9' }}
-                                                        ></div>
-                                                    </div>
-                                                    <p>N/A</p>
-                                                </div>
-                                                <div className="score-card">
-                                                    <h4>Proficiency Level</h4>
-                                                    <div className="progress-bar-container">
-                                                        <div
-                                                            className="progress-bar unranked"
-                                                            style={{ width: '100%', backgroundColor: '#d9d9d9' }}
-                                                        ></div>
-                                                    </div>
-                                                    <p>N/A</p>
-                                                </div>
-                                                <div className="score-card">
-                                                    <h4>Additional Skills</h4>
-                                                    <div className="progress-bar-container">
-                                                        <div
-                                                            className="progress-bar unranked"
-                                                            style={{ width: '100%', backgroundColor: '#d9d9d9' }}
-                                                        ></div>
-                                                    </div>
-                                                    <p>N/A</p>
-                                                </div>
+                                                <div className="score-card"><h4>Relevance to Job</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
+                                                <div className="score-card"><h4>Proficiency Level</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
+                                                <div className="score-card"><h4>Additional Skills</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
                                             </div>
-
-                                            {/* Experience column */}
                                             <div className="breakdown-column">
-                                                <div className="score-card">
-                                                    <h4>Job Experience</h4>
-                                                    <div className="progress-bar-container">
-                                                        <div
-                                                            className="progress-bar unranked"
-                                                            style={{ width: '100%', backgroundColor: '#d9d9d9' }}
-                                                        ></div>
-                                                    </div>
-                                                    <p>N/A</p>
-                                                </div>
-                                                <div className="score-card">
-                                                    <h4>Projects & Co-curricular</h4>
-                                                    <div className="progress-bar-container">
-                                                        <div
-                                                            className="progress-bar unranked"
-                                                            style={{ width: '100%', backgroundColor: '#d9d9d9' }}
-                                                        ></div>
-                                                    </div>
-                                                    <p>N/A</p>
-                                                </div>
-                                                <div className="score-card">
-                                                    <h4>Certifications</h4>
-                                                    <div className="progress-bar-container">
-                                                        <div
-                                                            className="progress-bar unranked"
-                                                            style={{ width: '100%', backgroundColor: '#d9d9d9' }}
-                                                        ></div>
-                                                    </div>
-                                                    <p>N/A</p>
-                                                </div>
+                                                <div className="score-card"><h4>Job Experience</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
+                                                <div className="score-card"><h4>Projects & Co-curricular</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
+                                                <div className="score-card"><h4>Certifications</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
                                             </div>
-
-                                            {/* Education column */}
                                             <div className="breakdown-column">
-                                                <div className="score-card">
-                                                    <h4>Level of Study</h4>
-                                                    <div className="progress-bar-container">
-                                                        <div
-                                                            className="progress-bar unranked"
-                                                            style={{ width: '100%', backgroundColor: '#d9d9d9' }}
-                                                        ></div>
-                                                    </div>
-                                                    <p>N/A</p>
-                                                </div>
-                                                <div className="score-card">
-                                                    <h4>Awards & Achievements</h4>
-                                                    <div className="progress-bar-container">
-                                                        <div
-                                                            className="progress-bar unranked"
-                                                            style={{ width: '100%', backgroundColor: '#d9d9d9' }}
-                                                        ></div>
-                                                    </div>
-                                                    <p>N/A</p>
-                                                </div>
-                                                <div className="score-card">
-                                                    <h4>Relevant Coursework</h4>
-                                                    <div className="progress-bar-container">
-                                                        <div
-                                                            className="progress-bar unranked"
-                                                            style={{ width: '100%', backgroundColor: '#d9d9d9' }}
-                                                        ></div>
-                                                    </div>
-                                                    <p>N/A</p>
-                                                </div>
+                                                <div className="score-card"><h4>Level of Study</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
+                                                <div className="score-card"><h4>Awards & Achievements</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
+                                                <div className="score-card"><h4>Relevant Coursework</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
                                             </div>
                                         </div>
                                     ) : (
-                                        <div
-                                            className={`breakdown-columns ${[job?.prompt?.includes("Skills"), job?.prompt?.includes("Experience"), job?.prompt?.includes("Education")].filter(Boolean).length === 1
-                                                ? "single-column"
-                                                : [job?.prompt?.includes("Skills"), job?.prompt?.includes("Experience"), job?.prompt?.includes("Education")].filter(Boolean).length === 2
-                                                    ? "two-columns"
-                                                    : "three-columns"
-                                                }`}
-                                        >
-                                            {/* Column: Skills */}
+                                        <div className={`breakdown-columns ${[job?.prompt?.includes("Skills"), job?.prompt?.includes("Experience"), job?.prompt?.includes("Education")].filter(Boolean).length === 1 ? "single-column" : [job?.prompt?.includes("Skills"), job?.prompt?.includes("Experience"), job?.prompt?.includes("Education")].filter(Boolean).length === 2 ? "two-columns" : "three-columns"}`}>
                                             {job?.prompt?.includes("Skills") && (
                                                 <div className="breakdown-column">
-                                                    <div
-                                                        className="score-card"
-                                                        onClick={() =>
-                                                            handleScoreCardClick(
-                                                                "Relevance to Job",
-                                                                applicant.rank_score?.relevance || 0,
-                                                                applicant.reasoning?.relevance,
-                                                                "#8250c8"
-                                                            )
-                                                        }
-                                                    >
-                                                        <h4>Relevance to Job</h4>
-                                                        <div className="progress-bar-container">
-                                                            <div
-                                                                className={`progress-bar ${!job?.prompt?.includes("Skills") ? 'unranked' : ''}`}
-                                                                style={{
-                                                                    width: !job?.prompt?.includes("Skills") ? '100%' : `${applicant.rank_score?.relevance ? (applicant.rank_score.relevance * 10) : 0}%`,
-                                                                    backgroundColor: !job?.prompt?.includes("Skills") ? '#d9d9d9' : '#8250c8'
-                                                                }}
-                                                            ></div>
-                                                        </div>
-                                                        <p>{!job?.prompt?.includes("Skills") ? "Unranked" : (applicant.rank_score?.relevance ? `${applicant.rank_score.relevance}/10` : "0/10")}</p>
-                                                    </div>
-                                                    <div
-                                                        className="score-card"
-                                                        onClick={() =>
-                                                            handleScoreCardClick(
-                                                                "Proficiency Level",
-                                                                applicant.rank_score?.proficiency || 0,
-                                                                applicant.reasoning?.proficiency,
-                                                                "#8250c8"
-                                                            )
-                                                        }
-                                                    >
-                                                        <h4>Proficiency Level</h4>
-                                                        <div className="progress-bar-container">
-                                                            <div
-                                                                className={`progress-bar ${!job?.prompt?.includes("Skills") ? 'unranked' : ''}`}
-                                                                style={{
-                                                                    width: !job?.prompt?.includes("Skills") ? '100%' : `${applicant.rank_score?.proficiency ? (applicant.rank_score.proficiency * 10) : 0}%`,
-                                                                    backgroundColor: !job?.prompt?.includes("Skills") ? '#d9d9d9' : '#8250c8'
-                                                                }}
-                                                            ></div>
-                                                        </div>
-                                                        <p>{!job?.prompt?.includes("Skills") ? "Unranked" : (applicant.rank_score?.proficiency ? `${applicant.rank_score.proficiency}/10` : "0/10")}</p>
-                                                    </div>
-                                                    <div
-                                                        className="score-card"
-                                                        onClick={() =>
-                                                            handleScoreCardClick(
-                                                                "Additional Skills",
-                                                                applicant.rank_score?.additionalSkill || 0,
-                                                                applicant.reasoning?.additionalSkill,
-                                                                "#8250c8"
-                                                            )
-                                                        }
-                                                    >
-                                                        <h4>Additional Skills</h4>
-                                                        <div className="progress-bar-container">
-                                                            <div
-                                                                className={`progress-bar ${!job?.prompt?.includes("Skills") ? 'unranked' : ''}`}
-                                                                style={{
-                                                                    width: !job?.prompt?.includes("Skills") ? '100%' : `${applicant.rank_score?.additionalSkill ? (applicant.rank_score.additionalSkill * 10) : 0}%`,
-                                                                    backgroundColor: !job?.prompt?.includes("Skills") ? '#d9d9d9' : '#8250c8'
-                                                                }}
-                                                            ></div>
-                                                        </div>
-                                                        <p>{!job?.prompt?.includes("Skills") ? "Unranked" : (applicant.rank_score?.additionalSkill ? `${applicant.rank_score.additionalSkill}/10` : "0/10")}</p>
-                                                    </div>
+                                                    <div className="score-card" onClick={() => handleScoreCardClick("Relevance to Job", applicant.rank_score?.relevance || 0, applicant.reasoning?.relevance, "#8250c8")}><h4>Relevance to Job</h4><div className="progress-bar-container"><div className={`progress-bar ${!job?.prompt?.includes("Skills") ? 'unranked' : ''}`} style={{ width: !job?.prompt?.includes("Skills") ? '100%' : `${applicant.rank_score?.relevance ? (applicant.rank_score.relevance * 10) : 0}%`, backgroundColor: !job?.prompt?.includes("Skills") ? '#d9d9d9' : '#8250c8' }}></div></div><p>{!job?.prompt?.includes("Skills") ? "Unranked" : (applicant.rank_score?.relevance ? `${applicant.rank_score.relevance}/10` : "0/10")}</p></div>
+                                                    <div className="score-card" onClick={() => handleScoreCardClick("Proficiency Level", applicant.rank_score?.proficiency || 0, applicant.reasoning?.proficiency, "#8250c8")}><h4>Proficiency Level</h4><div className="progress-bar-container"><div className={`progress-bar ${!job?.prompt?.includes("Skills") ? 'unranked' : ''}`} style={{ width: !job?.prompt?.includes("Skills") ? '100%' : `${applicant.rank_score?.proficiency ? (applicant.rank_score.proficiency * 10) : 0}%`, backgroundColor: !job?.prompt?.includes("Skills") ? '#d9d9d9' : '#8250c8' }}></div></div><p>{!job?.prompt?.includes("Skills") ? "Unranked" : (applicant.rank_score?.proficiency ? `${applicant.rank_score.proficiency}/10` : "0/10")}</p></div>
+                                                    <div className="score-card" onClick={() => handleScoreCardClick("Additional Skills", applicant.rank_score?.additionalSkill || 0, applicant.reasoning?.additionalSkill, "#8250c8")}><h4>Additional Skills</h4><div className="progress-bar-container"><div className={`progress-bar ${!job?.prompt?.includes("Skills") ? 'unranked' : ''}`} style={{ width: !job?.prompt?.includes("Skills") ? '100%' : `${applicant.rank_score?.additionalSkill ? (applicant.rank_score.additionalSkill * 10) : 0}%`, backgroundColor: !job?.prompt?.includes("Skills") ? '#d9d9d9' : '#8250c8' }}></div></div><p>{!job?.prompt?.includes("Skills") ? "Unranked" : (applicant.rank_score?.additionalSkill ? `${applicant.rank_score.additionalSkill}/10` : "0/10")}</p></div>
                                                 </div>
                                             )}
-
-                                            {/* Column: Experience */}
                                             {job?.prompt?.includes("Experience") && (
                                                 <div className="breakdown-column">
-                                                    <div
-                                                        className="score-card"
-                                                        onClick={() =>
-                                                            handleScoreCardClick(
-                                                                "Job Experience",
-                                                                applicant.rank_score?.jobExp || 0,
-                                                                applicant.reasoning?.jobExp,
-                                                                "#dd20c1"
-                                                            )
-                                                        }
-                                                    >
-                                                        <h4>Job Experience</h4>
-                                                        <div className="progress-bar-container">
-                                                            <div
-                                                                className={`progress-bar ${!job?.prompt?.includes("Experience") ? 'unranked' : ''}`}
-                                                                style={{
-                                                                    width: !job?.prompt?.includes("Experience") ? '100%' : `${applicant.rank_score?.jobExp ? (applicant.rank_score.jobExp * 10) : 0}%`,
-                                                                    backgroundColor: !job?.prompt?.includes("Experience") ? '#d9d9d9' : '#dd20c1'
-                                                                }}
-                                                            ></div>
-                                                        </div>
-                                                        <p>{!job?.prompt?.includes("Experience") ? "Unranked" : (applicant.rank_score?.jobExp ? `${applicant.rank_score.jobExp}/10` : "0/10")}</p>
-                                                    </div>
-                                                    <div
-                                                        className="score-card"
-                                                        onClick={() =>
-                                                            handleScoreCardClick(
-                                                                "Projects & Co-curricular",
-                                                                applicant.rank_score?.projectCocurricularExp || 0,
-                                                                applicant.reasoning?.projectCocurricularExp,
-                                                                "#dd20c1"
-                                                            )
-                                                        }
-                                                    >
-                                                        <h4>Projects & Co-curricular</h4>
-                                                        <div className="progress-bar-container">
-                                                            <div
-                                                                className={`progress-bar ${!job?.prompt?.includes("Experience") ? 'unranked' : ''}`}
-                                                                style={{
-                                                                    width: !job?.prompt?.includes("Experience") ? '100%' : `${applicant.rank_score?.projectCocurricularExp ? (applicant.rank_score.projectCocurricularExp * 10) : 0}%`,
-                                                                    backgroundColor: !job?.prompt?.includes("Experience") ? '#d9d9d9' : '#dd20c1'
-                                                                }}
-                                                            ></div>
-                                                        </div>
-                                                        <p>{!job?.prompt?.includes("Experience") ? "Unranked" : (applicant.rank_score?.projectCocurricularExp ? `${applicant.rank_score.projectCocurricularExp}/10` : "0/10")}</p>
-                                                    </div>
-                                                    <div
-                                                        className="score-card"
-                                                        onClick={() =>
-                                                            handleScoreCardClick(
-                                                                "Certifications",
-                                                                applicant.rank_score?.certification || 0,
-                                                                applicant.reasoning?.certification,
-                                                                "#dd20c1"
-                                                            )
-                                                        }
-                                                    >
-                                                        <h4>Certifications</h4>
-                                                        <div className="progress-bar-container">
-                                                            <div
-                                                                className={`progress-bar ${!job?.prompt?.includes("Experience") ? 'unranked' : ''}`}
-                                                                style={{
-                                                                    width: !job?.prompt?.includes("Experience") ? '100%' : `${applicant.rank_score?.certification ? (applicant.rank_score.certification * 10) : 0}%`,
-                                                                    backgroundColor: !job?.prompt?.includes("Experience") ? '#d9d9d9' : '#dd20c1'
-                                                                }}
-                                                            ></div>
-                                                        </div>
-                                                        <p>{!job?.prompt?.includes("Experience") ? "Unranked" : (applicant.rank_score?.certification ? `${applicant.rank_score.certification}/10` : "0/10")}</p>
-                                                    </div>
+                                                    <div className="score-card" onClick={() => handleScoreCardClick("Job Experience", applicant.rank_score?.jobExp || 0, applicant.reasoning?.jobExp, "#dd20c1")}><h4>Job Experience</h4><div className="progress-bar-container"><div className={`progress-bar ${!job?.prompt?.includes("Experience") ? 'unranked' : ''}`} style={{ width: !job?.prompt?.includes("Experience") ? '100%' : `${applicant.rank_score?.jobExp ? (applicant.rank_score.jobExp * 10) : 0}%`, backgroundColor: !job?.prompt?.includes("Experience") ? '#d9d9d9' : '#dd20c1' }}></div></div><p>{!job?.prompt?.includes("Experience") ? "Unranked" : (applicant.rank_score?.jobExp ? `${applicant.rank_score.jobExp}/10` : "0/10")}</p></div>
+                                                    <div className="score-card" onClick={() => handleScoreCardClick("Projects & Co-curricular", applicant.rank_score?.projectCocurricularExp || 0, applicant.reasoning?.projectCocurricularExp, "#dd20c1")}><h4>Projects & Co-curricular</h4><div className="progress-bar-container"><div className={`progress-bar ${!job?.prompt?.includes("Experience") ? 'unranked' : ''}`} style={{ width: !job?.prompt?.includes("Experience") ? '100%' : `${applicant.rank_score?.projectCocurricularExp ? (applicant.rank_score.projectCocurricularExp * 10) : 0}%`, backgroundColor: !job?.prompt?.includes("Experience") ? '#d9d9d9' : '#dd20c1' }}></div></div><p>{!job?.prompt?.includes("Experience") ? "Unranked" : (applicant.rank_score?.projectCocurricularExp ? `${applicant.rank_score.projectCocurricularExp}/10` : "0/10")}</p></div>
+                                                    <div className="score-card" onClick={() => handleScoreCardClick("Certifications", applicant.rank_score?.certification || 0, applicant.reasoning?.certification, "#dd20c1")}><h4>Certifications</h4><div className="progress-bar-container"><div className={`progress-bar ${!job?.prompt?.includes("Experience") ? 'unranked' : ''}`} style={{ width: !job?.prompt?.includes("Experience") ? '100%' : `${applicant.rank_score?.certification ? (applicant.rank_score.certification * 10) : 0}%`, backgroundColor: !job?.prompt?.includes("Experience") ? '#d9d9d9' : '#dd20c1' }}></div></div><p>{!job?.prompt?.includes("Experience") ? "Unranked" : (applicant.rank_score?.certification ? `${applicant.rank_score.certification}/10` : "0/10")}</p></div>
                                                 </div>
                                             )}
-
-                                            {/* Column: Education */}
                                             {job?.prompt?.includes("Education") && (
                                                 <div className="breakdown-column">
-                                                    <div
-                                                        className="score-card"
-                                                        onClick={() =>
-                                                            handleScoreCardClick(
-                                                                "Level of Study",
-                                                                applicant.rank_score?.studyLevel || 0,
-                                                                applicant.reasoning?.studyLevel,
-                                                                "#0066cc"
-                                                            )
-                                                        }
-                                                    >
-                                                        <h4>Level of Study</h4>
-                                                        <div className="progress-bar-container">
-                                                            <div
-                                                                className={`progress-bar ${!job?.prompt?.includes("Education") ? 'unranked' : ''}`}
-                                                                style={{
-                                                                    width: !job?.prompt?.includes("Education") ? '100%' : `${applicant.rank_score?.studyLevel ? (applicant.rank_score.studyLevel * 10) : 0}%`,
-                                                                    backgroundColor: !job?.prompt?.includes("Education") ? '#d9d9d9' : '#0066cc'
-                                                                }}
-                                                            ></div>
-                                                        </div>
-                                                        <p>{!job?.prompt?.includes("Education") ? "Unranked" : (applicant.rank_score?.studyLevel ? `${applicant.rank_score.studyLevel}/10` : "0/10")}</p>
-                                                    </div>
-                                                    <div
-                                                        className="score-card"
-                                                        onClick={() =>
-                                                            handleScoreCardClick(
-                                                                "Awards & Achievements",
-                                                                applicant.rank_score?.awards || 0,
-                                                                applicant.reasoning?.awards,
-                                                                "#0066cc"
-                                                            )
-                                                        }
-                                                    >
-                                                        <h4>Awards & Achievements</h4>
-                                                        <div className="progress-bar-container">
-                                                            <div
-                                                                className={`progress-bar ${!job?.prompt?.includes("Education") ? 'unranked' : ''}`}
-                                                                style={{
-                                                                    width: !job?.prompt?.includes("Education") ? '100%' : `${applicant.rank_score?.awards ? (applicant.rank_score.awards * 10) : 0}%`,
-                                                                    backgroundColor: !job?.prompt?.includes("Education") ? '#d9d9d9' : '#0066cc'
-                                                                }}
-                                                            ></div>
-                                                        </div>
-                                                        <p>{!job?.prompt?.includes("Education") ? "Unranked" : (applicant.rank_score?.awards ? `${applicant.rank_score.awards}/10` : "0/10")}</p>
-                                                    </div>
-                                                    <div
-                                                        className="score-card"
-                                                        onClick={() =>
-                                                            handleScoreCardClick(
-                                                                "Relevant Coursework",
-                                                                applicant.rank_score?.courseworkResearch || 0,
-                                                                applicant.reasoning?.courseworkResearch,
-                                                                "#0066cc"
-                                                            )
-                                                        }
-                                                    >
-                                                        <h4>Relevant Coursework</h4>
-                                                        <div className="progress-bar-container">
-                                                            <div
-                                                                className={`progress-bar ${!job?.prompt?.includes("Education") ? 'unranked' : ''}`}
-                                                                style={{
-                                                                    width: !job?.prompt?.includes("Education") ? '100%' : `${applicant.rank_score?.courseworkResearch ? (applicant.rank_score.courseworkResearch * 10) : 0}%`,
-                                                                    backgroundColor: !job?.prompt?.includes("Education") ? '#d9d9d9' : '#0066cc'
-                                                                }}
-                                                            ></div>
-                                                        </div>
-                                                        <p>{!job?.prompt?.includes("Education") ? "Unranked" : (applicant.rank_score?.courseworkResearch ? `${applicant.rank_score.courseworkResearch}/10` : "0/10")}</p>
-                                                    </div>
+                                                    <div className="score-card" onClick={() => handleScoreCardClick("Level of Study", applicant.rank_score?.studyLevel || 0, applicant.reasoning?.studyLevel, "#0066cc")}><h4>Level of Study</h4><div className="progress-bar-container"><div className={`progress-bar ${!job?.prompt?.includes("Education") ? 'unranked' : ''}`} style={{ width: !job?.prompt?.includes("Education") ? '100%' : `${applicant.rank_score?.studyLevel ? (applicant.rank_score.studyLevel * 10) : 0}%`, backgroundColor: !job?.prompt?.includes("Education") ? '#d9d9d9' : '#0066cc' }}></div></div><p>{!job?.prompt?.includes("Education") ? "Unranked" : (applicant.rank_score?.studyLevel ? `${applicant.rank_score.studyLevel}/10` : "0/10")}</p></div>
+                                                    <div className="score-card" onClick={() => handleScoreCardClick("Awards & Achievements", applicant.rank_score?.awards || 0, applicant.reasoning?.awards, "#0066cc")}><h4>Awards & Achievements</h4><div className="progress-bar-container"><div className={`progress-bar ${!job?.prompt?.includes("Education") ? 'unranked' : ''}`} style={{ width: !job?.prompt?.includes("Education") ? '100%' : `${applicant.rank_score?.awards ? (applicant.rank_score.awards * 10) : 0}%`, backgroundColor: !job?.prompt?.includes("Education") ? '#d9d9d9' : '#0066cc' }}></div></div><p>{!job?.prompt?.includes("Education") ? "Unranked" : (applicant.rank_score?.awards ? `${applicant.rank_score.awards}/10` : "0/10")}</p></div>
+                                                    <div className="score-card" onClick={() => handleScoreCardClick("Relevant Coursework", applicant.rank_score?.courseworkResearch || 0, applicant.reasoning?.courseworkResearch, "#0066cc")}><h4>Relevant Coursework</h4><div className="progress-bar-container"><div className={`progress-bar ${!job?.prompt?.includes("Education") ? 'unranked' : ''}`} style={{ width: !job?.prompt?.includes("Education") ? '100%' : `${applicant.rank_score?.courseworkResearch ? (applicant.rank_score.courseworkResearch * 10) : 0}%`, backgroundColor: !job?.prompt?.includes("Education") ? '#d9d9d9' : '#0066cc' }}></div></div><p>{!job?.prompt?.includes("Education") ? "Unranked" : (applicant.rank_score?.courseworkResearch ? `${applicant.rank_score.courseworkResearch}/10` : "0/10")}</p></div>
                                                 </div>
                                             )}
                                         </div>
@@ -2902,49 +2026,16 @@ export default function ApplicantDetails() {
                             </div>
                         </div>
 
-                        {/* Candidate tabs section remains unchanged */}
                         <div className="candidate-tabs-container">
                             <div className="candidate-tabs">
-                                <button
-                                    className={`candidate-tab ${activeDetailTab === 'skills' ? 'active' : ''}`}
-                                    onClick={() => setActiveDetailTab('skills')}
-                                >
-                                    Skills
-                                </button>
-                                <button
-                                    className={`candidate-tab ${activeDetailTab === 'education' ? 'active' : ''}`}
-                                    onClick={() => setActiveDetailTab('education')}
-                                >
-                                    Education
-                                </button>
-                                <button
-                                    className={`candidate-tab ${activeDetailTab === 'experience' ? 'active' : ''}`}
-                                    onClick={() => setActiveDetailTab('experience')}
-                                >
-                                    Experience
-                                </button>
+                                <button className={`candidate-tab ${activeDetailTab === 'skills' ? 'active' : ''}`} onClick={() => setActiveDetailTab('skills')}>Skills</button>
+                                <button className={`candidate-tab ${activeDetailTab === 'education' ? 'active' : ''}`} onClick={() => setActiveDetailTab('education')}>Education</button>
+                                <button className={`candidate-tab ${activeDetailTab === 'experience' ? 'active' : ''}`} onClick={() => setActiveDetailTab('experience')}>Experience</button>
                             </div>
-
-                            {/* Tab content */}
                             <div className="candidate-tab-content">
-                                {/* Skills Tab Content */}
-                                {activeDetailTab === 'skills' && (
-                                    <SkillsTabContent
-                                        detail={detail}
-                                        handleRegenerateProfile={handleRegenerateProfile}
-                                        onOpenInferredSkillModal={handleOpenInferredSkillModal} // Pass handler
-                                    />
-                                )}
-
-                                {/* Education Tab Content */}
-                                {activeDetailTab === 'education' && (
-                                    <EducationTabContent detail={detail} />
-                                )}
-
-                                {/* Experience Tab Content */}
-                                {activeDetailTab === 'experience' && (
-                                    <ExperienceTabContent detail={detail} />
-                                )}
+                                {activeDetailTab === 'skills' && (<SkillsTabContent detail={detail} handleRegenerateProfile={handleRegenerateProfile} onOpenInferredSkillModal={handleOpenInferredSkillModal} /> )}
+                                {activeDetailTab === 'education' && (<EducationTabContent detail={detail} /> )}
+                                {activeDetailTab === 'experience' && ( <ExperienceTabContent detail={detail} /> )}
                             </div>
                         </div>
                     </div>

@@ -61,16 +61,30 @@ class CandidateResponse(CandidateBase):
                     "additionalSkill": "Experience with cloud technologies"
                 },
                 "detailed_profile": {
-                    "summary": "Software developer with 5 years of experience",
+                    "summary": "Software developer with 5 years of experience. He/She has <strong>strong Python skills</strong>.",
                     "soft_skills": ["Communication", "Problem-solving", "Teamwork"],
                     "technical_skills": ["Python", "Java", "C++"],
                     "languages": ["English", "Spanish"],
-                    "education": ["Bachelor's degree in Computer Science", "Master's degree in Software Engineering"],
-                    "certifications": ["AWS Certified Developer", "Google Cloud Professional Cloud Architect"],
-                    "awards": ["Employee of the Month (June 2022)", "Best Team Player (2021)"],
-                    "work_experience": ["Software Developer at Company A (2019-2023)", "Intern at Company B (2018)"],
-                    "projects": ["Developed a web application for tracking sales", "Implemented a machine learning model for predicting customer churn"],
-                    "co_curricular_activities": ["Volunteer at local animal shelter", "Mentor at coding bootcamp"]
+                    "education": ["<strong>Bachelor's degree in Computer Science</strong> [2018-2022]\\nUniversity X\\nGPA: 3.8, Dean's List"],
+                    "certifications": ["<strong>AWS Certified Developer</strong> [2021]\\nAmazon Web Services"],
+                    "awards": ["<strong>Employee of the Month (June 2022)</strong> [2022]\\nCompany Z"], # Added year to award
+                    "work_experience": ["<strong>Software Developer at Company A</strong> [2019-2023]\\nDeveloped web applications..."],
+                    "projects": ["<strong>E-commerce Platform</strong> [2020]\\nBuilt using React and Node.js..."],
+                    "co_curricular_activities": ["<strong>Volunteer at local animal shelter</strong> [2019-2020]\\nHelped with animal care..."],
+                    "inferred_technical_skills": ["Docker", "Agile Methodology"],
+                    "inferred_soft_skills": ["Mentoring"],
+                    "inferred_languages": [],
+                    "inferred_skills_explanations": {
+                        "technical_skills_explanation": "Docker was inferred from project descriptions mentioning containerization. Agile Methodology was suggested by participation in sprint-based development cycles.",
+                        "soft_skills_explanation": "Mentoring was inferred from experience guiding junior team members on projects.",
+                        "languages_explanation": "No additional languages were inferred beyond those explicitly listed."
+                    },
+                    "relevance_analysis": { # Example of relevance analysis (if present)
+                        "technical_skills": [
+                            {"item": "Python", "relevance": 9, "relevant": True},
+                            {"item": "Java", "relevance": 7, "relevant": False}
+                        ]
+                    }
                 }
             }
         }
