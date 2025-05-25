@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Dict, Tuple, Any
+from typing import Dict, List, Any
 from io import BytesIO
 import base64
 from dotenv import load_dotenv

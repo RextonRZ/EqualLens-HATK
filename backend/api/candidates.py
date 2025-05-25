@@ -23,7 +23,6 @@ async def get_applicants(jobId: str = Query(..., description="Job ID to get appl
     logger.info(f"Fetching applicants for jobId: {jobId}")
     try:
         applications = JobService.get_applications_for_job(jobId)
-        logger.info(f"Applications fetched: {applications}")
         return applications
     except Exception as e:
         logger.error(f"Error getting applicants: {e}")
@@ -113,8 +112,6 @@ async def rank_new_candidates(request: Dict[Any, Any]):
 async def update_candidate(candidate_id: str, candidate_data: Dict[Any, Any]):
     """Update a candidate."""
     try:
-        logger.info(f"Updating candidate {candidate_id} with data: {candidate_data}")
-        
         # Extract job_id from candidate data if it exists
         job_id = candidate_data.pop("job_id", None)
         if job_id:
@@ -128,7 +125,6 @@ async def update_candidate(candidate_id: str, candidate_data: Dict[Any, Any]):
 
         # Convert candidate_data to CandidateUpdate model
         candidate_update = CandidateUpdate(**candidate_data)
-        logger.info(f"Converted candidate data to CandidateUpdate model: {candidate_update}")
 
         # Update the candidate
         success = CandidateService.update_candidate(candidate_id, candidate_update)

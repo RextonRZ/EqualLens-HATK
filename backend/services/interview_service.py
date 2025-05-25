@@ -16,7 +16,6 @@ import time
 import logging
 import tempfile
 from google.cloud import speech
-from google.cloud import videointelligence_v1 as videointelligence
 from services.gemini_service import GeminiService
 import asyncio
 import subprocess
@@ -67,7 +66,6 @@ def create_face_landmarker_options():
 try:
     nlp_client = language_v1.LanguageServiceClient()
     speech_client = speech.SpeechClient()
-    video_client = videointelligence.VideoIntelligenceServiceClient()
     embedding_tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
     embedding_model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
     gemini_service = GeminiService()
