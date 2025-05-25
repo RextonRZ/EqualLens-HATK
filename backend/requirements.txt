@@ -53,4 +53,7 @@ transformers
 accelerate
 bitsandbytes
 sentencepiece
-google-cloud-videointelligence==2.16.1
+httpx[http2]
+PyMuPDF
+PyPDF2
+python-docx

@@ -313,6 +313,7 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                 if (response.status === 409 && errorData.duplicates && errorData.duplicates.length > 0) {
                     const duplicateFileNames = errorData.duplicates.map(d => d.fileName);
                     const nonDuplicateOriginalFiles = fileState.selectedFiles.filter(file => !duplicateFileNames.includes(file.name));
+                    console.log("FOUND_DUPLICATES payload:", { duplicates: errorData.duplicates, nonDuplicateFiles: nonDuplicateOriginalFiles });
                     fileDispatch({ type: 'FOUND_DUPLICATES', payload: { duplicates: errorData.duplicates, nonDuplicateFiles: nonDuplicateOriginalFiles } });
                     setApiStatus("idle"); setSubmitProgress(0);
                     return;
@@ -340,24 +341,67 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
             onClose(); // This will hide UploadMoreCVModal
 
         } catch (error) {
-            if (progressAnimationRef.current) cancelAnimationFrame(progressAnimationRef.current);
+            if (progressAnimationRef.current) {
+                cancelAnimationFrame(progressAnimationRef.current);
+                progressAnimationRef.current = null;
+            }
             console.error("Error during CV upload process:", error);
-            let displayErrorMessage = "An error occurred. Please try again.";
-            const isAIErrorNotHandled = !(error.name === "APIError" && error.status === 422 && error.data?.detail?.error_type === "AI_CONTENT_DETECTED" && !sendForceAiToBackend);
 
-            if (isAIErrorNotHandled) {
-                if(error.message) displayErrorMessage = error.message;
-                setApiStatus("error");
-                setErrorMessage(displayErrorMessage);
-                setShowErrorModal(true);
+            let displayErrorMessage = "An error occurred. Please try again.";
+
+            // Check if it's the specific AI_CONTENT_DETECTED error from the backend
+            if (!sendForceAiToBackend &&
+                error.name === "APIError" &&
+                error.status === 422 &&
+                error.data &&
+                error.data.error_type === "AI_CONTENT_DETECTED") {
+
+                console.log("AI Content Detected - showing AIConfirmationModal. Flagged files:", error.data.flagged_files);
+                setFlaggedAIData(error.data.flagged_files || []);
+                setShowAIConfirmModal(true);
+                setApiStatus("idle");
+                setSubmitProgress(0);
+                return;
             }
-            // Reset API status only if AI modal is not the one causing the pause
-            if (!showAIConfirmModal) {
-                setTimeout(() => {
-                    setApiStatus("idle");
-                    setSubmitProgress(0);
-                }, 1000);
+
+            // If it's the specific DUPLICATE_FILES_DETECTED error
+            // Use error.status and error.data here
+            if (error.name === "APIError" && // Good practice to check error.name too
+                error.status === 409 &&
+                error.data &&
+                error.data.error_type === "DUPLICATE_FILES_DETECTED") {
+
+                const duplicateFileNames = error.data.duplicates.map(d => d.fileName);
+                // Ensure fileState.selectedFiles is used for filtering non-duplicates
+                const nonDuplicateOriginalFiles = fileState.selectedFiles.filter(file =>
+                    !duplicateFileNames.includes(file.name)
+                );
+
+                console.log("Duplicate Files Detected - showing DuplicateFilesModal. Duplicates:", error.data.duplicates);
+                fileDispatch({
+                    type: 'FOUND_DUPLICATES',
+                    payload: {
+                        duplicates: error.data.duplicates,
+                        nonDuplicateFiles: nonDuplicateOriginalFiles
+                    }
+                });
+                setApiStatus("idle");
+                setSubmitProgress(0);
+                return;
             }
+
+            // For other errors or if the AI/Duplicate error wasn't caught above
+            if (error.data && error.data.message) {
+                displayErrorMessage = error.data.message;
+            } else if (error.message && !error.message.toLowerCase().includes("http error")) {
+                 displayErrorMessage = error.message;
+            } else if (error.status) {
+                displayErrorMessage = `HTTP error ${error.status}`;
+            }
+
+            setApiStatus("error");
+            setErrorMessage(displayErrorMessage);
+            setShowErrorModal(true);
         }
     };
 
@@ -429,7 +473,17 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                 <h3 id="error-modal-title" className="status-title">Upload Failed!</h3>
                 <p className="status-message">{errorMessage || "Please try again"}</p>
                 <div className="status-buttons">
-                    <button className="status-button primary-button" onClick={() => setShowErrorModal(false)} autoFocus>Try Again</button>
+                    <button
+                        className="status-button primary-button"
+                        onClick={() => { // Modified onClick
+                            setShowErrorModal(false);
+                            setApiStatus("idle"); // Reset API status
+                            setSubmitProgress(0); // Reset progress
+                        }}
+                        autoFocus
+                    >
+                        Try Again
+                    </button>
                 </div>
             </div>
         </div>

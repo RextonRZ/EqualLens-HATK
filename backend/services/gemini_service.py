@@ -387,7 +387,6 @@ class GeminiService:
 
             # Extract the JSON from the response text
             response_text = response.text
-            logger.info(f"Gemini response text in score_applicant: {response_text}")
             start_idx = response_text.find('{')
             end_idx = response_text.rfind('}') + 1
 
@@ -440,7 +439,6 @@ class GeminiService:
                     "reasoning": reasoning
                 }
 
-                logger.info(f"Applicant scored: {result}")
                 return result
             else:
                 raise ValueError("Failed to extract JSON from Gemini response")

@@ -3,30 +3,31 @@ from fastapi.responses import JSONResponse
 from typing import List, Optional, Dict, Any, Tuple
 import json
 import logging
-from datetime import datetime
-import uuid
 import asyncio
-import httpx
 from fastapi.encoders import jsonable_encoder
 
 from models.job import JobCreate, JobResponse, JobUpdate, JobSuggestionContext, JobSuggestionResponse
 from models.candidate import CandidateUpdate
-from models.ai_detection import AIDetectionResult
+from models.ai_detection import AIDetectionResult  # For type hinting if needed, though not directly returned as Pydantic model by these endpoints
+from models.authenticity_analysis import AuthenticityAnalysisResult
+from models.cross_referencing import CrossReferencingResult
 
 from services.job_service import JobService
 from services.candidate_service import CandidateService
-from services.document_service import DocumentService
 from services.gemini_service import GeminiService
-from services.ai_detection_service import AIDetectionService, AI_DETECTION_FLAG_THRESHOLD
-from core.text_similarity import serialize_firebase_data
+from services.ai_detection_service import AIDetectionService
+from services.ai_detection_service import FINAL_AUTH_FLAG_THRESHOLD, SPAM_FLAG_THRESHOLD  # For logic within this file
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-gemini_service = GeminiService()
-ai_detection_service_instance = AIDetectionService(gemini_service=gemini_service)
+
+# Instantiate services
+gemini_service_global_instance = GeminiService()
+candidate_service_instance = CandidateService(gemini_service_instance=gemini_service_global_instance)
+ai_detection_formatter_instance = AIDetectionService()
 
 @router.get("/", response_model=List[JobResponse])
-async def get_jobs():
+async def get_jobs_list():  # Renamed to avoid conflict with get_job
     """Get all jobs."""
     try:
         jobs = JobService.get_jobs()
@@ -35,134 +36,211 @@ async def get_jobs():
         logger.error(f"Error getting jobs: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get jobs: {str(e)}")
 
+
 @router.get("/{job_id}", response_model=JobResponse)
-async def get_job(job_id: str):
+async def get_job_by_id(job_id: str):  # Renamed to avoid conflict
     """Get a job by ID."""
     job = JobService.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
-    return job
+    return JobResponse(**job)  # Ensure it's cast to JobResponse
+
 
 @router.put("/{job_id}", response_model=JobResponse)
-async def update_job(job_id: str, job: JobUpdate):
+async def update_job_details(job_id: str, job_update_data: JobUpdate):  # Renamed parameters for clarity
     """Update a job."""
     existing_job = JobService.get_job(job_id)
     if not existing_job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
-    job_dict = job.dict(exclude_unset=True)
-    if "minimumCGPA" in job_dict and (job_dict["minimumCGPA"] is None or job_dict["minimumCGPA"] == -1):
-        job_dict["minimumCGPA"] = 0
-    logger.info(f"Updating job {job_id} with data: {job_dict}")
-    success = JobService.update_job(job_id, job)
+
+    # Prepare update_data, handling minimumCGPA explicitly
+    update_data_dict = job_update_data.model_dump(exclude_unset=True)
+    if "minimumCGPA" in update_data_dict:
+        if update_data_dict["minimumCGPA"] is None or update_data_dict["minimumCGPA"] == -1:
+            update_data_dict["minimumCGPA"] = 0.0  # Store 0.0 for N/A
+        else:
+            try:
+                update_data_dict["minimumCGPA"] = float(update_data_dict["minimumCGPA"])
+            except (ValueError, TypeError):
+                logger.warning(
+                    f"Invalid minimumCGPA '{update_data_dict['minimumCGPA']}' during update, setting to 0.0.")
+                update_data_dict["minimumCGPA"] = 0.0
+
+    # Create a new JobUpdate instance with potentially modified data
+    # This ensures that if other fields were None, they are handled correctly by Pydantic
+    # when JobService.update_job expects a JobUpdate model.
+    # If JobService.update_job can take a dict, this step might not be strictly needed,
+    # but it's safer.
+    final_job_update_model = JobUpdate(**update_data_dict)
+
+    logger.info(f"Updating job {job_id} with data: {final_job_update_model.model_dump(exclude_none=True)}")
+    success = JobService.update_job(job_id, final_job_update_model)  # Pass the Pydantic model
+
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update job")
-    updated_job = JobService.get_job(job_id)
-    return updated_job
 
-async def _create_candidate_entry(
-    job_id_str: str, 
-    file_content_val: bytes, 
-    file_name_val: str, 
-    content_type_val: str,
-    pre_processed_doc_data: Optional[Dict[str, Any]] = None,
-    user_time_zone: Optional[str] = "UTC"
-) -> Optional[Dict[str, Any]]:
-    """Helper to call CandidateService.create_candidate with pre-processed data."""
-    try:
-        candidate_data = CandidateService.create_candidate(
-            job_id=job_id_str,
-            file_content=file_content_val,
-            file_name=file_name_val,
-            content_type=content_type_val or "application/pdf",
-            pre_processed_doc_data=pre_processed_doc_data,
-            user_time_zone=user_time_zone
-        )
-        return candidate_data
-    except Exception as e:
-        logger.error(f"Error creating candidate entry for file {file_name_val} in job {job_id_str}: {e}", exc_info=True)
-        return None
+    updated_job_data = JobService.get_job(job_id)
+    if not updated_job_data:  # Should not happen if update was successful
+        raise HTTPException(status_code=500, detail="Failed to retrieve updated job after update.")
 
-async def run_ai_validation_for_file(
-    file_content_bytes: bytes,
-    original_filename: str,
-    original_content_type: str,
-    ai_detection_srv: AIDetectionService,
-    doc_service_class: type[DocumentService],
-    skip_actual_ai_detection: bool = False,
-    job_description_for_ai: Optional[str] = None, 
-    job_skills_for_ai: Optional[List[str]] = None  
-) -> Tuple[bytes, str, Optional[Dict[str, Any]], Optional[AIDetectionResult]]:
-    """
-    Processes a single file's content for AI detection.
-    1. Calls DocumentService to get structured data (which includes full text).
-    2. Extracts full text from this data.
-    3. Calls AI Detection Service.
-    Returns: (file_content_bytes, original_filename, processed_doc_data_for_ai, ai_detection_result)
-    """
-    processed_doc_data_for_ai: Optional[Dict[str, Any]] = None
-    ai_detection_result: Optional[AIDetectionResult] = None
-    try:
-        # Step 1: Process document to get text for AI detection (AND FOR LATER CANDIDATE CREATION)
-        processed_doc_data_for_ai = doc_service_class.process_document(
-            file_content=file_content_bytes,
-            mime_type=original_content_type,
-            file_name=original_filename
-        )
-        text_for_ai_analysis = ""
-        if isinstance(processed_doc_data_for_ai, dict):
-            text_for_ai_analysis = processed_doc_data_for_ai.get("full_text", "")
-        elif isinstance(processed_doc_data_for_ai, str):
-            text_for_ai_analysis = processed_doc_data_for_ai
-            logger.warning(f"DocumentService returned a string for {original_filename}. Assuming it's the full text.")
-        
-        if skip_actual_ai_detection:
-            logger.info(f"AI detection skipped for file {original_filename} due to user force upload.")
-            ai_detection_result = AIDetectionResult(filename=original_filename, is_ai_generated=False, confidence=0.0, reason="AI check bypassed by user force upload.", details={"gemini": {"score": 0.0, "text_assessment": "N/A", "fabrication_concern": "N/A", "reason": "AI check bypassed by user."}})
-        elif not text_for_ai_analysis:
-            logger.warning(f"No text extracted from {original_filename} for AI detection.")
-            ai_detection_result = AIDetectionResult(filename=original_filename, is_ai_generated=False, confidence=0.0, reason="No text extracted for analysis.", details={"gemini": {"score": 0.0, "text_assessment": "N/A", "fabrication_concern": "N/A", "reason": "No text extracted."}})
-        else:
-            ai_detection_result = await ai_detection_srv.detect_ai_generated_text(text_for_ai_analysis, original_filename, job_description=job_description_for_ai, job_skills=job_skills_for_ai)
-        
-        return file_content_bytes, original_filename, processed_doc_data_for_ai, ai_detection_result
-    except Exception as e:
-        logger.error(f"Error during AI validation pre-processing for file {original_filename}: {e}", exc_info=True)
-        error_reason = f"Error during document processing/AI detection setup for AI validation: {str(e)}"
-        ai_detection_result = AIDetectionResult(filename=original_filename, is_ai_generated=False, confidence=0.0, reason=error_reason, details={"gemini": {"score": 0.0, "text_assessment": "Error", "fabrication_concern": "N/A", "reason": error_reason}})
-
-        if processed_doc_data_for_ai is None: # If DocumentService itself failed catastrophically before returning.
-             processed_doc_data_for_ai = {"error": f"Document processing failed for {original_filename}: {str(e)}"}
-
-        return file_content_bytes, original_filename, processed_doc_data_for_ai, ai_detection_result
+    return JobResponse(**updated_job_data)
 
 
-async def generate_and_save_profile(candidate_info: Dict[str, Any], gemini_service: GeminiService) -> bool:
+async def _process_single_file_for_candidate_creation(
+        job_id_for_creation: str,
+        file_obj: UploadFile,
+        user_time_zone: str,
+        # This flag comes from the form (e.g., "true" if user chose to override in Duplicate Modal)
+        override_duplicates_from_form: bool,
+        # This flag comes from the form (e.g., "true" if user chose "Continue Anyway" in AI Modal)
+        force_upload_problematic_from_form: bool
+) -> Dict[str, Any]:
+    file_content_bytes = await file_obj.read()
+    file_name_val = file_obj.filename
+    content_type_val = file_obj.content_type or "application/pdf"
 
+    # Pass the flags to the orchestrator
+    candidate_result = await candidate_service_instance.create_candidate_orchestrator(
+        job_id=job_id_for_creation,
+        file_content_bytes=file_content_bytes,
+        file_name=file_name_val,
+        content_type=content_type_val,
+        override_duplicates=override_duplicates_from_form,  # Passed to orchestrator
+        user_time_zone=user_time_zone,
+        force_problematic_upload=force_upload_problematic_from_form  # Passed to orchestrator
+    )
+
+    if candidate_result and candidate_result.get("error"):
+        logger.error(f"Error processing file {file_name_val} via orchestrator: {candidate_result['error']}")
+        return {"fileName": file_name_val, "status": "error", "message": candidate_result["error"], "candidateId": None}
+
+    if candidate_result and candidate_result.get("is_duplicate"):
+        # Orchestrator returns this if override_duplicates_from_form was False and duplicate found
+        logger.info(f"File {file_name_val} is a duplicate for job {job_id_for_creation} (orchestrator).")
+        return {
+            "fileName": file_name_val,
+            "status": "duplicate_detected",
+            "candidateId": None,
+            "duplicate_info": candidate_result["duplicate_info"],
+            "new_file_analysis_for_duplicate": candidate_result.get("new_file_analysis")
+        }
+
+    if candidate_result and candidate_result.get("is_problematic_pending_confirmation"):
+        # Orchestrator returns this if problematic and force_upload_problematic_from_form was False
+        logger.info(f"File {file_name_val} is problematic, pending confirmation for job {job_id_for_creation}.")
+
+        analysis_data = candidate_result.get("analysis_data", {})
+        external_pred = analysis_data.get("external_ai_detection_data", {})
+        auth_results_dict = analysis_data.get("authenticity_analysis_result")
+        # cross_ref_results_dict = analysis_data.get("cross_referencing_result") # Not directly used for payload here
+        final_assessment = analysis_data.get("final_assessment_data", {})
+
+        overall_auth_score = final_assessment.get("final_overall_authenticity_score", 0.5)
+        spam_score = final_assessment.get("final_spam_likelihood_score", 0.5)
+        is_externally_flagged_ai = external_pred.get("predicted_class_label") == "AI-generated"
+
+        reason_parts = []
+        if is_externally_flagged_ai:
+            ext_conf = external_pred.get("confidence_scores", {}).get("ai_generated", 0.0)
+            reason_parts.append(f"External Model: AI-Generated (Conf: {ext_conf:.2f})")
+        if overall_auth_score < FINAL_AUTH_FLAG_THRESHOLD:
+            reason_parts.append(f"Internal Auth Score: {overall_auth_score:.2f} (Low)")
+        if spam_score > SPAM_FLAG_THRESHOLD:
+            reason_parts.append(f"Internal Spam Score: {spam_score:.2f} (High)")
+
+        reason_summary_for_modal = ". ".join(reason_parts) if reason_parts else "System flagged potential issues."
+        if final_assessment.get("final_xai_summary"):
+            reason_summary_for_modal = final_assessment.get("final_xai_summary")
+
+        payload_is_ai_generated = is_externally_flagged_ai
+        payload_confidence = 0.0
+        if is_externally_flagged_ai:
+            payload_confidence = external_pred.get("confidence_scores", {}).get("ai_generated", 0.0)
+        elif (overall_auth_score < FINAL_AUTH_FLAG_THRESHOLD) or (spam_score > SPAM_FLAG_THRESHOLD):
+            payload_is_ai_generated = True
+            payload_confidence = max(1.0 - overall_auth_score, spam_score)
+
+        # Format the HTML reason string using AIDetectionService (or a simplified version)
+        # This requires passing the individual analysis components
+        formatted_reason_html = ai_detection_formatter_instance.format_analysis_for_frontend(
+            filename=file_name_val,
+            auth_results=AuthenticityAnalysisResult(**auth_results_dict) if auth_results_dict else None,
+            cross_ref_results=CrossReferencingResult(
+                **analysis_data.get("cross_referencing_result", {})) if analysis_data.get(
+                "cross_referencing_result") else None,
+            external_ai_pred_data=external_pred
+        ).reason  # Get the HTML string
+
+        return {
+            "fileName": file_name_val,
+            "status": "ai_content_detected",
+            "candidateId": None,  # No candidate created yet
+            "ai_detection_payload": {
+                "filename": file_name_val,
+                "is_ai_generated": payload_is_ai_generated,
+                "confidence": payload_confidence,
+                "reason": formatted_reason_html,  # Send the formatted HTML reason
+                "details": {  # Keep structured details for potential future use or if frontend parses this too
+                    "external_ai_prediction": external_pred,
+                    "authenticity_analysis": auth_results_dict,
+                    "cross_referencing_analysis": analysis_data.get("cross_referencing_result"),
+                    "final_overall_authenticity_score": overall_auth_score,
+                    "final_spam_likelihood_score": spam_score,
+                    "final_xai_summary": final_assessment.get("final_xai_summary")
+                }
+            }
+        }
+
+    if candidate_result and candidate_result.get("candidateId"):
+        # This means success from orchestrator: candidate created (new, or duplicate override was true, or problematic forced)
+        return {
+            "fileName": file_name_val,
+            "status": "success",
+            "candidateId": candidate_result.get("candidateId"),
+            "message": "Candidate processed successfully.",
+            "candidate_data": candidate_result
+        }
+
+    logger.error(
+        f"Unexpected result from candidate orchestrator for {file_name_val} after all checks: {candidate_result}")
+    return {"fileName": file_name_val, "status": "error", "message": "Unknown processing error post-orchestration.",
+            "candidateId": None}
+
+async def generate_and_save_profile(candidate_info: Dict[str, Any], gemini_srv: GeminiService) -> bool:
+    # ... (implementation unchanged) ...
     candidate_id = candidate_info.get('candidateId')
-    extracted_data_dict = candidate_info.get("extractedData", {}) # This will be the full DocumentService output
-    entities_for_profile_generation: Optional[Dict[str, Any]] = None
-    if isinstance(extracted_data_dict, dict):
-        entities_for_profile_generation = extracted_data_dict.get("entities") 
+    extracted_data_from_doc_ai = candidate_info.get("extractedDataFromDocAI", {})
+    entities_for_profile_gen: Optional[Dict[str, Any]] = None
+
+    if isinstance(extracted_data_from_doc_ai, dict):
+        entities_for_profile_gen = extracted_data_from_doc_ai.get("entities")
     else:
-        logger.error(f"generate_and_save_profile: extractedData for candidate {candidate_id} is not a dictionary. Cannot extract entities.")
-    
+        logger.error(
+            f"generate_and_save_profile: extractedDataFromDocAI for candidate {candidate_id} is not a dictionary.")
+        return False
+
     if not candidate_id:
         logger.warning("Missing candidateId in candidate_info for profile generation.")
         return False
-    if not entities_for_profile_generation or not isinstance(entities_for_profile_generation, dict):
-        logger.warning(f"No entities dictionary found or entities is not a dict in extractedData for candidate {candidate_id} to generate profile. ExtractedData: {extracted_data_dict}")
-        return False 
-    
-    applicant_data_for_gemini = {"candidateId": candidate_id, "extractedText": entities_for_profile_generation}
+    if not entities_for_profile_gen or not isinstance(entities_for_profile_gen, dict):
+        logger.warning(
+            f"No 'entities' dictionary found or it's not a dict for candidate {candidate_id} to generate profile. ExtractedData: {extracted_data_from_doc_ai}")
+        return False
+
+    applicant_data_for_gemini = {"candidateId": candidate_id, "extractedText": entities_for_profile_gen}
     try:
-        logger.info(f"Generating detailed profile for candidate {candidate_id}")
-        detailed_profile = await gemini_service.generate_candidate_profile(applicant_data_for_gemini)
+        logger.info(f"Generating detailed profile for candidate {candidate_id} via jobs.py helper")
+        detailed_profile = await gemini_srv.generate_candidate_profile(applicant_data_for_gemini)
+
         if not detailed_profile or not isinstance(detailed_profile, dict) or "summary" not in detailed_profile:
-             logger.warning(f"Failed to generate valid detailed profile for candidate {candidate_id}")
-             return False
+            logger.warning(
+                f"Failed to generate valid detailed profile for candidate {candidate_id}. Profile: {detailed_profile}")
+            return False
+
         update_payload = {"detailed_profile": detailed_profile}
-        profile_update = CandidateUpdate(**update_payload)
-        success = CandidateService.update_candidate(candidate_id, profile_update)
+        profile_update_model = CandidateUpdate(**update_payload)
+        success = CandidateService.update_candidate(candidate_id, profile_update_model)
+
         if success:
             logger.info(f"Successfully generated and saved detailed profile for candidate {candidate_id}")
             return True
@@ -170,313 +248,366 @@ async def generate_and_save_profile(candidate_info: Dict[str, Any], gemini_servi
             logger.warning(f"Failed to save detailed profile for candidate {candidate_id}")
             return False
     except Exception as e:
-        logger.error(f"Error generating profile for candidate {candidate_id}: {e}")
+        logger.error(f"Error in generate_and_save_profile for candidate {candidate_id}: {e}", exc_info=True)
         return False
 
+
 @router.post("/upload-job")
-async def upload_job(
-    job_data: str = Form(...),
-    files: List[UploadFile] = File(...),
-    force_upload_ai_flagged: Optional[str] = Form(None),
-    user_time_zone: str = Form("UTC")
+async def upload_job_and_cvs(  # Renamed for clarity
+        job_data_json_str: str = Form(..., alias="job_data"),
+        files: List[UploadFile] = File(...),
+        force_upload_ai_flagged: Optional[str] = Form(None),
+        user_time_zone: str = Form("UTC")
 ):
     try:
-        job_details = json.loads(job_data)
-        logger.info(f"Received job details: {job_details}")
+        job_details = json.loads(job_data_json_str)
+        logger.info(f"Received new job details: {job_details.get('jobTitle')}, with {len(files)} CVs.")
         if not files:
             raise HTTPException(status_code=400, detail="No CV files provided for new job.")
 
-        file_processing_inputs = []
-        for file_in in files:
-            content_bytes = await file_in.read()
-            await file_in.seek(0)
-            file_processing_inputs.append({
-                "original_file_obj": file_in,
-                "content_bytes": content_bytes
-            })
-        
-        skip_ai_check_for_all_files = (force_upload_ai_flagged and force_upload_ai_flagged.lower() == "true")
-        current_job_description = job_details.get("jobDescription", "")
-        current_job_skills = job_details.get("requiredSkills", job_details.get("skills", []))
+        is_forcing_problematic_upload = (force_upload_ai_flagged and force_upload_ai_flagged.lower() == "true")
 
-        if skip_ai_check_for_all_files:
-            logger.info(f"AI content validation will be SKIPPED for all files for new job (force_upload_ai_flagged=true).")
-        else:
-            logger.info(f"Performing AI content validation for {len(file_processing_inputs)} files for new job...")
-        
-        ai_validation_tasks = []
-        for item in file_processing_inputs:
-            ai_validation_tasks.append(
-                run_ai_validation_for_file(
-                    file_content_bytes=item["content_bytes"],
-                    original_filename=item["original_file_obj"].filename,
-                    original_content_type=item["original_file_obj"].content_type or "application/pdf",
-                    ai_detection_srv=ai_detection_service_instance,
-                    doc_service_class=DocumentService,
-                    skip_actual_ai_detection=skip_ai_check_for_all_files,
-                    job_description_for_ai=current_job_description, 
-                    job_skills_for_ai=current_job_skills 
-                )
-            )
-        ai_validation_results_tuples = await asyncio.gather(*ai_validation_tasks)
-        
-        # This list will store dicts: {content_bytes, filename, content_type, pre_processed_doc_data, ai_result (optional)}
-        files_data_for_candidate_creation = [] 
-        ai_flagged_results_for_response: List[AIDetectionResult] = []
-
-        for val_tuple in ai_validation_results_tuples:
-            # f_processed_doc_data IS THE RESULT OF DocumentService.process_document
-            f_content_bytes, f_orig_filename, f_processed_doc_data, f_ai_result = val_tuple 
-            
-            if not f_ai_result: # Should ideally not happen if run_ai_validation_for_file is robust
-                logger.error(f"Critical error: Missing AI detection result for file {f_orig_filename}. Assuming non-AI.")
-                f_ai_result = AIDetectionResult(filename=f_orig_filename, is_ai_generated=False, confidence=0.0, reason="Internal error during AI check")
-
-            original_uploadfile_obj = next((item["original_file_obj"] for item in file_processing_inputs if item["original_file_obj"].filename == f_orig_filename), None)
-
-            if not skip_ai_check_for_all_files and f_ai_result.is_ai_generated and f_ai_result.confidence >= AI_DETECTION_FLAG_THRESHOLD:
-                logger.warning(f"File '{f_ai_result.filename}' for job '{job_details.get('jobTitle', 'N/A')}' flagged as AI-generated. Confidence: {f_ai_result.confidence:.2f}.")
-                ai_flagged_results_for_response.append(f_ai_result)
-
-            # Always add to files_data_for_candidate_creation, AI check is handled next.
-            # This ensures pre_processed_doc_data is available if we proceed.
-            if original_uploadfile_obj:
-                 files_data_for_candidate_creation.append({
-                    "content_bytes": f_content_bytes,
-                    "filename": f_orig_filename,
-                    "content_type": original_uploadfile_obj.content_type or "application/pdf",
-                    "pre_processed_doc_data": f_processed_doc_data, # Store the processed data
-                })
-        
-        if not skip_ai_check_for_all_files and ai_flagged_results_for_response:
-            logger.info(f"AI content detected. Upload for job '{job_details.get('jobTitle', 'N/A')}' will be presented to user for confirmation.")
-            raise HTTPException(status_code=422, detail={"message": "AI-generated content detected in one or more CVs.", "error_type": "AI_CONTENT_DETECTED", "flagged_files": [f_res.dict() for f_res in ai_flagged_results_for_response]})
-            
-        # --- STAGE 2: Job Creation ---
+        # --- Create Job Entry First ---
         skills = job_details.get("skills", [])
-        required_skills = job_details.get("requiredSkills", skills) 
-        minimum_cgpa = job_details.get("minimumCGPA")
-        if minimum_cgpa == -1 or minimum_cgpa is None: minimum_cgpa = 0.0
-        else:
-            try: minimum_cgpa = float(minimum_cgpa)
-            except (ValueError, TypeError): logger.warning(f"Invalid minimumCGPA value '{minimum_cgpa}', defaulting to 0.0."); minimum_cgpa = 0.0
+        required_skills = job_details.get("requiredSkills", skills)
+        minimum_cgpa_raw = job_details.get("minimumCGPA")
+        minimum_cgpa = 0.0
+        if minimum_cgpa_raw not in [-1, None, "n/a", "N/A"]:
+            try:
+                minimum_cgpa = float(minimum_cgpa_raw)
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid minimumCGPA value '{minimum_cgpa_raw}', defaulting to 0.0.")
 
-        job_obj = JobCreate(jobTitle=job_details.get("jobTitle"), jobDescription=job_details.get("jobDescription", ""), departments=job_details.get("departments", []), minimumCGPA=minimum_cgpa, requiredSkills=required_skills)
-        logger.info(f"Creating job with data: {job_obj.dict()}")
-        job_id = JobService.create_job(job_obj)
-        if not job_id: raise HTTPException(status_code=500, detail="Failed to create job")
-        
-        logger.info(f"Processing {len(files_data_for_candidate_creation)} files for candidate creation...")
-        candidate_creation_tasks = []
-        for file_data in files_data_for_candidate_creation: # This list now contains pre_processed_doc_data
-            candidate_creation_tasks.append(
-                _create_candidate_entry(
-                    job_id_str=job_id,
-                    file_content_val=file_data["content_bytes"],
-                    file_name_val=file_data["filename"],
-                    content_type_val=file_data["content_type"],
-                    pre_processed_doc_data=file_data["pre_processed_doc_data"],
-                    user_time_zone=user_time_zone
-                )
+        job_create_payload = JobCreate(
+            jobTitle=job_details.get("jobTitle"),
+            jobDescription=job_details.get("jobDescription", ""),
+            departments=job_details.get("departments", []),
+            minimumCGPA=minimum_cgpa,
+            requiredSkills=required_skills,
+            prompt=job_details.get("prompt", "")
+        )
+        actual_job_id = JobService.create_job(job_create_payload)
+        if not actual_job_id:
+            raise HTTPException(status_code=500, detail="Failed to create job entry in database.")
+        logger.info(f"Job entry created with ID: {actual_job_id} for '{job_details.get('jobTitle')}'")
+
+        # --- STAGE 1: Process all files for analysis and initial checks ---
+        file_processing_tasks = [
+            _process_single_file_for_candidate_creation(
+                job_id_for_creation=actual_job_id,
+                file_obj=file_obj,
+                user_time_zone=user_time_zone,
+                override_duplicates_from_form=False,
+                force_upload_problematic_from_form=is_forcing_problematic_upload
+            ) for file_obj in files
+        ]
+        processed_file_results = await asyncio.gather(*file_processing_tasks)
+
+        # --- STAGE 2: Handle responses ---
+        successful_candidates_full_data = []
+        ai_flagged_payloads_for_modal = []
+        duplicate_payloads_for_modal = []
+        error_files = []
+
+        for res in processed_file_results:
+            if res["status"] == "success":
+                successful_candidates_full_data.append(res["candidate_data"])
+            elif res["status"] == "ai_content_detected":
+                ai_flagged_payloads_for_modal.append(res["ai_detection_payload"])
+            elif res["status"] == "duplicate_detected":
+                duplicate_payloads_for_modal.append(res)
+            elif res["status"] == "error":
+                error_files.append(res)
+
+        if ai_flagged_payloads_for_modal and not is_forcing_problematic_upload:
+            logger.warning(
+                f"AI content detected in {len(ai_flagged_payloads_for_modal)} files for new job '{actual_job_id}'.")
+            # If some files were successful before AI flag, they are in successful_candidates_full_data
+            # We should still process them and create applications.
+            # The AI flagged ones are held back.
+
+            # Process successful non-AI-flagged files
+            applications_created_info = []
+            if successful_candidates_full_data:  # Files that were not AI flagged and not duplicates
+                applications_created_info = candidate_service_instance.process_applications(actual_job_id,
+                                                                                            successful_candidates_full_data)
+                profile_tasks = [generate_and_save_profile(cand_info, gemini_service_global_instance) for cand_info in
+                                 successful_candidates_full_data]
+                await asyncio.gather(*profile_tasks)
+
+            return JSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content={
+                    "message": "Potential AI-generated or problematic content detected in some CVs.",
+                    "error_type": "AI_CONTENT_DETECTED",
+                    "flagged_files": jsonable_encoder(ai_flagged_payloads_for_modal),
+                    "jobId": actual_job_id,
+                    "processed_ok_count": len(successful_candidates_full_data),
+                    "note": "Job created. Some CVs processed, others require review. Re-submit problematic CVs with force flag or manage individually."
+                }
             )
-        created_candidate_results = await asyncio.gather(*candidate_creation_tasks)
-        
-        # Filter out None results or results indicating an error from _create_candidate_entry/create_candidate
-        # Ensure that candidate_info for profile generation has 'candidateId' and 'extractedData'
-        valid_candidates_info = []
-        for res in created_candidate_results:
-            if res and isinstance(res, dict) and 'candidateId' in res and 'extractedData' in res and not res.get("is_duplicate") and not res.get("error"):
-                valid_candidates_info.append(res)
-            elif res and res.get("is_duplicate"):
-                logger.info(f"Skipping profile generation for duplicate candidate from file: {res.get('fileName', 'N/A')}")
-            elif res and res.get("error"):
-                 logger.error(f"Skipping profile generation due to candidate creation error for file: {res.get('fileName', 'N/A')}, error: {res.get('error')}")
-            else:
-                logger.warning(f"Invalid result from candidate creation, skipping: {res}")
 
-        candidate_ids = [info['candidateId'] for info in valid_candidates_info]
-        logger.info(f"Successfully created {len(candidate_ids)} candidates for new job {job_id}.")
+        if duplicate_payloads_for_modal:  # This means override_duplicates_flag was false
+            logger.warning(f"Duplicate CVs detected for new job '{actual_job_id}'.")
+            # Process successful non-duplicate, non-AI-flagged files
+            applications_created_info = []
+            if successful_candidates_full_data:  # Files that were not AI flagged and not duplicates
+                applications_created_info = candidate_service_instance.process_applications(actual_job_id,
+                                                                                            successful_candidates_full_data)
+                profile_tasks = [generate_and_save_profile(cand_info, gemini_service_global_instance) for cand_info in
+                                 successful_candidates_full_data]
+                await asyncio.gather(*profile_tasks)
 
-        applications = []
-        if valid_candidates_info: 
-            applications = CandidateService.process_applications(job_id, valid_candidates_info)
-        successful_apps_count = sum(1 for app in applications if app.get('success'))
-        logger.info(f"Processed {successful_apps_count} applications for new job {job_id}.")
-        
-        if valid_candidates_info:
-            logger.info(f"Generating detailed profiles concurrently for {len(valid_candidates_info)} candidates for new job {job_id}...")
+            return JSONResponse(
+                status_code=status.HTTP_409_CONFLICT,
+                content={
+                    "message": "Duplicate CVs detected.",
+                    "error_type": "DUPLICATE_FILES_DETECTED",
+                    "duplicates": jsonable_encoder(duplicate_payloads_for_modal),
+                    "nonDuplicateCount": len(successful_candidates_full_data),
+                    # Files that were not duplicates and not AI flagged
+                    "jobId": actual_job_id,
+                    "note": "Job created. Handle duplicates or re-upload with override."
+                }
+            )
+
+        # --- STAGE 3: Finalize successful candidates (all files passed or were forced) ---
+        applications_created_info = []
+        if successful_candidates_full_data:
+            applications_created_info = candidate_service_instance.process_applications(actual_job_id,
+                                                                                        successful_candidates_full_data)
+
+        successful_apps_count = sum(1 for app_info in applications_created_info if app_info.get('success'))
+        logger.info(f"Created {successful_apps_count} applications for job {actual_job_id}.")
+
+        if successful_candidates_full_data:
             profile_generation_tasks = [
-                generate_and_save_profile(cand_info, gemini_service) # cand_info contains 'extractedData'
-                for cand_info in valid_candidates_info 
+                generate_and_save_profile(cand_info, gemini_service_global_instance)
+                for cand_info in successful_candidates_full_data
             ]
-            profile_results = await asyncio.gather(*profile_generation_tasks)
-            successful_profiles = sum(1 for pr in profile_results if pr is True)
-            logger.info(f"Successfully generated and saved {successful_profiles} detailed profiles for new job {job_id}.")
-        else:
-            logger.warning("No valid candidates created (or all were duplicates/errors), skipping profile generation.")
+            await asyncio.gather(*profile_generation_tasks)
 
-        final_candidates_data = [CandidateService.get_candidate(cid) for cid in candidate_ids]
-        final_candidates_data = [c for c in final_candidates_data if c] # Filter out None if any failed
+        final_candidates_data = [
+            candidate_service_instance.get_candidate(cand_info['candidateId'])
+            for cand_info in successful_candidates_full_data if cand_info.get('candidateId')
+        ]
+        final_candidates_data = [c for c in final_candidates_data if c]
 
-        return JSONResponse(status_code=200, content={"message": "Job and applications processed successfully.", "jobId": job_id, "applicationCount": successful_apps_count, "applications": applications, "candidates": final_candidates_data, "candidateIds": candidate_ids, "progress": 100.0})
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content=jsonable_encoder({
+                "message": "Job created and CVs processed successfully.",
+                "jobId": actual_job_id,
+                "jobTitle": job_details.get("jobTitle"),
+                "applicationCount": successful_apps_count,
+                "applications": applications_created_info,
+                "candidates": final_candidates_data,
+                "candidateIds": [c['candidateId'] for c in final_candidates_data if c.get('candidateId')],
+                # For UploadCV.js
+                "errors_processing_files": error_files
+            })
+        )
+    # ... (exception handling unchanged) ...
     except HTTPException as http_exc:
+        logger.error(f"HTTPException in /upload-job: {http_exc.detail}", exc_info=True)
         raise http_exc
     except json.JSONDecodeError as json_e:
-        logger.error(f"Invalid JSON in job_data for new job: {json_e}")
+        logger.error(f"Invalid JSON in job_data for new job: {json_e}", exc_info=True)
         raise HTTPException(status_code=400, detail=f"Invalid JSON format in job_data: {str(json_e)}")
     except Exception as e:
         logger.error(f"Error uploading new job: {e}", exc_info=True)
-        return JSONResponse(status_code=500, content={"error": str(e), "type": str(type(e).__name__), "message": "An error occurred while processing your request for new job"})
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e), "type": str(type(e).__name__),
+                     "message": "An error occurred while processing your request for new job"}
+        )
+
 
 @router.post("/upload-more-cv")
-async def upload_more_cv(job_id: str = Form(...), 
-                        files: List[UploadFile] = File(...), 
-                        override_duplicates: bool = Form(False),
-                        selected_filenames: Optional[str] = Form(None),
-                        user_time_zone: str = Form("UTC"),
-                        force_upload_ai_flagged: Optional[str] = Form(None)):
-    
-    logger.info(f"Uploading more CVs for job {job_id}, override_duplicates: {override_duplicates}")
+async def upload_more_cv_for_job(  # Renamed for clarity
+        job_id: str = Form(...),
+        files: List[UploadFile] = File(...),
+        override_duplicates: Optional[str] = Form("false"),
+        selected_filenames_for_overwrite_json: Optional[str] = Form(None, alias="selected_filenames"),
+        force_upload_ai_flagged: Optional[str] = Form(None),
+        user_time_zone: str = Form("UTC")
+):
+    logger.info(
+        f"Uploading more CVs for job {job_id}, override_duplicates_form: {override_duplicates}, force_ai: {force_upload_ai_flagged}")
     try:
         job = JobService.get_job(job_id)
-        if not job: raise HTTPException(status_code=404, detail=f"Job with ID {job_id} not found")
-        if not files: raise HTTPException(status_code=400, detail=f"No CV files provided for job {job_id}.")
+        if not job:
+            raise HTTPException(status_code=404, detail=f"Job with ID {job_id} not found")
+        if not files:
+            raise HTTPException(status_code=400, detail=f"No CV files provided for job {job_id}.")
 
-        file_processing_inputs = []
-        for file_in in files:
-            content_bytes = await file_in.read(); await file_in.seek(0)
-            file_processing_inputs.append({"original_file_obj": file_in, "content_bytes": content_bytes})
+        is_overriding_duplicates_general = (override_duplicates and override_duplicates.lower() == "true")
+        is_forcing_problematic_upload = (force_upload_ai_flagged and force_upload_ai_flagged.lower() == "true")
 
-        skip_ai_check_for_all_files = (force_upload_ai_flagged and force_upload_ai_flagged.lower() == "true")
-        current_job_description = job.get("jobDescription", ""); current_job_skills = job.get("requiredSkills", [])
-        if skip_ai_check_for_all_files: logger.info(f"AI content validation will be SKIPPED for all additional CVs for job {job_id}.")
-        else: logger.info(f"Performing AI content validation for {len(file_processing_inputs)} additional CVs for job {job_id}...")
-
-        ai_validation_tasks = [
-            run_ai_validation_for_file(item["content_bytes"], item["original_file_obj"].filename, item["original_file_obj"].content_type or "application/pdf", ai_detection_service_instance, DocumentService, skip_ai_check_for_all_files, current_job_description, current_job_skills)
-            for item in file_processing_inputs
-        ]
-        ai_validation_results_tuples = await asyncio.gather(*ai_validation_tasks)
-
-        files_for_duplicate_check = []; ai_flagged_results_for_response: List[AIDetectionResult] = []
-        for val_tuple in ai_validation_results_tuples:
-            f_content_bytes, f_orig_filename, f_processed_doc_data, f_ai_result = val_tuple
-            if not f_ai_result:
-                logger.error(f"Critical error: Missing AI result for {f_orig_filename} (job {job_id}). Assuming non-AI.")
-                f_ai_result = AIDetectionResult(filename=f_orig_filename, is_ai_generated=False, confidence=0.0, reason="Internal error during AI check")
-            original_uploadfile_obj = next((item["original_file_obj"] for item in file_processing_inputs if item["original_file_obj"].filename == f_orig_filename), None)
-            if not skip_ai_check_for_all_files and f_ai_result.is_ai_generated and f_ai_result.confidence >= AI_DETECTION_FLAG_THRESHOLD:
-                logger.warning(f"File '{f_ai_result.filename}' (job {job_id}) flagged as AI-generated. Confidence: {f_ai_result.confidence:.2f}.")
-                ai_flagged_results_for_response.append(f_ai_result)
-            
-            if skip_ai_check_for_all_files or not (f_ai_result.is_ai_generated and f_ai_result.confidence >= AI_DETECTION_FLAG_THRESHOLD):
-                if original_uploadfile_obj:
-                    files_for_duplicate_check.append({"original_file_obj": original_uploadfile_obj, "content_bytes": f_content_bytes, "filename": f_orig_filename, "content_type": original_uploadfile_obj.content_type or "application/pdf", "extracted_data_from_ai_stage": f_processed_doc_data})
-            # elif f_ai_result.is_ai_generated and f_ai_result.confidence >= AI_DETECTION_FLAG_THRESHOLD and not skip_ai_check_for_all_files: pass
-            else: 
-                 if original_uploadfile_obj: files_for_duplicate_check.append({"original_file_obj": original_uploadfile_obj, "content_bytes": f_content_bytes, "filename": f_orig_filename, "content_type": original_uploadfile_obj.content_type or "application/pdf", "extracted_data_from_ai_stage": f_processed_doc_data})
-
-        if not skip_ai_check_for_all_files and ai_flagged_results_for_response:
-            logger.info(f"AI content detected for additional CVs for job {job_id}. Presenting to user for confirmation.")
-            raise HTTPException(status_code=422, detail={"message": "AI-generated content detected in one or more CVs.", "error_type": "AI_CONTENT_DETECTED", "flagged_files": [f_res.dict() for f_res in ai_flagged_results_for_response]})
-        
-        if skip_ai_check_for_all_files:
-            files_for_duplicate_check = [] 
-            for val_tuple in ai_validation_results_tuples:
-                f_content_bytes, f_orig_filename, f_processed_doc_data, _ = val_tuple
-                original_uploadfile_obj = next((item["original_file_obj"] for item in file_processing_inputs if item["original_file_obj"].filename == f_orig_filename), None)
-                if original_uploadfile_obj: files_for_duplicate_check.append({"original_file_obj": original_uploadfile_obj, "content_bytes": f_content_bytes, "filename": f_orig_filename, "content_type": original_uploadfile_obj.content_type or "application/pdf", "extracted_data_from_ai_stage": f_processed_doc_data})
-
-        parsed_selected_files_for_overwrite = []
-        if selected_filenames:
-            try: parsed_selected_files_for_overwrite = json.loads(selected_filenames); logger.info(f"Received {len(parsed_selected_files_for_overwrite)} selected filenames for overwriting: {parsed_selected_files_for_overwrite}")
-            except Exception as e: logger.error(f"Error parsing selected_filenames: {e}")
-        
-        duplicates_found = []; non_duplicate_files_for_creation = []; updated_candidate_ids = []; updated_candidates_info_for_profile_gen = []
-        for item_data in files_for_duplicate_check:
+        selected_filenames_to_override_list = []
+        if selected_filenames_for_overwrite_json:
             try:
-                file_name = item_data["filename"]; content_type = item_data["content_type"]; extracted_data = item_data["extracted_data_from_ai_stage"]; file_content_bytes_for_storage = item_data["content_bytes"]
-                if not extracted_data: logger.error(f"Missing extracted data for file {file_name} after AI stage."); continue
-                duplicate_check_result = CandidateService.check_duplicate_candidate(job_id, extracted_data)
-                if duplicate_check_result["is_duplicate"]:
-                    duplicate_candidate_details = duplicate_check_result.get("duplicate_candidate", {}); existing_candidate_id = duplicate_candidate_details.get("candidateId")
-                    if override_duplicates and (not parsed_selected_files_for_overwrite or file_name in parsed_selected_files_for_overwrite):
-                        logger.info(f"Overwriting candidate {existing_candidate_id} with file {file_name}")
-                        new_file_id = str(uuid.uuid4()); file_extension = file_name.split('.')[-1] if '.' in file_name else 'pdf'; storage_path = f"resumes/{job_id}/{existing_candidate_id}/{new_file_id}.{file_extension}"
-                        from core.firebase import firebase_client
-                        download_url = firebase_client.upload_file(file_content_bytes_for_storage, storage_path, content_type)
-                        if not download_url: logger.error(f"Failed to upload file to storage for overwriting candidate {existing_candidate_id}"); continue
-                        now_iso = datetime.now().astimezone().isoformat()
-                        update_payload = {'extractedText': extracted_data, 'resumeUrl': download_url, 'storagePath': storage_path, 'overwriteAt': now_iso, 'detailed_profile': None}
-                        success = CandidateService.update_candidate(existing_candidate_id, CandidateUpdate(**update_payload))
-                        if success: logger.info(f"Successfully updated candidate {existing_candidate_id}"); updated_candidate_ids.append(existing_candidate_id); updated_candidates_info_for_profile_gen.append({"candidateId": existing_candidate_id, "extractedData": extracted_data})
-                        else: logger.error(f"Failed to update candidate {existing_candidate_id}")
-                    else:
-                        serialized_dup_info = serialize_firebase_data(duplicate_check_result)
-                        duplicates_found.append({"fileName": file_name, "duplicateInfo": serialized_dup_info})
-                else: non_duplicate_files_for_creation.append({"content_bytes": file_content_bytes_for_storage, "extractedData": extracted_data, "fileName": file_name, "contentType": content_type})
-            except Exception as e: logger.error(f"Error during duplicate check for file {item_data.get('filename', 'N/A')}: {e}", exc_info=True)
+                selected_filenames_to_override_list = json.loads(selected_filenames_for_overwrite_json)
+                if not isinstance(selected_filenames_to_override_list, list): selected_filenames_to_override_list = []
+            except json.JSONDecodeError:
+                logger.warning("Invalid JSON for selected_filenames in upload-more-cv, ignoring.")
+                selected_filenames_to_override_list = []
 
-        logger.info(f"Duplicate check completed. Found {len(duplicates_found)} duplicates and {len(non_duplicate_files_for_creation)} non-duplicates.")
-        # logger.info(f"Duplicate candidates: {duplicates_found}") # Can be very verbose
-        
-        if duplicates_found and not override_duplicates:
-            logger.info(f"Found {len(duplicates_found)} duplicate files and {len(non_duplicate_files_for_creation)} non-duplicate files. Not overriding.")
-            response_content_409 = {"detail": "Duplicate candidates detected", "duplicates": duplicates_found, "nonDuplicateCount": len(non_duplicate_files_for_creation)}
-            return JSONResponse(status_code=status.HTTP_409_CONFLICT, content=jsonable_encoder(response_content_409))
+        logger.info(
+            f"Processing {len(files)} additional CVs for job {job_id}. General Override Duplicates: {is_overriding_duplicates_general}. Force AI Upload: {is_forcing_problematic_upload}. Specific files to override if general override is true: {selected_filenames_to_override_list}")
 
-        newly_created_candidates_info = []; new_candidate_ids = []
-        for file_data_for_creation in non_duplicate_files_for_creation:
-            try:
-                candidate_result_dict = CandidateService.create_candidate_from_data(
-                    job_id=job_id, 
-                    file_content=file_data_for_creation["content_bytes"], 
-                    file_name=file_data_for_creation["fileName"], 
-                    content_type=file_data_for_creation["contentType"], 
-                    extracted_data=file_data_for_creation["extractedData"],
-                    user_time_zone=user_time_zone 
+        # --- STAGE 1: Process all files ---
+        file_processing_tasks = []
+        for file_obj in files:
+            # If general override is true, this specific file is overridden if it's in the selected list OR if no list is provided (override all)
+            # If general override is false, this specific file is not overridden.
+            override_this_specific_file_flag = False
+            if is_overriding_duplicates_general:
+                if selected_filenames_to_override_list:  # If a list is provided, only override those
+                    if file_obj.filename in selected_filenames_to_override_list:
+                        override_this_specific_file_flag = True
+                else:  # No specific list, so general override applies to all files in this batch
+                    override_this_specific_file_flag = True
+
+            file_processing_tasks.append(
+                _process_single_file_for_candidate_creation(
+                    job_id_for_creation=job_id,
+                    file_obj=file_obj,
+                    user_time_zone=user_time_zone,
+                    override_duplicates_from_form=override_this_specific_file_flag,
+                    force_upload_problematic_from_form=is_forcing_problematic_upload
                 )
-                if candidate_result_dict and candidate_result_dict.get('candidateId'):
-                    newly_created_candidates_info.append(candidate_result_dict); new_candidate_ids.append(candidate_result_dict['candidateId'])
-            except Exception as e: logger.error(f"Error creating candidate for {file_data_for_creation['fileName']}: {e}", exc_info=True)
-        
-        logger.info(f"Successfully created {len(new_candidate_ids)} new candidates for job {job_id}.")
-        application_results = []
-        if newly_created_candidates_info: application_results = CandidateService.process_applications(job_id, newly_created_candidates_info)
-        successful_apps_count = sum(1 for app in application_results if app.get('success'))
-        logger.info(f"Processed {successful_apps_count} new applications for job {job_id}.")
+            )
+        processed_file_results = await asyncio.gather(*file_processing_tasks)
 
-        all_candidates_for_profile_gen = newly_created_candidates_info + updated_candidates_info_for_profile_gen
-        if all_candidates_for_profile_gen:
-            logger.info(f"Generating detailed profiles for {len(all_candidates_for_profile_gen)} candidates (job {job_id})...")
-            profile_generation_tasks = [generate_and_save_profile(cand_info, gemini_service) for cand_info in all_candidates_for_profile_gen]
-            profile_results = await asyncio.gather(*profile_generation_tasks)
-            successful_profiles = sum(1 for pr in profile_results if pr is True)
-            logger.info(f"Successfully generated and saved {successful_profiles} detailed profiles for job {job_id}.")
-        else: logger.warning(f"No new or updated candidates for profile generation (job {job_id}).")
+        # --- STAGE 2: Handle responses ---
+        successful_candidates_full_data = []  # All candidates created (new, or new despite similarity due to override)
+        ai_flagged_payloads_for_modal = []
+        duplicate_payloads_for_modal = []  # Duplicates that were NOT overridden
+        error_files = []
 
-        all_affected_candidate_ids = new_candidate_ids + updated_candidate_ids
-        final_candidates_data_list = [CandidateService.get_candidate(cid) for cid in all_affected_candidate_ids if cid]
-        final_candidates_data_list = [c for c in final_candidates_data_list if c]
-        current_job_state = JobService.get_job(job_id)
-        response_content_200 = {"success": True, "message": f"Successfully processed CVs. New: {len(new_candidate_ids)}, Updated: {len(updated_candidate_ids)}.", "jobId": job_id, "newApplicationCount": successful_apps_count, "updatedCandidateCount": len(updated_candidate_ids), "applications": application_results, "candidates": final_candidates_data_list, "candidateIds": all_affected_candidate_ids, "newCandidateIds": new_candidate_ids, "updatedCandidateIds": updated_candidate_ids, "totalApplications": current_job_state.get("applicationCount", 0) if current_job_state else job.get("applicationCount", 0) + successful_apps_count}
-        return JSONResponse(status_code=200, content=jsonable_encoder(response_content_200))
-            
-    except HTTPException as http_exc: raise http_exc
+        for res in processed_file_results:
+            if res["status"] == "success":
+                successful_candidates_full_data.append(res["candidate_data"])
+            elif res["status"] == "ai_content_detected":
+                ai_flagged_payloads_for_modal.append(res["ai_detection_payload"])
+            elif res[
+                "status"] == "duplicate_detected":  # This means it was a duplicate AND override_this_specific_file_flag was False for it
+                duplicate_payloads_for_modal.append(res)
+            elif res["status"] == "error":
+                error_files.append(res)
+
+        if ai_flagged_payloads_for_modal and not is_forcing_problematic_upload:
+            logger.warning(
+                f"AI content detected in {len(ai_flagged_payloads_for_modal)} additional files for job {job_id}.")
+            # Process any successful files before returning 422
+            applications_created_info = []
+            if successful_candidates_full_data:
+                applications_created_info = candidate_service_instance.process_applications(job_id,
+                                                                                            successful_candidates_full_data)
+                profile_tasks = [generate_and_save_profile(cand_info, gemini_service_global_instance) for cand_info in
+                                 successful_candidates_full_data]
+                await asyncio.gather(*profile_tasks)
+
+            return JSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content={
+                    "message": "Potential AI-generated or problematic content detected in some additional CVs.",
+                    "error_type": "AI_CONTENT_DETECTED",
+                    "flagged_files": jsonable_encoder(ai_flagged_payloads_for_modal),
+                    "jobId": job_id,
+                    "processed_ok_count": len(successful_candidates_full_data),
+                }
+            )
+
+        if duplicate_payloads_for_modal:  # These are duplicates that were NOT overridden
+            logger.warning(f"Unresolved duplicate CVs remain for job {job_id}.")
+            # Process any successful non-duplicate files before returning 409
+            applications_created_info = []
+            if successful_candidates_full_data:
+                applications_created_info = candidate_service_instance.process_applications(job_id,
+                                                                                            successful_candidates_full_data)
+                profile_tasks = [generate_and_save_profile(cand_info, gemini_service_global_instance) for cand_info in
+                                 successful_candidates_full_data]
+                await asyncio.gather(*profile_tasks)
+
+            return JSONResponse(
+                status_code=status.HTTP_409_CONFLICT,
+                content={
+                    "message": "Duplicate CVs detected that were not selected for overwrite.",
+                    "error_type": "DUPLICATE_FILES_DETECTED",
+                    "duplicates": jsonable_encoder(duplicate_payloads_for_modal),
+                    "nonDuplicateCount": len(successful_candidates_full_data),
+                    # Files that were successful and not duplicates
+                    "jobId": job_id,
+                }
+            )
+
+        # --- STAGE 3: Finalize successful candidates ---
+        applications_created_info = []
+        if successful_candidates_full_data:
+            applications_created_info = candidate_service_instance.process_applications(job_id,
+                                                                                        successful_candidates_full_data)
+
+        new_apps_count = sum(1 for app_info in applications_created_info if app_info.get('success'))
+        logger.info(f"Created {new_apps_count} new applications for job {job_id} from 'upload-more-cv'.")
+
+        if successful_candidates_full_data:
+            profile_generation_tasks = [
+                generate_and_save_profile(cand_info, gemini_service_global_instance)
+                for cand_info in successful_candidates_full_data
+            ]
+            await asyncio.gather(*profile_generation_tasks)
+
+        all_affected_candidate_ids = [cand_info['candidateId'] for cand_info in successful_candidates_full_data if
+                                      cand_info.get('candidateId')]
+        final_candidates_data_for_response = [candidate_service_instance.get_candidate(cid) for cid in
+                                              all_affected_candidate_ids]
+        final_candidates_data_for_response = [c for c in final_candidates_data_for_response if c]
+
+        updated_job_state = JobService.get_job(job_id)
+        total_applications_for_job = updated_job_state.get("applicationCount", 0) if updated_job_state else job.get(
+            "applicationCount", 0) + new_apps_count
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=jsonable_encoder({
+                "message": f"Additional CVs processed. New Candidates created: {len(successful_candidates_full_data)}.",
+                "jobId": job_id,
+                "newApplicationCount": new_apps_count,
+                "candidateIds": [c['candidateId'] for c in final_candidates_data_for_response if c.get('candidateId')],
+                # For UploadMoreCVModal.js
+                "candidatesData": final_candidates_data_for_response,
+                "totalApplicationsForJob": total_applications_for_job,
+                "errors_processing_files": error_files
+            })
+        )
+    # ... (exception handling unchanged) ...
+    except HTTPException as http_exc:
+        logger.error(f"HTTPException in /upload-more-cv for job {job_id}: {http_exc.detail}", exc_info=True)
+        raise http_exc
     except Exception as e:
-        logger.error(f"Error uploading additional CVs for job {job_id}: {e}", exc_info=True)
-        error_content_500 = {"error": str(e), "type": str(type(e).__name__), "message": f"An error occurred while processing additional CVs for job {job_id}"}
-        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=jsonable_encoder(error_content_500))
+        logger.error(f"Error uploading more CVs for job {job_id}: {e}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e), "type": str(type(e).__name__),
+                     "message": f"An error occurred while processing additional CVs for job {job_id}"}
+        )
+
 
 @router.post("/suggest-details", response_model=JobSuggestionResponse)
-async def suggest_job_details(context: JobSuggestionContext = Body(...)):
-    # ... (existing implementation)
+async def suggest_job_details_for_creation(context: JobSuggestionContext = Body(...)):  # Renamed for clarity
+    # ... (implementation unchanged) ...
     if not context.job_title:
         raise HTTPException(status_code=400, detail="Job Title is required to generate suggestions.")
     try:
-        suggestions = await gemini_service.generate_job_details_suggestion(job_title=context.job_title, context=context.dict(exclude={'job_title'}))
+        suggestions = await gemini_service_global_instance.generate_job_details_suggestion(job_title=context.job_title,
+                                                                                           context=context.model_dump(
+                                                                                               exclude={
+                                                                                                   'job_title'}))  # Use model_dump
         return JobSuggestionResponse(**suggestions)
-    except HTTPException as http_exc: raise http_exc
+    except HTTPException as http_exc:
+        raise http_exc
     except Exception as e:
         logger.error(f"Error generating job details suggestions: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to generate suggestions: {str(e)}")

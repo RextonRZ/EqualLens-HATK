@@ -787,6 +787,7 @@
 .duplicate-group-content.expanded {
   max-height: 5000px; /* Large enough to fit all content */
   opacity: 1;
+  visibility: visible;
 }
 
 .duplicate-group-content.collapsed {
@@ -844,4 +845,85 @@
   color: #4a4a4a;
   font-size: 0.9rem;
   text-transform: uppercase;
+}
+
+.new-file-analysis-summary-section {
+    margin-top: 12px; /* Space above this new section */
+    padding-top: 10px;
+    border-top: 1px dashed #d1d5db; /* Separator line */
+}
+
+.new-file-analysis-title {
+    font-size: 0.8rem; /* Smaller title for this sub-section */
+    font-weight: 600;
+    color: #4b5563; /* Darker gray */
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.new-file-xai-summary {
+    font-size: 0.85rem;
+    color: #374151;
+    line-height: 1.5;
+    margin-bottom: 8px;
+    background-color: #f9fafb; /* Slight background tint */
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #f3f4f6;
+}
+
+.new-file-xai-summary strong {
+    color: #1f2937; /* Slightly darker for "AI Assessment:" */
+}
+
+.new-file-scores {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.new-file-score-tag {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 12px; /* Pill shape */
+    color: white;
+}
+
+.new-file-score-tag.authenticity {
+    background-color: #10b981; /* Green for good authenticity */
+    /* You might want to change color based on score, e.g., red if low */
+}
+
+/* Example: Conditional styling based on score (more complex JS needed) */
+/* .new-file-score-tag.authenticity.low { background-color: #ef4444; } */
+/* .new-file-score-tag.authenticity.medium { background-color: #f59e0b; } */
+
+
+.new-file-score-tag.spam {
+    background-color: #ef4444; /* Red for high spam likelihood */
+     /* You might want to change color based on score, e.g., green if low */
+}
+/* .new-file-score-tag.spam.low { background-color: #10b981; } */
+
+.new-file-external-ai-details {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dotted #e0e0e0;
+}
+.new-file-external-ai-details h6 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+.new-file-external-ai-details .small-text {
+    font-size: 0.8rem;
+    color: #444;
+    line-height: 1.4;
+}
+.new-file-external-ai-details .error-text {
+    color: #c00;
 }
