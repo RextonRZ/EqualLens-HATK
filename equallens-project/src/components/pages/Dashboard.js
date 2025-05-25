@@ -1335,6 +1335,11 @@ export default function Dashboard() {
                     "studyLevel": 0.40,
                     "awards": 0.30,
                     "courseworkResearch": 0.30
+                },
+                "culturalFit": {
+                    "collaborationStyle": 0.40,
+                    "growthMindset": 0.30,
+                    "communityEngagement": 0.30
                 }
             };
 
@@ -1343,6 +1348,7 @@ export default function Dashboard() {
             if (selectedJob.prompt.includes("Skills")) selectedCriteria.push("skills");
             if (selectedJob.prompt.includes("Experience")) selectedCriteria.push("experience");
             if (selectedJob.prompt.includes("Education")) selectedCriteria.push("education");
+            if (selectedJob.prompt.includes("Cultural Fit")) selectedCriteria.push("culturalFit");
 
             // Map internal keys to display names
             const criteriaDisplayNames = {
@@ -1360,6 +1366,11 @@ export default function Dashboard() {
                     "studyLevel": "Level of Study",
                     "awards": "Awards & Achievements",
                     "courseworkResearch": "Relevant Coursework"
+                },
+                "culturalFit": {
+                    "collaborationStyle": "Collaboration Style",
+                    "growthMindset": "Growth Mindset",
+                    "communityEngagement": "Community Engagement"
                 }
             };
 
@@ -1494,7 +1505,8 @@ export default function Dashboard() {
                 primary: '#F9645F',
                 skills: '#8250c8',
                 experience: '#dd20c1',
-                education: '#0066cc'
+                education: '#0066cc',
+                culturalFit: '#ffa000'
             };
 
             // --- Logo Loading ---
@@ -1597,17 +1609,20 @@ export default function Dashboard() {
             const weights = {
                 "skills": { "relevance": 0.50, "proficiency": 0.35, "additionalSkill": 0.15 },
                 "experience": { "jobExp": 0.50, "projectCocurricularExp": 0.30, "certification": 0.20 },
-                "education": { "studyLevel": 0.40, "awards": 0.30, "courseworkResearch": 0.30 }
+                "education": { "studyLevel": 0.40, "awards": 0.30, "courseworkResearch": 0.30 },
+                "culturalFit": { "collaborationStyle": 0.40, "growthMindset": 0.30, "communityEngagement": 0.30 }
             };
             const selectedCriteria = [];
             if (selectedJob.prompt?.includes("Skills")) selectedCriteria.push("skills");
             if (selectedJob.prompt?.includes("Experience")) selectedCriteria.push("experience");
             if (selectedJob.prompt?.includes("Education")) selectedCriteria.push("education");
+            if (selectedJob.prompt?.includes("Cultural Fit")) selectedCriteria.push("culturalFit");
 
             const criteriaDisplayNames = {
                 "skills": { "relevance": "Relevance to Job", "proficiency": "Proficiency Level", "additionalSkill": "Additional Skills" },
                 "experience": { "jobExp": "Job Experience", "projectCocurricularExp": "Projects & Co-curricular", "certification": "Certifications" },
-                "education": { "studyLevel": "Level of Study", "awards": "Awards & Achievements", "courseworkResearch": "Coursework & Research" }
+                "education": { "studyLevel": "Level of Study", "awards": "Awards & Achievements", "courseworkResearch": "Coursework & Research" },
+                "culturalFit": { "collaborationStyle": "Collaboration Style", "growthMindset": "Growth Mindset", "communityEngagement": "Community Engagement" }
             };
 
             // Sort candidates by final score (descending)

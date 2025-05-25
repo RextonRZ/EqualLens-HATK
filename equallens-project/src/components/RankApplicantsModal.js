@@ -22,6 +22,9 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
             if (promptLower.includes("education")) {
                 newSelectedOptions.push("Education");
             }
+            if (promptLower.includes("cultural fit")) {
+                newSelectedOptions.push("Cultural Fit");
+            }
             
             setSelectedOptions(newSelectedOptions);
         }
@@ -44,7 +47,7 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
         if (selectedOptions.includes(option)) {
             // Remove the option if already selected
             setSelectedOptions(selectedOptions.filter((item) => item !== option));
-        } else if (selectedOptions.length < 3) {
+        } else if (selectedOptions.length < 4) {
             // Add the option if not already selected and limit is not exceeded
             setSelectedOptions([...selectedOptions, option]);
         }
@@ -92,9 +95,9 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
                     </button>
                 </div>
 
-                <div className="modal-description">
-                    <div className="label-container" style={{ marginLeft: "1rem" }}>
-                        <div className="label-row">Choose up to 3 criteria to rank the applicants for this job:
+                <div className="rank-modal-description">
+                    <div className="label-container" >
+                        <div className="label-row">Choose up to 4 criteria to rank the applicants for this job:
                         </div>
                     </div>
                 </div>
@@ -104,6 +107,7 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
                         <div className="label-row" style={{ marginLeft: "1rem" }}>Skills</div>
                         <div className="label-row" style={{ marginLeft: "1rem" }}>Experience</div>
                         <div className="label-row" style={{ marginLeft: "1rem" }}>Education</div>
+                        <div className="label-row" style={{ marginLeft: "1rem" }}>Cultural Fit</div>
                     </div>
                     <div className="checkbox-container">
                         <div className="checkbox-wrapper-26" style={{ marginRight: "0.5rem" }}>
@@ -128,7 +132,7 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
                                 <div className="tick_mark"></div>
                             </label>
                         </div>
-                        <div className="checkbox-wrapper-26" style={{ marginRight: "0.5rem", marginBottom: "1rem" }}>
+                        <div className="checkbox-wrapper-26" style={{ marginRight: "0.5rem" }}>
                             <input
                                 type="checkbox"
                                 id="education-checkbox"
@@ -136,6 +140,17 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
                                 onChange={() => handleCheckboxChange("Education")}
                             />
                             <label htmlFor="education-checkbox">
+                                <div className="tick_mark"></div>
+                            </label>
+                        </div>
+                        <div className="checkbox-wrapper-26" style={{ marginRight: "0.5rem", marginBottom: "1rem" }}>
+                            <input
+                                type="checkbox"
+                                id="culturalfit-checkbox"
+                                checked={selectedOptions.includes("Cultural Fit")}
+                                onChange={() => handleCheckboxChange("Cultural Fit")}
+                            />
+                            <label htmlFor="culturalfit-checkbox">
                                 <div className="tick_mark"></div>
                             </label>
                         </div>
