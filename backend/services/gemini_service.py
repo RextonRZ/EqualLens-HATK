@@ -342,6 +342,10 @@ class GeminiService:
             1. StudyLevel: Assess the candidate's level of study and education.
             2. Awards: Evaluate the candidate's awards and achievements which would benefit the job description.
             3. CourseworkResearch: Assess the relevance of the candidate's coursework and research that relates to the job.
+        - CulturalFit:
+            1. CollaborationStyle: Evaluate how well the candidate demonstrates the ability to work with others, such as leadership roles, teamwork, or group project experience.
+            2. GrowthMindset: Assess the candidate's willingness to learn, improve, and adapt through certifications, awards, or self-initiated learning.
+            3. CommunityEngagement: Evaluate the candidate's involvement in community, volunteering, or organizational activities that showcase cultural adaptability and inclusive contributions.
 
         VERY IMPORTANT:
         - Base all evaluations on the job description and the candidate's profile details at all times.
@@ -358,7 +362,10 @@ class GeminiService:
                 "certification": <integer 0-10>,
                 "studyLevel": <integer 0-10>,
                 "awards": <integer 0-10>,
-                "courseworkResearch": <integer 0-10>
+                "courseworkResearch": <integer 0-10>,
+                "collaborationStyle": <integer 0-10>,
+                "growthMindset": <integer 0-10>,
+                "communityEngagement": <integer 0-10>
             }},
             "reasoning": {{
                 "relevance": "<brief explanation>",
@@ -369,7 +376,10 @@ class GeminiService:
                 "certification": "<brief explanation>",
                 "studyLevel": "<brief explanation>",
                 "awards": "<brief explanation>",
-                "courseworkResearch": "<brief explanation>"
+                "courseworkResearch": "<brief explanation>",
+                "collaborationStyle": "<brief explanation>",
+                "growthMindset": "<brief explanation>",
+                "communityEngagement": "<brief explanation>"
             }}
         }}
         """
@@ -379,6 +389,8 @@ class GeminiService:
             formatted_text = f"Job Description:\n{job_description}\n\nResume Information:\n"
             for key, value in extracted_text.items():
                 formatted_text += f"{key}: {value}\n\n"
+                
+            logger.info(f"Displaying formatted text for Gemini:\n{formatted_text}...")  
 
             # Send the prompt to Gemini
             response = await self.model.generate_content_async(
@@ -406,6 +418,8 @@ class GeminiService:
                     required_criteria.extend(["jobExp", "projectCocurricularExp", "certification"])
                 if "education" in criteria.lower():
                     required_criteria.extend(["studyLevel", "awards", "courseworkResearch"])
+                if "cultural fit" in criteria.lower():
+                    required_criteria.extend(["collaborationStyle", "growthMindset", "communityEngagement"])
 
                 # Filter rank_score and reasoning to include only relevant criteria
                 rank_score = {key: rank_score[key] for key in required_criteria if key in rank_score}
@@ -489,6 +503,11 @@ class GeminiService:
                     "studyLevel": 0.40,
                     "awards": 0.30,
                     "courseworkResearch": 0.30
+                },
+                "culturalFit": {
+                    "collaborationStyle": 0.40,
+                    "growthMindset": 0.30,
+                    "communityEngagement": 0.30
                 }
             }
 
@@ -512,7 +531,8 @@ class GeminiService:
                         main_criteria_present = {
                             "skills": "skills" in prompt_lower,
                             "experience": "experience" in prompt_lower,
-                            "education": "education" in prompt_lower
+                            "education": "education" in prompt_lower,
+                            "culturalFit": "cultural fit" in prompt_lower or "cultural" in prompt_lower
                         }
                         
                         # If no criteria mentioned explicitly, assume all are equally important
@@ -629,6 +649,18 @@ class GeminiService:
 
         1.  **Generate a `summary`:** 
             * Provide a concise paragraph (around 3-5 sentences) highlighting the candidate's key strengths, notable experiences/projects, and potentially areas for development or missing information.
+<<<<<<< HEAD
+            * Synthesize information from all relevant input fields (skills, experience, education, projects, etc.).
+            * Use <strong> tags to emphasize truly significant points (e.g., key skills, major achievements).
+            * *IMPORTANT:* Always use "he/she" pronouns rather than "they/them" when referring to the candidate.
+            * *Crucially, OMIT any Personal Identifying Information (PII)* like name, email, phone number, or explicit bio text from the summary.
+
+        2.  **Extract and Structure Categorical Information:** Populate the following fields in the JSON output. If the corresponding information is not available in the input, OMIT the field entirely from the JSON.
+            *   **`soft_skills`**: If a list of soft skills is provided in the input, use that list. Otherwise, extract from relevant text. Output as a list of INDIVIDUAL skill strings. If skills are listed together (e.g., "Teamwork and Communication"), please list them as separate items: ["Teamwork", "Communication"].
+            *   **`technical_skills`**: If a list of technical skills is provided, use it directly. Otherwise, extract from relevant text. Output as a list of INDIVIDUAL skill strings. If skills are listed with separators like '•' or '/' (e.g., "Docker • Python"), list them as separate items: ["Docker", "Python"].
+            *   **`languages`**: If a list of languages is provided, use it directly. Otherwise, extract from relevant text. Output as a list of INDIVIDUAL language strings.
+            *   **`education`**: Process the `education_paragraph`. For each education entry:
+=======
             * Synthesize information from *all* relevant input fields (skills, experience, education, projects, etc.).
             * Use `<strong>` tags to emphasize truly significant points (e.g., key skills, major achievements).
             * **IMPORTANT:** Always use "he/she" pronouns rather than "they/them" when referring to the candidate.
@@ -639,47 +671,81 @@ class GeminiService:
             * **`technical_skills`**: If a list of technical skills is provided, use it directly. Otherwise, extract from relevant text. Output as a list of strings.
             * **`languages`**: If a list of languages is provided, use it directly. Otherwise, extract from relevant text. Output as a list of strings.
             * **`education`**: Process the `education_paragraph`. For each education entry:
+>>>>>>> c3a345936d592967f40b3801fe0521f2a0fe2a3b
                 * Format as:
                     - First line: `<strong>Degree/Program</strong>` (bold) on the left, `<strong>Date</strong>` (bold) on the right (use "DNS" if date not specified).
                     - Second line: Institution name (if available).
                     - Third line: Additional details (if available), each as a separate point.
+<<<<<<< HEAD
+            *   **`certifications`**: Process the `certifications_paragraph`. For each certification:
+=======
             * **`certifications`**: Process the `certifications_paragraph`. For each certification:
+>>>>>>> c3a345936d592967f40b3801fe0521f2a0fe2a3b
                 * Format as:
                     - First line: `<strong>Certification Name</strong>` (bold) on the left, `<strong>Date</strong>` (bold) on the right (use "DNS" if date not specified).
                     - Second line: Issuing organization (if available).
                     - Third line: Additional details (if available), each as a separate point.
+<<<<<<< HEAD
+            *   **`awards`**: Process the `awards_paragraph`. For each award:
+=======
             * **`awards`**: Process the `awards_paragraph`. For each award:
+>>>>>>> c3a345936d592967f40b3801fe0521f2a0fe2a3b
                 * Format as:
                     - First line: `<strong>Award Name</strong>` (bold) on the left, `<strong>Date</strong>` (bold) on the right (use "DNS" if date not specified).
                     - Second line: Awarding organization (if available).
                     - Third line: Additional details (if available), each as a separate point.
+<<<<<<< HEAD
+            *   **`work_experience`**: Process the `work_experience_paragraph`. For each job/role:
+=======
             * **`work_experience`**: Process the `work_experience_paragraph`. For each job/role:
+>>>>>>> c3a345936d592967f40b3801fe0521f2a0fe2a3b
                 * Format as:
                     - First line: `<strong>Job Title</strong>` (bold) on the left, `<strong>Duration</strong>` (bold) on the right (use "DNS" if duration not specified).
                     - Second line: Company name (if available).
                     - Third line: Responsibilities/achievements, each as a separate point.
+<<<<<<< HEAD
+            *   **`projects`**: Process the `projects_paragraph`. For each project:
+=======
             * **`projects`**: Process the `projects_paragraph`. For each project:
+>>>>>>> c3a345936d592967f40b3801fe0521f2a0fe2a3b
                 * Format as:
                     - First line: `<strong>Project Title</strong>` (bold) on the left, `<strong>Date</strong>` (bold) on the right (use "DNS" if date not specified).
                     - Second line: Small title/description (if available).
                     - Third line: Additional details (if available), each as a separate point.
+<<<<<<< HEAD
+            *   **`co_curricular_activities`**: Process the `co_curricular_activities_paragraph`. For each activity:
+=======
             * **`co_curricular_activities`**: Process the `co_curricular_activities_paragraph`. For each activity:
+>>>>>>> c3a345936d592967f40b3801fe0521f2a0fe2a3b
                 * Format as:
                     - First line: `<strong>Activity Name/Role</strong>` (bold) on the left, `<strong>Duration</strong>` (bold) on the right (use "DNS" if duration not specified).
                     - Second line: Organization name (if available).
                     - Third line: Additional details (if available), each as a separate point.
 
         **VERY IMPORTANT:**
+<<<<<<< HEAD
+        *   **Skill Separation:** For `soft_skills`, `technical_skills`, and `languages`, ensure each skill is a separate string in the list. Do not group multiple skills into one string.
+        *   **Format Structure:** For all entries (education, work experience, projects, etc.):
+=======
         * **Format Structure:** For all entries (education, work experience, projects, etc.):
+>>>>>>> c3a345936d592967f40b3801fe0521f2a0fe2a3b
             - Use square brackets [ ] to enclose date/duration information, placing it at the end of the title line.
             - Always use "\\n" to create a new line for additional details after the title line.
             - Never omit or summarize any details from the original text - preserve all content.
             - The frontend will render the "\\n" as proper line breaks.
+<<<<<<< HEAD
+        *   **Respond ONLY with a valid JSON object.** {... keep this instruction ...}
+        *   **Strictly EXCLUDE PII:** No introductory text, no explanations, no markdown formatting around the JSON.
+        * **Strictly EXCLUDE PII:** Do not include applicant_contactNum, applicant_mail, applicant_name, specific bio text, or any other directly identifying information in the output JSON.
+        * **Omit Empty Fields:** If a category (e.g., `awards`) has no information in the input resume data, do not include the corresponding key in the output JSON.
+        * **Preserve Structure in Lists:** Each item in a list should correspond to one distinct entry from the resume.
+=======
         * **Respond ONLY with a valid JSON object.** No introductory text, no explanations, no markdown formatting around the JSON.
         * **Strictly EXCLUDE PII:** Do not include applicant_contactNum, applicant_mail, applicant_name, specific bio text, or any other directly identifying information in the output JSON.
         * **Omit Empty Fields:** If a category (e.g., `awards`) has no information in the input resume data, do not include the corresponding key in the output JSON.
         * **Preserve Structure in Lists:** Each item in a list should correspond to one distinct entry from the resume.
 
+>>>>>>> c3a345936d592967f40b3801fe0521f2a0fe2a3b
         **Output JSON Format Example:**
         ```json
         {

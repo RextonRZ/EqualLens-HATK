@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
-import { 
-    ArcElement, 
+import {
+    ArcElement,
     PolarAreaController,
     RadialLinearScale,
     LineElement,
@@ -13,10 +13,10 @@ import './DetailedScoringModal.css';
 
 // Register required Chart.js components and plugins
 Chart.register(
-    ArcElement, 
-    PolarAreaController, 
-    RadialLinearScale, 
-    LineElement, 
+    ArcElement,
+    PolarAreaController,
+    RadialLinearScale,
+    LineElement,
     BarElement,
     annotationPlugin,
     ChartDataLabels
@@ -27,7 +27,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
     const [activeTab, setActiveTab] = useState("summary"); // Add tab state
     const pieChartRef = useRef(null);
     const barChartRef = useRef(null);
-    
+
     const CRITERIA_WEIGHTS = {
         "skills": {
             "relevance": 0.50,
@@ -43,6 +43,11 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
             "studyLevel": 0.40,
             "awards": 0.30,
             "courseworkResearch": 0.30
+        },
+        "culturalFit": {
+            "collaborationStyle": 0.40,
+            "growthMindset": 0.30,
+            "communityEngagement": 0.30
         }
     };
 
@@ -52,97 +57,113 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                 skills: {},
                 experience: {},
                 education: {},
+                culturalFit: {},
                 categoryTotals: {},
                 finalScore: 0
             };
         }
-        
+
         const scores = {
             skills: {},
             experience: {},
             education: {},
+            culturalFit: {},
             categoryTotals: {},
             finalScore: 0
         };
-        
+
         let totalWeight = 0;
         let weightedSum = 0;
-        
+
         if (applicant.rank_score.relevance) {
             scores.skills.relevance = applicant.rank_score.relevance * CRITERIA_WEIGHTS.skills.relevance;
             scores.skills.proficiency = applicant.rank_score.proficiency * CRITERIA_WEIGHTS.skills.proficiency;
             scores.skills.additionalSkill = applicant.rank_score.additionalSkill * CRITERIA_WEIGHTS.skills.additionalSkill;
-            
+
             scores.categoryTotals.skills = scores.skills.relevance + scores.skills.proficiency + scores.skills.additionalSkill;
             weightedSum += scores.categoryTotals.skills;
             totalWeight += 1;
         }
-        
+
         if (applicant.rank_score.jobExp) {
             scores.experience.jobExp = applicant.rank_score.jobExp * CRITERIA_WEIGHTS.experience.jobExp;
             scores.experience.projectCocurricularExp = applicant.rank_score.projectCocurricularExp * CRITERIA_WEIGHTS.experience.projectCocurricularExp;
             scores.experience.certification = applicant.rank_score.certification * CRITERIA_WEIGHTS.experience.certification;
-            
+
             scores.categoryTotals.experience = scores.experience.jobExp + scores.experience.projectCocurricularExp + scores.experience.certification;
             weightedSum += scores.categoryTotals.experience;
             totalWeight += 1;
         }
-        
+
         if (applicant.rank_score.studyLevel) {
             scores.education.studyLevel = applicant.rank_score.studyLevel * CRITERIA_WEIGHTS.education.studyLevel;
             scores.education.awards = applicant.rank_score.awards * CRITERIA_WEIGHTS.education.awards;
             scores.education.courseworkResearch = applicant.rank_score.courseworkResearch * CRITERIA_WEIGHTS.education.courseworkResearch;
-            
+
             scores.categoryTotals.education = scores.education.studyLevel + scores.education.awards + scores.education.courseworkResearch;
             weightedSum += scores.categoryTotals.education;
             totalWeight += 1;
         }
-        
+
+        if (applicant.rank_score.collaborationStyle || applicant.rank_score.growthMindset || applicant.rank_score.communityEngagement) {
+            scores.culturalFit.collaborationStyle = (applicant.rank_score.collaborationStyle || 0) * CRITERIA_WEIGHTS.culturalFit.collaborationStyle;
+            scores.culturalFit.growthMindset = (applicant.rank_score.growthMindset || 0) * CRITERIA_WEIGHTS.culturalFit.growthMindset;
+            scores.culturalFit.communityEngagement = (applicant.rank_score.communityEngagement || 0) * CRITERIA_WEIGHTS.culturalFit.communityEngagement;
+
+            scores.categoryTotals.culturalFit = scores.culturalFit.collaborationStyle + scores.culturalFit.growthMindset + scores.culturalFit.communityEngagement;
+            weightedSum += scores.categoryTotals.culturalFit;
+            totalWeight += 1;
+        }
+
         scores.finalScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
-        
+
         return scores;
     };
 
     const weightedScores = calculateWeightedScores();
-    
+
     const formatPercentage = (num) => {
         return (Number(num) * 10).toFixed(1) + '%';
     };
-    
+
     const formatNumber = (num) => {
         return Number(num).toFixed(2);
     };
-    
+
     useEffect(() => {
         if (!applicant || !applicant.rank_score) {
             return;
         }
-        
+
         let polarChartInstance = null;
         let barChartInstance = null;
-        
+
         const timer = setTimeout(() => {
             if (pieChartRef.current && barChartRef.current) {
                 // Determine which categories have data
-                const hasSkills = 'relevance' in applicant.rank_score || 
-                                 'proficiency' in applicant.rank_score || 
-                                 'additionalSkill' in applicant.rank_score;
-                
-                const hasExperience = 'jobExp' in applicant.rank_score || 
-                                    'projectCocurricularExp' in applicant.rank_score || 
-                                    'certification' in applicant.rank_score;
-                
-                const hasEducation = 'studyLevel' in applicant.rank_score || 
-                                   'awards' in applicant.rank_score || 
-                                   'courseworkResearch' in applicant.rank_score;
-                
+                const hasSkills = 'relevance' in applicant.rank_score ||
+                    'proficiency' in applicant.rank_score ||
+                    'additionalSkill' in applicant.rank_score;
+
+                const hasExperience = 'jobExp' in applicant.rank_score ||
+                    'projectCocurricularExp' in applicant.rank_score ||
+                    'certification' in applicant.rank_score;
+
+                const hasEducation = 'studyLevel' in applicant.rank_score ||
+                    'awards' in applicant.rank_score ||
+                    'courseworkResearch' in applicant.rank_score;
+
+                const hasCulturalFit = 'collaborationStyle' in applicant.rank_score ||
+                    'growthMindset' in applicant.rank_score ||
+                    'communityEngagement' in applicant.rank_score;
+
                 // Create filtered labels and datasets based on available categories
                 const activeLabels = [];
                 const activeData = [];
                 const activeBackgroundColors = [];
                 const activeBorderColors = [];
                 const activeHoverBackgroundColors = [];
-                
+
                 if (hasSkills) {
                     activeLabels.push('Skills');
                     activeData.push((weightedScores.categoryTotals.skills || 0) * 10);
@@ -150,7 +171,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                     activeBorderColors.push('rgba(130, 80, 200, 1)');
                     activeHoverBackgroundColors.push('rgba(130, 80, 200, 0.9)');
                 }
-                
+
                 if (hasExperience) {
                     activeLabels.push('Experience');
                     activeData.push((weightedScores.categoryTotals.experience || 0) * 10);
@@ -158,7 +179,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                     activeBorderColors.push('rgba(221, 32, 193, 1)');
                     activeHoverBackgroundColors.push('rgba(221, 32, 193, 0.9)');
                 }
-                
+
                 if (hasEducation) {
                     activeLabels.push('Education');
                     activeData.push((weightedScores.categoryTotals.education || 0) * 10);
@@ -166,31 +187,42 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                     activeBorderColors.push('rgba(0, 102, 204, 1)');
                     activeHoverBackgroundColors.push('rgba(0, 102, 204, 0.9)');
                 }
-                
+
+                if (hasCulturalFit) {
+                    activeLabels.push('Cultural Fit');
+                    activeData.push((weightedScores.categoryTotals.culturalFit || 0) * 10);
+                    activeBackgroundColors.push('rgba(255, 165, 0, 0.7)');
+                    activeBorderColors.push('rgba(255, 165, 0, 1)');
+                    activeHoverBackgroundColors.push('rgba(255, 165, 0, 0.9)');
+                }
+
                 // If no categories have data, use all categories but with zeros
                 if (activeLabels.length === 0) {
-                    activeLabels.push('Skills', 'Experience', 'Education');
+                    activeLabels.push('Skills', 'Experience', 'Education', 'Cultural Fit');
                     activeData.push(0, 0, 0);
                     activeBackgroundColors.push(
-                        'rgba(130, 80, 200, 0.7)', 
-                        'rgba(221, 32, 193, 0.7)', 
-                        'rgba(0, 102, 204, 0.7)'
+                        'rgba(130, 80, 200, 0.7)',
+                        'rgba(221, 32, 193, 0.7)',
+                        'rgba(0, 102, 204, 0.7)',
+                        'rgba(255, 165, 0, 0.7)'
                     );
                     activeBorderColors.push(
-                        'rgba(130, 80, 200, 1)', 
-                        'rgba(221, 32, 193, 1)', 
-                        'rgba(0, 102, 204, 1)'
+                        'rgba(130, 80, 200, 1)',
+                        'rgba(221, 32, 193, 1)',
+                        'rgba(0, 102, 204, 1)',
+                        'rgba(255, 165, 0, 1)'
                     );
                     activeHoverBackgroundColors.push(
-                        'rgba(130, 80, 200, 0.9)', 
-                        'rgba(221, 32, 193, 0.9)', 
-                        'rgba(0, 102, 204, 0.9)'
+                        'rgba(130, 80, 200, 0.9)',
+                        'rgba(221, 32, 193, 0.9)',
+                        'rgba(0, 102, 204, 0.9)',
+                        'rgba(255, 165, 0, 0.9)'
                     );
                 }
-                
+
                 // Create average data array with the same number of points as active labels
                 const meanScore = (weightedScores.finalScore || 0) * 10;
-                
+
                 const polarCtx = pieChartRef.current.getContext('2d');
                 polarChartInstance = new Chart(polarCtx, {
                     type: 'polarArea',
@@ -222,7 +254,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                         size: 10
                                     },
                                     stepSize: 20,
-                                    callback: function(value) {
+                                    callback: function (value) {
                                         return value + '%';
                                     }
                                 },
@@ -263,9 +295,9 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                     usePointStyle: true,
                                     boxWidth: 10,
                                     padding: 20,
-                                    generateLabels: function(chart) {
+                                    generateLabels: function (chart) {
                                         const labels = [];
-                                        
+
                                         if (hasSkills) {
                                             labels.push({
                                                 text: 'Skills',
@@ -275,7 +307,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                                 hidden: false
                                             });
                                         }
-                                        
+
                                         if (hasExperience) {
                                             labels.push({
                                                 text: 'Experience',
@@ -285,7 +317,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                                 hidden: false
                                             });
                                         }
-                                        
+
                                         if (hasEducation) {
                                             labels.push({
                                                 text: 'Education',
@@ -295,7 +327,17 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                                 hidden: false
                                             });
                                         }
-                                        
+
+                                        if (hasCulturalFit) {
+                                            labels.push({
+                                                text: 'Cultural Fit',
+                                                fillStyle: 'rgba(255, 165, 0, 0.7)',
+                                                strokeStyle: 'rgba(255, 165, 0, 1)',
+                                                lineWidth: 1,
+                                                hidden: false
+                                            });
+                                        }
+
                                         labels.push({
                                             text: 'Overall Average',
                                             fillStyle: 'rgba(0, 0, 0, 0)',
@@ -304,7 +346,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                             lineDash: [5, 5],
                                             hidden: false
                                         });
-                                        
+
                                         return labels;
                                     }
                                 }
@@ -325,13 +367,13 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                     size: 14
                                 },
                                 callbacks: {
-                                    title: function(context) {
+                                    title: function (context) {
                                         return context[0].label + ' Category';
                                     },
-                                    label: function(context) {
+                                    label: function (context) {
                                         return `Score: ${context.raw.toFixed(1)}%`;
                                     },
-                                    filter: function(tooltipItem) {
+                                    filter: function (tooltipItem) {
                                         return tooltipItem.datasetIndex === 0;
                                     }
                                 }
@@ -346,7 +388,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                         }
                     }
                 });
-                
+
                 // Add a second chart for the average triangle overlay
                 if (pieChartRef.current) {
                     // Wait for chart to be fully rendered before adding overlay
@@ -356,16 +398,16 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                         if (existingOverlay) {
                             existingOverlay.remove();
                         }
-                        
+
                         // Get chart dimensions from Chart.js instance
                         const chartArea = polarChartInstance.chartArea;
                         const centerX = (chartArea.left + chartArea.right) / 2;
                         const centerY = (chartArea.top + chartArea.bottom) / 2;
-                        
+
                         // Calculate the radius based on chart scale
                         const scale = polarChartInstance.scales.r;
                         const radius = scale.getDistanceFromCenterForValue(meanScore);
-                        
+
                         // Create overlay canvas with proper position and size
                         const overlayCanvas = document.createElement('canvas');
                         overlayCanvas.className = 'triangle-overlay';
@@ -378,9 +420,9 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                         overlayCanvas.width = pieChartRef.current.width;
                         overlayCanvas.height = pieChartRef.current.height;
                         pieChartRef.current.parentNode.appendChild(overlayCanvas);
-                        
+
                         const overlayCtx = overlayCanvas.getContext('2d');
-                        
+
                         // Draw an upright triangle (two points on bottom, one on top)
                         overlayCtx.beginPath();
                         // Top point
@@ -390,12 +432,12 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                         // Bottom left point
                         overlayCtx.lineTo(centerX - radius * Math.cos(Math.PI / 6), centerY + radius * Math.sin(Math.PI / 6));
                         overlayCtx.closePath();
-                        
+
                         overlayCtx.strokeStyle = '#F9645F';
                         overlayCtx.lineWidth = 2;
                         overlayCtx.setLineDash([5, 5]);
                         overlayCtx.stroke();
-                        
+
                         // Ensure tooltips have high z-index
                         const styleElement = document.createElement('style');
                         styleElement.textContent = `
@@ -407,9 +449,9 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                             }
                         `;
                         document.head.appendChild(styleElement);
-                        
+
                         const originalCleanup = polarChartInstance.destroy;
-                        polarChartInstance.destroy = function() {
+                        polarChartInstance.destroy = function () {
                             originalCleanup.apply(this, arguments);
                             if (overlayCanvas && overlayCanvas.parentNode) {
                                 overlayCanvas.parentNode.removeChild(overlayCanvas);
@@ -420,7 +462,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                         };
                     }, 300); // Wait for chart animation to complete
                 }
-                
+
                 const barCtx = barChartRef.current.getContext('2d');
                 barChartInstance = new Chart(barCtx, {
                     type: 'bar',
@@ -462,7 +504,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                         family: "'PT Sans', sans-serif",
                                         size: 12
                                     },
-                                    callback: function(value) {
+                                    callback: function (value) {
                                         return value + '%';
                                     }
                                 },
@@ -512,10 +554,10 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                 borderWidth: 1,
                                 padding: 10,
                                 callbacks: {
-                                    title: function(context) {
+                                    title: function (context) {
                                         return context[0].label + ' Category';
                                     },
-                                    label: function(context) {
+                                    label: function (context) {
                                         return `Score: ${context.raw.toFixed(1)}%`;
                                     }
                                 }
@@ -566,7 +608,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                 });
             }
         }, 100);
-        
+
         return () => {
             clearTimeout(timer);
             if (polarChartInstance) polarChartInstance.destroy();
@@ -579,10 +621,11 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
         const hasSkills = 'relevance' in applicant.rank_score;
         const hasExperience = 'jobExp' in applicant.rank_score;
         const hasEducation = 'studyLevel' in applicant.rank_score;
-        
+        const hasCulturalFit = 'collaborationStyle' in applicant.rank_score;
+
         // Count how many categories are being used
-        const activeCategoryCount = [hasSkills, hasExperience, hasEducation].filter(Boolean).length;
-        
+        const activeCategoryCount = [hasSkills, hasExperience, hasEducation, hasCulturalFit].filter(Boolean).length;
+
         // Create data for category scores display with proper percentages
         const categoryData = [
             {
@@ -623,9 +666,22 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                 weightedTotal: (weightedScores.categoryTotals.education || 0),
                 percentage: ((weightedScores.categoryTotals.education || 0) * 10).toFixed(1) + '%',
                 color: '#0066cc'
+            },
+            {
+                name: 'Cultural Fit',
+                isActive: hasCulturalFit,
+                rawScores: {
+                    collaborationStyle: applicant.rank_score.collaborationStyle || 0,
+                    growthMindset: applicant.rank_score.growthMindset || 0,
+                    communityEngagement: applicant.rank_score.communityEngagement || 0
+                },
+                weights: CRITERIA_WEIGHTS.culturalFit,
+                weightedTotal: (weightedScores.categoryTotals.culturalFit || 0),
+                percentage: ((weightedScores.categoryTotals.culturalFit || 0) * 10).toFixed(1) + '%',
+                color: '#ffa500'
             }
         ];
-        
+
         // Names mapping for better display - shorter names for long criteria
         const criteriaNames = {
             relevance: "Relevance to Job",
@@ -636,9 +692,12 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
             certification: "Certifications",
             studyLevel: "Level of Study",
             awards: "Awards & Achievements",
-            courseworkResearch: "Relevant Coursework"
+            courseworkResearch: "Relevant Coursework",
+            collaborationStyle: "Collaboration Style",
+            growthMindset: "Growth Mindset",
+            communityEngagement: "Community Engagement"
         };
-        
+
         // Full names for tooltips
         const fullCriteriaNames = {
             projectCocurricularExp: "Projects & Co-curricular Experience",
@@ -648,8 +707,8 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
         // Create a function to render the appropriate score interpretation based on active categories
         const renderScoreInterpretation = () => {
             // Create a key to determine which template to use
-            const categoryKey = `${hasSkills ? 'S' : ''}${hasExperience ? 'E' : ''}${hasEducation ? 'D' : ''}`;
-            
+            const categoryKey = `${hasSkills ? 'S' : ''}${hasExperience ? 'E' : ''}${hasEducation ? 'D' : ''}${hasCulturalFit ? 'C' : ''}`;
+
             // Common card styling
             const cardStyle = {
                 flex: "1",
@@ -660,23 +719,23 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                 boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
                 border: "1px solid #e5e7eb"
             };
-            
+
             // Common header styling
             const getHeaderStyle = (color) => ({
-                margin: "0 0 0.5rem 0", 
-                color: color, 
+                margin: "0 0 0.5rem 0",
+                color: color,
                 fontSize: "1.1rem",
                 fontWeight: "600"
             });
-            
+
             // Common paragraph styling
             const paragraphStyle = {
-                margin: 0, 
-                fontSize: "0.9rem", 
+                margin: 0,
+                fontSize: "0.9rem",
                 color: "#6b7280"
             };
-            
-            switch(categoryKey) {
+
+            switch (categoryKey) {
                 case 'S': // Skills only
                     return (
                         <>
@@ -706,7 +765,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                             </div>
                         </>
                     );
-                    
+
                 case 'E': // Experience only
                     return (
                         <>
@@ -736,7 +795,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                             </div>
                         </>
                     );
-                    
+
                 case 'D': // Education only
                     return (
                         <>
@@ -766,7 +825,37 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                             </div>
                         </>
                     );
-                    
+                
+                case 'C': // Cultural Fit only
+                    return (
+                        <>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#059669")}>80-100: Excellent</h6>
+                                <p style={paragraphStyle}>
+                                    Exceptional cultural fit with strong alignment to company values
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#0284c7")}>65-79: Strong</h6>
+                                <p style={paragraphStyle}>
+                                    Strong cultural alignment with very good collaboration style
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#eab308")}>50-64: Good</h6>
+                                <p style={paragraphStyle}>
+                                    Good cultural fit with adequate growth mindset and community engagement
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#ef4444")}>Below 50: Needs Review</h6>
+                                <p style={paragraphStyle}>
+                                    Cultural fit may not align well with company values, further assessment needed
+                                </p>
+                            </div>
+                        </>
+                    );
+
                 case 'SE': // Skills + Experience
                     return (
                         <>
@@ -796,7 +885,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                             </div>
                         </>
                     );
-                    
+
                 case 'SD': // Skills + Education
                     return (
                         <>
@@ -826,7 +915,37 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                             </div>
                         </>
                     );
-                    
+                
+                case 'SC': // Skills + Cultural Fit
+                    return (
+                        <>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#059669")}>80-100: Excellent</h6>
+                                <p style={paragraphStyle}>
+                                    Exceptional skills with strong alignment to company culture
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#0284c7")}>65-79: Strong</h6>
+                                <p style={paragraphStyle}>
+                                    Strong skill set with very good cultural fit and collaboration style
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#eab308")}>50-64: Good</h6>
+                                <p style={paragraphStyle}>
+                                    Good skills with adequate cultural alignment and growth mindset
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#ef4444")}>Below 50: Needs Review</h6>
+                                <p style={paragraphStyle}>
+                                    Skills may not fully align with company culture, further assessment needed
+                                </p>
+                            </div>
+                        </>
+                    );
+
                 case 'ED': // Experience + Education
                     return (
                         <>
@@ -856,8 +975,68 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                             </div>
                         </>
                     );
-                    
-                case 'SED': // All three categories
+                
+                case 'EC' : // Experience + Cultural Fit
+                    return (
+                        <>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#059669")}>80-100: Excellent</h6>
+                                <p style={paragraphStyle}>
+                                    Exceptional experience with strong cultural alignment to the organization
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#0284c7")}>65-79: Strong</h6>
+                                <p style={paragraphStyle}>
+                                    Strong professional background with very good cultural fit
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#eab308")}>50-64: Good</h6>
+                                <p style={paragraphStyle}>
+                                    Good work experience with adequate cultural alignment
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#ef4444")}>Below 50: Needs Review</h6>
+                                <p style={paragraphStyle}>
+                                    Experience may not fully match company culture, further assessment needed
+                                </p>
+                            </div>
+                        </>
+                    );
+                
+                case 'DC': // Education + Cultural Fit
+                    return (
+                        <>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#059669")}>80-100: Excellent</h6>
+                                <p style={paragraphStyle}>
+                                    Exceptional educational background with strong cultural alignment
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#0284c7")}>65-79: Strong</h6>
+                                <p style={paragraphStyle}>
+                                    Strong academic qualifications with very good cultural fit
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#eab308")}>50-64: Good</h6>
+                                <p style={paragraphStyle}>
+                                    Good educational foundation with adequate cultural alignment
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#ef4444")}>Below 50: Needs Review</h6>
+                                <p style={paragraphStyle}>
+                                    Educational background may not fully align with company culture, further assessment needed
+                                </p>
+                            </div>
+                        </>
+                    );
+
+                case 'SED': // Skills + Experience + Education
                     return (
                         <>
                             <div className="interpretation-card" style={cardStyle}>
@@ -886,7 +1065,127 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                             </div>
                         </>
                     );
-                    
+                
+                case 'SEC': // Skills + Experience + Cultural Fit
+                    return (
+                        <>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#059669")}>80-100: Excellent</h6>
+                                <p style={paragraphStyle}>
+                                    Exceptional skills and experience with strong cultural alignment
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#0284c7")}>65-79: Strong</h6>
+                                <p style={paragraphStyle}>
+                                    Strong professional competencies with very good cultural fit
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#eab308")}>50-64: Good</h6>
+                                <p style={paragraphStyle}>
+                                    Good combination of skills, experience, and cultural alignment
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#ef4444")}>Below 50: Needs Review</h6>
+                                <p style={paragraphStyle}>
+                                    May need further assessment to ensure skills and culture fit
+                                </p>
+                            </div>
+                        </>
+                    );
+                
+                case 'EDC': // Experience + Education + Cultural Fit
+                    return (
+                        <>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#059669")}>80-100: Excellent</h6>
+                                <p style={paragraphStyle}>
+                                    Exceptional credentials with outstanding work, academic, and cultural background
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#0284c7")}>65-79: Strong</h6>
+                                <p style={paragraphStyle}>
+                                    Strong candidate with very good professional, educational, and cultural fit
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#eab308")}>50-64: Good</h6>
+                                <p style={paragraphStyle}>
+                                    Good combination of experience, education, and cultural alignment
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#ef4444")}>Below 50: Needs Review</h6>
+                                <p style={paragraphStyle}>
+                                    May not fully match the job requirements, further review recommended
+                                </p>
+                            </div>
+                        </>
+                    );
+                
+                case 'SDC': // Skills + Education + Cultural Fit
+                    return (
+                        <>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#059669")}>80-100: Excellent</h6>
+                                <p style={paragraphStyle}>
+                                    Exceptional skills and academic background with strong cultural alignment.
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#0284c7")}>65-79: Strong</h6>
+                                <p style={paragraphStyle}>
+                                    Strong abilities, relevant education, and very good cultural fit.
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#eab308")}>50-64: Good</h6>
+                                <p style={paragraphStyle}>
+                                    Good theoretical knowledge, practical skills, and adequate cultural alignment.
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#ef4444")}>Below 50: Needs Review</h6>
+                                <p style={paragraphStyle}>
+                                    May require further assessment for skill, education, or cultural fit.
+                                </p>
+                            </div>
+                        </>
+                    );
+                
+                case 'SEDC': // Skills + Experience + Education + Cultural Fit
+                    return (
+                        <>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#059669")}>80-100: Excellent</h6>
+                                <p style={paragraphStyle}>
+                                    Exceptional match for the position with outstanding qualifications across all areas
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#0284c7")}>65-79: Strong</h6>
+                                <p style={paragraphStyle}>
+                                    Strong candidate with very good match to job requirements in all categories
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#eab308")}>50-64: Good</h6>
+                                <p style={paragraphStyle}>
+                                    Good potential with adequate qualifications across skills, experience, education, and cultural fit
+                                </p>
+                            </div>
+                            <div className="interpretation-card" style={cardStyle}>
+                                <h6 style={getHeaderStyle("#ef4444")}>Below 50: Needs Review</h6>
+                                <p style={paragraphStyle}>
+                                    May not fully match the job requirements, further review recommended
+                                </p>
+                            </div>
+                        </>
+                    );
+
                 default: // No categories selected
                     return (
                         <div style={{
@@ -905,7 +1204,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
         return (
             <div className="detailed-calculations">
                 <h3>How The Score is Calculated</h3>
-                
+
                 {/* Display a message when no categories are selected */}
                 {activeCategoryCount === 0 && (
                     <div className="no-criteria-message" style={{
@@ -920,37 +1219,37 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                         <p style={{ margin: 0, fontWeight: "500" }}>No scoring criteria were selected for this applicant.</p>
                     </div>
                 )}
-                
+
                 {/* Step 1: Explain how each criterion is weighted */}
                 <div className="calculation-section">
                     <h4>Step 1: Individual Criteria Scores (0-10)</h4>
                     <p className="step-explanation">
                         Each criterion is scored from 0-10 based on how well the candidate's qualifications match the job requirements.
                     </p>
-                    
+
                     {/* Show active categories */}
                     {categoryData.filter(cat => cat.isActive).map((category, catIndex) => (
-                        <div key={catIndex} className="category-section" style={{marginBottom: "1.5rem"}}>
+                        <div key={catIndex} className="category-section" style={{ marginBottom: "1.5rem" }}>
                             <div className="category-header" style={{
-                                display: "flex", 
-                                alignItems: "center", 
+                                display: "flex",
+                                alignItems: "center",
                                 marginBottom: "0.75rem"
                             }}>
                                 <div className="category-color-indicator" style={{
-                                    width: "12px", 
-                                    height: "12px", 
+                                    width: "12px",
+                                    height: "12px",
                                     borderRadius: "50%",
                                     backgroundColor: category.color,
                                     marginRight: "8px"
                                 }}></div>
                                 <h5 style={{
-                                    margin: 0, 
+                                    margin: 0,
                                     color: category.color,
                                     fontWeight: "600",
                                     fontSize: "1.15rem" // Increased font size here
                                 }}>{category.name}</h5>
                             </div>
-                            
+
                             <div className="criteria-scores-grid" style={{
                                 display: "grid",
                                 gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
@@ -964,10 +1263,10 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                         boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
                                         border: "1px solid #e5e7eb"
                                     }}>
-                                        <div style={{display: "flex", justifyContent: "space-between", marginBottom: "0.5rem"}}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
                                             <div style={{
-                                                display: "flex", 
-                                                alignItems: "center", 
+                                                display: "flex",
+                                                alignItems: "center",
                                                 maxWidth: "75%"
                                             }}>
                                                 <span style={{
@@ -975,8 +1274,8 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                                     whiteSpace: "nowrap",
                                                     overflow: "hidden",
                                                     textOverflow: "ellipsis"
-                                                }} 
-                                                title={fullCriteriaNames[key] || criteriaNames[key]}>
+                                                }}
+                                                    title={fullCriteriaNames[key] || criteriaNames[key]}>
                                                     {criteriaNames[key]}
                                                 </span>
                                                 <span className="weight-badge" style={{
@@ -992,18 +1291,18 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                                     {(category.weights[key] * 100)}%
                                                 </span>
                                             </div>
-                                            <span style={{fontWeight: "600"}}>{value}/10</span>
+                                            <span style={{ fontWeight: "600" }}>{value}/10</span>
                                         </div>
                                         <div style={{
-                                            height: "8px", 
-                                            backgroundColor: "#f3f4f6", 
-                                            borderRadius: "4px", 
+                                            height: "8px",
+                                            backgroundColor: "#f3f4f6",
+                                            borderRadius: "4px",
                                             position: "relative",
                                             overflow: "hidden"
                                         }}>
                                             <div style={{
-                                                height: "100%", 
-                                                width: `${value * 10}%`, 
+                                                height: "100%",
+                                                width: `${value * 10}%`,
                                                 backgroundColor: category.color,
                                                 borderRadius: "4px",
                                                 transition: "width 1s ease-out"
@@ -1014,7 +1313,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                             </div>
                         </div>
                     ))}
-                    
+
                     {activeCategoryCount === 0 && (
                         <div style={{
                             padding: "1rem",
@@ -1027,15 +1326,15 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                         </div>
                     )}
                 </div>
-                
+
                 {/* Step 2: Show how weighted category scores are calculated */}
                 <div className="calculation-section">
                     <h4>Step 2: Weighted Category Scores</h4>
                     <p className="step-explanation">
-                        Within each category, criteria are weighted differently based on importance. 
+                        Within each category, criteria are weighted differently based on importance.
                         The weighted scores are combined to get a category score.
                     </p>
-                    
+
                     <div className="category-weights-container" style={{
                         display: "flex",
                         flexDirection: "column",
@@ -1051,7 +1350,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                 if (weight === 0.35 || weight === 0.3) return '70'; // Medium for middle weight
                                 return '50'; // Lightest for lowest weight
                             };
-                            
+
                             return (
                                 <div key={catIndex} className="category-weight-card" style={{
                                     backgroundColor: "white",
@@ -1060,16 +1359,16 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                     boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
                                     border: `1px solid ${category.color}30`
                                 }}>
-                                    <div style={{display: "flex", justifyContent: "space-between", marginBottom: "1rem"}}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
                                         <h5 style={{
-                                            margin: 0, 
+                                            margin: 0,
                                             color: category.color,
                                             fontWeight: "600",
                                             fontSize: "1.15rem"
                                         }}>{category.name} Category</h5>
-                                        <span style={{fontWeight: "bold"}}>{category.percentage}</span>
+                                        <span style={{ fontWeight: "bold" }}>{category.percentage}</span>
                                     </div>
-                                    
+
                                     <div className="weight-formula" style={{
                                         backgroundColor: "#f9fafb",
                                         padding: "1rem",
@@ -1088,7 +1387,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                             const weight = category.weights[key];
                                             const weightPercentage = weight * 100;
                                             const colorShade = getColorShade(weight);
-                                            
+
                                             return (
                                                 <React.Fragment key={i}>
                                                     <span style={{
@@ -1098,7 +1397,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                                         borderRadius: "4px",
                                                     }}>
                                                         <span>{value}</span>
-                                                        <span style={{margin: "0 3px"}}>×</span>
+                                                        <span style={{ margin: "0 3px" }}>×</span>
                                                         <span style={{
                                                             backgroundColor: `${category.color}${colorShade}`,
                                                             color: "white",
@@ -1109,16 +1408,16 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                                             {weightPercentage}%
                                                         </span>
                                                     </span>
-                                                    {i < arr.length - 1 && <span style={{margin: "0 4px"}}> + </span>}
+                                                    {i < arr.length - 1 && <span style={{ margin: "0 4px" }}> + </span>}
                                                 </React.Fragment>
                                             );
                                         })}
-                                        <span style={{margin: "0 4px"}}> = </span>
+                                        <span style={{ margin: "0 4px" }}> = </span>
                                         <strong>{category.weightedTotal.toFixed(2)}</strong>
                                     </div>
-                                    
+
                                     {/* Enhanced segmented progress bar */}
-                                    <div style={{marginBottom: "1rem"}}>
+                                    <div style={{ marginBottom: "1rem" }}>
                                         <div style={{
                                             display: "flex",
                                             justifyContent: "space-between",
@@ -1133,12 +1432,12 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                             <span>8</span>
                                             <span>10</span>
                                         </div>
-                                        
+
                                         {/* Container for the segmented bar */}
                                         <div style={{
-                                            height: "24px", 
+                                            height: "24px",
                                             backgroundColor: "#f3f4f6",
-                                            borderRadius: "6px", 
+                                            borderRadius: "6px",
                                             position: "relative",
                                             overflow: "hidden",
                                             border: "1px solid #e5e7eb"
@@ -1153,14 +1452,14 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                                     // Convert to percentage of max possible score (10)
                                                     const widthPercent = contribution * 10;
                                                     const colorShade = getColorShade(weight);
-                                                    
+
                                                     // Save current position before updating for next segment
                                                     const currentStart = startPosition;
                                                     startPosition += widthPercent;
-                                                    
+
                                                     return (
-                                                        <div 
-                                                            key={i} 
+                                                        <div
+                                                            key={i}
                                                             style={{
                                                                 position: "absolute",
                                                                 left: `${currentStart}%`,
@@ -1178,14 +1477,14 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                                                 overflow: "hidden",
                                                                 whiteSpace: "nowrap"
                                                             }}
-                                                            title={`${criteriaNames[key]}: ${contribution.toFixed(2)} points (${value} × ${(weight*100)}%)`}
+                                                            title={`${criteriaNames[key]}: ${contribution.toFixed(2)} points (${value} × ${(weight * 100)}%)`}
                                                         >
                                                             {contribution >= 0.5 ? contribution.toFixed(1) : ""}
                                                         </div>
                                                     );
                                                 });
                                             })()}
-                                            
+
                                             {/* Total score marker */}
                                             <div style={{
                                                 position: "absolute",
@@ -1196,7 +1495,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                                 backgroundColor: "#000",
                                                 zIndex: 2
                                             }}></div>
-                                            
+
                                             {/* Score indicator label */}
                                             <div style={{
                                                 position: "absolute",
@@ -1213,48 +1512,48 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                                 {category.weightedTotal.toFixed(2)}
                                             </div>
                                         </div>
-                                        
+
                                         {/* Scale labels */}
                                         <div style={{
-                                            display: "flex", 
+                                            display: "flex",
                                             justifyContent: "space-between",
                                             marginTop: "0.5rem"
                                         }}>
                                             <div style={{
-                                                width: "100%", 
-                                                height: "4px", 
+                                                width: "100%",
+                                                height: "4px",
                                                 backgroundImage: "linear-gradient(to right, #f3f4f6 49%, transparent 49%, transparent 51%, #f3f4f6 51%)",
-                                                backgroundSize: "20% 1px", 
+                                                backgroundSize: "20% 1px",
                                                 backgroundRepeat: "repeat-x",
                                                 marginBottom: "4px"
                                             }}></div>
                                         </div>
                                     </div>
-                                    
+
                                     {/* Add a criteria weight breakdown visualization */}
                                     <div className="criteria-weight-breakdown" style={{
-                                        marginTop: "0.5rem", 
+                                        marginTop: "0.5rem",
                                         padding: "0.75rem",
                                         backgroundColor: "#f9fafb",
                                         borderRadius: "8px"
                                     }}>
-                                        <p style={{margin: "0 0 0.5rem 0", fontSize: "0.9rem", color: "#6b7280"}}>Criteria Contribution:</p>
-                                        
+                                        <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", color: "#6b7280" }}>Criteria Contribution:</p>
+
                                         {/* Criteria contribution breakdown */}
                                         {Object.entries(category.rawScores).map(([key, value], i) => {
                                             const weight = category.weights[key];
                                             const contribution = value * weight;
                                             const colorShade = getColorShade(weight);
-                                            
+
                                             return (
                                                 <div key={i} style={{
-                                                    display: "flex", 
+                                                    display: "flex",
                                                     alignItems: "center",
-                                                    justifyContent: "space-between", 
+                                                    justifyContent: "space-between",
                                                     marginBottom: "0.5rem",
                                                     fontSize: "0.85rem"
                                                 }}>
-                                                    <div style={{display: "flex", alignItems: "center", flex: 3}}>
+                                                    <div style={{ display: "flex", alignItems: "center", flex: 3 }}>
                                                         <span style={{
                                                             width: "10px",
                                                             height: "10px",
@@ -1267,7 +1566,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                                         </span>
                                                     </div>
                                                     <div style={{
-                                                        display: "flex", 
+                                                        display: "flex",
                                                         alignItems: "center",
                                                         flex: 2,
                                                         justifyContent: "flex-end",
@@ -1275,12 +1574,12 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                                         color: "#4b5563"
                                                     }}>
                                                         <span>{value}</span>
-                                                        <span style={{margin: "0 4px"}}>×</span>
+                                                        <span style={{ margin: "0 4px" }}>×</span>
                                                         <span style={{
                                                             color: category.color,
                                                             fontWeight: "600"
                                                         }}>{(weight * 100)}%</span>
-                                                        <span style={{margin: "0 4px"}}>=</span>
+                                                        <span style={{ margin: "0 4px" }}>=</span>
                                                         <span style={{
                                                             fontWeight: "bold",
                                                             color: "#111827"
@@ -1289,13 +1588,13 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                                 </div>
                                             );
                                         })}
-                                        
+
                                         <div style={{
                                             height: "1px",
                                             backgroundColor: "#e5e7eb",
                                             margin: "0.5rem 0"
                                         }}></div>
-                                        
+
                                         <div style={{
                                             display: "flex",
                                             justifyContent: "flex-end",
@@ -1304,7 +1603,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                             fontSize: "0.85rem",
                                             fontWeight: "bold"
                                         }}>
-                                            <span style={{marginRight: "8px"}}>Total:</span>
+                                            <span style={{ marginRight: "8px" }}>Total:</span>
                                             <span style={{
                                                 color: category.color,
                                                 fontSize: "1rem"
@@ -1314,7 +1613,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                 </div>
                             );
                         })}
-                        
+
                         {activeCategoryCount === 0 && (
                             <div style={{
                                 padding: "1rem",
@@ -1328,15 +1627,15 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                         )}
                     </div>
                 </div>
-                
+
                 {/* Step 3: Final Score Calculation */}
                 <div className="calculation-section">
                     <h4>Step 3: Final Score Calculation</h4>
                     <p className="step-explanation">
-                        The final score is the average of the category scores, scaled to 100. 
+                        The final score is the average of the category scores, scaled to 100.
                         {activeCategoryCount > 0 && ` Since ${activeCategoryCount} ${activeCategoryCount === 1 ? 'category is' : 'categories are'} used, each contributes equally to the final score.`}
                     </p>
-                    
+
                     <div className="final-score-visualization" style={{
                         backgroundColor: "white",
                         borderRadius: "12px",
@@ -1360,9 +1659,9 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                     backgroundColor: "#f9fafb",
                                     borderRadius: "10px"
                                 }}>
-                                    <div style={{display: "flex", alignItems: "center", flexWrap: "wrap", justifyContent: "center"}}>
-                                        <span style={{fontSize: "1.2rem"}}>( </span>
-                                        
+                                    <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
+                                        <span style={{ fontSize: "1.2rem" }}>( </span>
+
                                         {categoryData.filter(cat => cat.isActive).map((category, i, arr) => (
                                             <React.Fragment key={i}>
                                                 <div style={{
@@ -1379,13 +1678,13 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                                     <span>{category.name}</span>
                                                     <span>{category.percentage}</span>
                                                 </div>
-                                                {i < arr.length - 1 && <span style={{margin: "0 0.5rem"}}>+</span>}
+                                                {i < arr.length - 1 && <span style={{ margin: "0 0.5rem" }}>+</span>}
                                             </React.Fragment>
                                         ))}
-                                        
-                                        <span style={{fontSize: "1.2rem"}}> ) ÷ {activeCategoryCount} =</span>
+
+                                        <span style={{ fontSize: "1.2rem" }}> ) ÷ {activeCategoryCount} =</span>
                                     </div>
-                                    
+
                                     <div style={{
                                         padding: "0.5rem 1.5rem",
                                         backgroundColor: "#4f46e5",
@@ -1397,11 +1696,11 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                         {((weightedScores.finalScore || 0) * 10).toFixed(1)}%
                                     </div>
                                 </div>
-                                
+
                                 {/* Progress bar visualization */}
-                                <div className="progress-visualization" style={{marginBottom: "1rem"}}>
+                                <div className="progress-visualization" style={{ marginBottom: "1rem" }}>
                                     <div style={{
-                                        display: "flex", 
+                                        display: "flex",
                                         justifyContent: "space-between",
                                         marginBottom: "0.5rem",
                                         fontSize: "0.9rem",
@@ -1412,15 +1711,15 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                         <span>100%</span>
                                     </div>
                                     <div style={{
-                                        height: "20px", 
-                                        backgroundColor: "#f3f4f6", 
-                                        borderRadius: "10px", 
+                                        height: "20px",
+                                        backgroundColor: "#f3f4f6",
+                                        borderRadius: "10px",
                                         position: "relative",
                                         overflow: "hidden"
                                     }}>
                                         <div style={{
-                                            height: "100%", 
-                                            width: `${(weightedScores.finalScore || 0) * 10}%`, 
+                                            height: "100%",
+                                            width: `${(weightedScores.finalScore || 0) * 10}%`,
                                             background: "linear-gradient(90deg, #4f46e5, #F9645F)",
                                             borderRadius: "10px",
                                             transition: "width 1.5s ease-out",
@@ -1438,7 +1737,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                 <p style={{ margin: 0 }}>No categories selected, unable to calculate final score</p>
                             </div>
                         )}
-                        
+
                         {/* Decorative elements */}
                         <div style={{
                             position: "absolute",
@@ -1462,7 +1761,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                         }}></div>
                     </div>
                 </div>
-                
+
                 {/* Score Interpretation */}
                 <div className="calculation-section">
                     <h4>Score Interpretation</h4>
@@ -1497,23 +1796,23 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                         The overall score is calculated as the average of the category scores, each weighted by their respective importance.
                     </p>
                 </div>
-                
+
                 {/* Add tabs navigation */}
                 <div className="modal-tabs">
-                    <button 
+                    <button
                         className={`tab-button ${activeTab === "summary" ? "active" : ""}`}
                         onClick={() => setActiveTab("summary")}
                     >
                         Score Summary
                     </button>
-                    <button 
+                    <button
                         className={`tab-button ${activeTab === "breakdown" ? "active" : ""}`}
                         onClick={() => setActiveTab("breakdown")}
                     >
                         Calculation Breakdown
                     </button>
                 </div>
-                
+
                 {/* Conditionally render content based on active tab */}
                 {activeTab === "summary" && (
                     <div className="score-charts">
@@ -1523,7 +1822,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                                 <canvas ref={pieChartRef} height="250"></canvas>
                             </div>
                         </div>
-                        
+
                         <div className="chart-container bar-chart-container">
                             <h4>Score Distribution</h4>
                             <div className="chart-wrapper">
@@ -1532,7 +1831,7 @@ const DetailedScoringModal = ({ applicant, onClose }) => {
                         </div>
                     </div>
                 )}
-                
+
                 {activeTab === "breakdown" && renderBreakdownContent()}
             </div>
         </div>

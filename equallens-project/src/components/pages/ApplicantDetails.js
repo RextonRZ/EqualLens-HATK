@@ -155,7 +155,7 @@ const sortItemsByRelevance = (items, relevanceData) => {
     if (!relevanceData || !Array.isArray(relevanceData)) { // Check if relevanceData itself is an array
         // If items is already structured, just sort by existing relevance or default to 0
         if (items && Array.isArray(items) && items.every(item => typeof item === 'object' && 'content' in item)) {
-            return items.sort((a,b) => (b.relevance || 0) - (a.relevance || 0));
+            return items.sort((a, b) => (b.relevance || 0) - (a.relevance || 0));
         }
         // If items are simple strings or other, map them to the default structure
         return (items || []).map(item => ({
@@ -175,12 +175,12 @@ const sortItemsByRelevance = (items, relevanceData) => {
             };
         }
     });
-    
+
     return items
         .map(itemObj => { // Expects items to be like [{content: "SkillA", inferred: false}, {content: "SkillB", inferred: true}]
             const contentKey = typeof itemObj === 'object' && itemObj !== null && typeof itemObj.content === 'string' ? itemObj.content : String(itemObj);
             const mappedRelevance = relevanceMap[contentKey] || { relevance: 0, relevant: false };
-            
+
             return {
                 content: contentKey,
                 inferred: typeof itemObj === 'object' && itemObj !== null ? itemObj.inferred : false, // Preserve inferred status
@@ -193,9 +193,9 @@ const sortItemsByRelevance = (items, relevanceData) => {
 
 
 // Render Skills Tab Content with relevance indicators and debugging
-const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkillModal }) => { 
+const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkillModal }) => {
     const relevanceAnalysis = detail?.detailed_profile?.relevance_analysis || {};
-    
+
     const combinedSoftSkills = [
         ...(detail?.detailed_profile?.soft_skills || []).map(s => ({ content: s, inferred: false })),
         ...(detail?.detailed_profile?.inferred_soft_skills || []).map(s => ({ content: s, inferred: true }))
@@ -207,16 +207,16 @@ const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkill
         ...(detail?.detailed_profile?.inferred_technical_skills || []).map(s => ({ content: s, inferred: true }))
     ];
     const technicalSkills = sortItemsByRelevance(combinedTechnicalSkills, relevanceAnalysis.technical_skills);
-    
+
     const combinedLanguages = [
         ...(detail?.detailed_profile?.languages || []).map(s => ({ content: s, inferred: false })),
         ...(detail?.detailed_profile?.inferred_languages || []).map(s => ({ content: s, inferred: true }))
     ];
     const languages = sortItemsByRelevance(combinedLanguages, relevanceAnalysis.languages);
 
-    const hasRelevantItems = softSkills.some(s => s.relevant) || 
-                             technicalSkills.some(s => s.relevant) || 
-                             languages.some(s => s.relevant);
+    const hasRelevantItems = softSkills.some(s => s.relevant) ||
+        technicalSkills.some(s => s.relevant) ||
+        languages.some(s => s.relevant);
 
     return (
         <div className="applicant-info-container">
@@ -235,8 +235,8 @@ const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkill
                         <div className="skills-group-header">
                             <p className="info-label">Soft Skills:</p>
                             {(detail.detailed_profile.inferred_soft_skills && detail.detailed_profile.inferred_soft_skills.length > 0) && (
-                                <InfoTooltip 
-                                    text="AI-inferred skills based on resume context. Click an inferred skill (marked with i) for its specific justification." 
+                                <InfoTooltip
+                                    text="AI-inferred skills based on resume context. Click an inferred skill (marked with i) for its specific justification."
                                 />
                             )}
                         </div>
@@ -247,7 +247,7 @@ const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkill
                                 const uiCategoryTitle = 'Inferred Soft Skill Justification';
                                 const explanationExists = detail?.detailed_profile?.inferred_skills_explanations?.[categoryKey]?.[skillName];
                                 const isInteractive = skillObj.inferred && explanationExists;
-                                
+
                                 return (
                                     <span
                                         key={`soft-${index}`}
@@ -271,7 +271,7 @@ const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkill
                         <div className="skills-group-header">
                             <p className="info-label">Technical Skills:</p>
                             {(detail.detailed_profile.inferred_technical_skills && detail.detailed_profile.inferred_technical_skills.length > 0) && (
-                                <InfoTooltip 
+                                <InfoTooltip
                                     text="AI-inferred skills based on resume context. Click an inferred skill (marked with i) for its specific justification."
                                 />
                             )}
@@ -306,9 +306,9 @@ const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkill
                         <div className="skills-group-header">
                             <p className="info-label">Languages:</p>
                             {(detail.detailed_profile.inferred_languages && detail.detailed_profile.inferred_languages.length > 0) && (
-                                 <InfoTooltip 
+                                <InfoTooltip
                                     text="AI-inferred languages based on resume context. Click an inferred language (marked with i) for its specific justification."
-                                 />
+                                />
                             )}
                         </div>
                         <div className="skills-display">
@@ -338,11 +338,6 @@ const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkill
         </div>
     );
 };
-
-
-// ... (Rest of EducationTabContent, ExperienceTabContent, ApplicantRadarChart, fetch functions, modals etc. remain UNCHANGED from your provided file) ...
-// ... MAKE SURE TO COPY THE REST OF YOUR FILE FROM HERE DOWNWARDS ...
-
 
 // Education Tab Content with relevance indicators
 const EducationTabContent = ({ detail }) => {
@@ -548,7 +543,10 @@ const ApplicantRadarChart = ({ applicant, job }) => {
         { subject: 'Certifications', value: scores.certification || 0, fullMark: 10, category: 'Experience' },
         { subject: 'Study Level', value: scores.studyLevel || 0, fullMark: 10, category: 'Education' },
         { subject: 'Awards', value: scores.awards || 0, fullMark: 10, category: 'Education' },
-        { subject: 'Coursework', value: scores.courseworkResearch || 0, fullMark: 10, category: 'Education' }
+        { subject: 'Coursework', value: scores.courseworkResearch || 0, fullMark: 10, category: 'Education' },
+        { subject: 'Collaboration Style', value: scores.collaborationStyle || 0, fullMark: 10, category: 'Cultural Fit' },
+        { subject: 'Growth Mindset', value: scores.growthMindset || 0, fullMark: 10, category: 'Cultural Fit' },
+        { subject: 'Community Engagement', value: scores.communityEngagement || 0, fullMark: 10, category: 'Cultural Fit' },
     ];
 
     const filteredData = selectedCriteria && selectedCriteria.trim()
@@ -566,7 +564,10 @@ const ApplicantRadarChart = ({ applicant, job }) => {
         { subject: 'Certifications', value: 0, fullMark: 10, category: 'Experience' },
         { subject: 'Study Level', value: 0, fullMark: 10, category: 'Education' },
         { subject: 'Awards', value: 0, fullMark: 10, category: 'Education' },
-        { subject: 'Coursework', value: 0, fullMark: 10, category: 'Education' }
+        { subject: 'Coursework', value: 0, fullMark: 10, category: 'Education' },
+        { subject: 'Collaboration Style', value: 0, fullMark: 10, category: 'Cultural Fit' },
+        { subject: 'Growth Mindset', value: 0, fullMark: 10, category: 'Cultural Fit' },
+        { subject: 'Community Engagement', value: 0, fullMark: 10, category: 'Cultural Fit' }
     ];
 
     const dataToDisplay = noCriteriaSelected ? placeholderData : filteredData;
@@ -783,6 +784,7 @@ const DetailedBreakdownModal = ({ job, applicant, setShowDetailedBreakdownModal 
         if (job.prompt.includes("Skills")) tabs.push('skills');
         if (job.prompt.includes("Experience")) tabs.push('experience');
         if (job.prompt.includes("Education")) tabs.push('education');
+        if (job.prompt.includes("Cultural Fit")) tabs.push('culturalFit');
 
         // Auto-select first tab when there are 1 or 2 criteria
         if (tabs.length === 1 || tabs.length === 2) {
@@ -839,6 +841,14 @@ const DetailedBreakdownModal = ({ job, applicant, setShowDetailedBreakdownModal 
                             onClick={() => setActiveTab('education')}
                         >
                             Education
+                        </button>
+                    )}
+                    {job.prompt.includes("Cultural Fit") && (
+                        <button
+                            className={`detail-tab ${activeTab === 'culturalFit' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('culturalFit')}
+                        >
+                            Cultural Fit
                         </button>
                     )}
                 </div>
@@ -955,6 +965,43 @@ const DetailedBreakdownModal = ({ job, applicant, setShowDetailedBreakdownModal 
                             </div>
                         </div>
                     )}
+
+                    {activeTab === 'culturalFit' && job.prompt.includes("Cultural Fit") && (
+                        <div className="tab-content scores-tab">
+                            <h3 className="tab-title">Cultural Fit Evaluation</h3>
+                            <div className="score-cards-grid">
+                                {[{ key: 'collaborationStyle', title: 'Collaboration Style' },
+                                { key: 'growthMindset', title: 'Growth Mindset' },
+                                { key: 'communityEngagement', title: 'Community Engagement' }
+                                ].map((item) => {
+                                    const score = applicant.rank_score?.[item.key] || 0;
+                                    const reasoning = applicant.reasoning?.[item.key] || "No reasoning provided";
+
+                                    return (
+                                        <div key={item.key} className="score-card compact-card">
+                                            <div className="score-header">
+                                                <h4>{item.title}</h4>
+                                                <div className="score-value">{score}/10</div>
+                                            </div>
+                                            <div className="progress-bar-container">
+                                                <div
+                                                    className="progress-bar"
+                                                    style={{
+                                                        width: `${score * 10}%`,
+                                                        backgroundColor: '#ffa000'
+                                                    }}
+                                                ></div>
+                                            </div>
+                                            <div className="reasoning-container">
+                                                <h5 className="reasoning-title">Reasoning:</h5>
+                                                <div className="reasoning-card full">{reasoning}</div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -987,13 +1034,13 @@ export default function ApplicantDetails() {
     const [selectedScoreDetail, setSelectedScoreDetail] = useState(null);
     const [preloadedLogo, setPreloadedLogo] = useState(null);
     const [preloadedCroppedLogo, setPreloadedCroppedLogo] = useState(null);
-    const idRef = useRef(null); 
+    const idRef = useRef(null);
 
     const [showInferredSkillModal, setShowInferredSkillModal] = useState(false);
-    const [currentInferredSkillData, setCurrentInferredSkillData] = useState({ 
-        skillName: '', 
+    const [currentInferredSkillData, setCurrentInferredSkillData] = useState({
+        skillName: '',
         categoryTitle: '',
-        explanationDetail: null 
+        explanationDetail: null
     });
 
 
@@ -1005,7 +1052,7 @@ export default function ApplicantDetails() {
         setSelectedScoreDetail(null);
     };
 
-    const handleOpenInferredSkillModal = (skillName, categoryKey, uiCategoryTitle) => { 
+    const handleOpenInferredSkillModal = (skillName, categoryKey, uiCategoryTitle) => {
         let detailForModal = {
             explanation: "Justification details are being processed or are unavailable for this skill.",
             evidence_sentence: "",
@@ -1015,16 +1062,16 @@ export default function ApplicantDetails() {
         if (detail?.detailed_profile?.inferred_skills_explanations &&
             detail.detailed_profile.inferred_skills_explanations[categoryKey] &&
             detail.detailed_profile.inferred_skills_explanations[categoryKey][skillName]) {
-            
+
             detailForModal = detail.detailed_profile.inferred_skills_explanations[categoryKey][skillName];
         } else {
             console.warn(`Explanation detail object not found for skill "${skillName}" in category "${categoryKey}". Using default.`);
         }
 
-        setCurrentInferredSkillData({ 
-            skillName: skillName, 
-            categoryTitle: uiCategoryTitle, 
-            explanationDetail: detailForModal 
+        setCurrentInferredSkillData({
+            skillName: skillName,
+            categoryTitle: uiCategoryTitle,
+            explanationDetail: detailForModal
         });
         setShowInferredSkillModal(true);
     };
@@ -1049,21 +1096,21 @@ export default function ApplicantDetails() {
         const fetchData = async () => {
             const pathSegments = location.pathname.split("/");
             const candidateIdFromUrl = pathSegments[pathSegments.length - 1];
-            idRef.current = candidateIdFromUrl; 
+            idRef.current = candidateIdFromUrl;
             const jobIdFromUrl = pathSegments[pathSegments.length - 2];
             setJob_id(jobIdFromUrl);
 
             if (!candidateIdFromUrl) {
                 setModalMessage("Candidate ID not found in URL.");
                 setShowErrorModal(true);
-                setIsLoading(false); 
+                setIsLoading(false);
                 return;
             }
 
             if (!jobIdFromUrl) {
                 setModalMessage("Job ID not found in URL.");
                 setShowErrorModal(true);
-                setIsLoading(false); 
+                setIsLoading(false);
                 return;
             }
 
@@ -1075,7 +1122,7 @@ export default function ApplicantDetails() {
                     setModalMessage("No applicants found for this job. Please check the Job ID or try again.");
                     setShowErrorModal(true);
                     setIsLoading(false);
-                    return; 
+                    return;
                 }
 
                 const candidateData = applicants.find(candidate =>
@@ -1086,21 +1133,21 @@ export default function ApplicantDetails() {
                     setModalMessage(`Candidate with ID ${candidateIdFromUrl} not found for this job. Please verify and try again.`);
                     setShowErrorModal(true);
                     setIsLoading(false);
-                    return; 
+                    return;
                 }
 
                 setApplicant(candidateData);
                 setJob(jobData);
 
                 let detailDataToSet;
-                if (!candidateData.detailed_profile || 
+                if (!candidateData.detailed_profile ||
                     (typeof candidateData.detailed_profile === 'object' && candidateData.detailed_profile !== null && !candidateData.detailed_profile.summary) ||
                     (typeof candidateData.detailed_profile === 'string' && candidateData.detailed_profile.trim() === "")) {
                     detailDataToSet = await handleCreateDetail(jobIdFromUrl, candidateIdFromUrl);
                 } else {
                     detailDataToSet = { detailed_profile: candidateData.detailed_profile };
                 }
-                
+
                 setDetail(detailDataToSet);
                 setIsLoading(false);
 
@@ -1113,7 +1160,7 @@ export default function ApplicantDetails() {
         };
 
         fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [navigate, location.pathname]);
 
     useEffect(() => {
@@ -1124,7 +1171,7 @@ export default function ApplicantDetails() {
                 await new Promise((resolve, reject) => {
                     logoImg.onload = resolve;
                     logoImg.onerror = reject;
-                    setTimeout(reject, 3000); 
+                    setTimeout(reject, 3000);
                 });
                 setPreloadedLogo(logoImg);
             } catch (err) {
@@ -1137,7 +1184,7 @@ export default function ApplicantDetails() {
                 await new Promise((resolve, reject) => {
                     croppedLogoImg.onload = resolve;
                     croppedLogoImg.onerror = reject;
-                    setTimeout(reject, 3000); 
+                    setTimeout(reject, 3000);
                 });
                 setPreloadedCroppedLogo(croppedLogoImg);
             } catch (err) {
@@ -1147,20 +1194,20 @@ export default function ApplicantDetails() {
         loadImages();
     }, []);
 
-    const handleCreateDetail = async (currentJobId, candidateIdForDetail) => { 
+    const handleCreateDetail = async (currentJobId, candidateIdForDetail) => {
         if (!candidateIdForDetail) {
             setModalMessage("Candidate ID missing for detail creation.");
             setShowErrorModal(true);
-            return null; 
+            return null;
         }
 
         let apiUrl = `http://localhost:8000/api/candidates/detail/${candidateIdForDetail}`;
         if (currentJobId) {
-            apiUrl += `?job_id=${currentJobId}&force=true`; 
+            apiUrl += `?job_id=${currentJobId}&force=true`;
         } else {
-            apiUrl += `?force=true`; 
+            apiUrl += `?force=true`;
         }
-        
+
         try {
             const response = await fetch(apiUrl);
             if (!response.ok) {
@@ -1169,20 +1216,20 @@ export default function ApplicantDetails() {
                 throw new Error(`Failed to generate candidate detail: ${response.status} - ${errorText}`);
             }
             const newDetailData = await response.json();
-            
-            setApplicant(prev => prev ? {...prev, detailed_profile: newDetailData.detailed_profile} : null);
-            return newDetailData; 
+
+            setApplicant(prev => prev ? { ...prev, detailed_profile: newDetailData.detailed_profile } : null);
+            return newDetailData;
         } catch (error) {
             console.error("Error in handleCreateDetail:", error);
             setModalMessage(`Error creating detail: ${error.message}`);
             setShowErrorModal(true);
-            return null; 
+            return null;
         }
     }
 
 
     const handleRegenerateProfile = async () => {
-        const candidateId = idRef.current; 
+        const candidateId = idRef.current;
         if (!candidateId || !job_id) {
             setModalMessage("Missing candidate ID or job ID for regeneration.");
             setShowErrorModal(true);
@@ -1201,7 +1248,7 @@ export default function ApplicantDetails() {
 
             const newDetailData = await response.json();
             setDetail(newDetailData);
-            setApplicant(prev => prev ? {...prev, detailed_profile: newDetailData.detailed_profile} : null);
+            setApplicant(prev => prev ? { ...prev, detailed_profile: newDetailData.detailed_profile } : null);
 
             const hasRelevanceData = !!newDetailData.detailed_profile?.relevance_analysis;
             if (hasRelevanceData) {
@@ -1293,19 +1340,19 @@ export default function ApplicantDetails() {
         setProcessingAction(true);
 
         try {
-            const applicantEmail = applicant?.extractedText?.entities?.applicant_mail || 
-                                   applicant?.extractedText?.applicant_mail || 
-                                   detail?.detailed_profile?.extractedText?.entities?.applicant_mail || 
-                                   null;
+            const applicantEmail = applicant?.extractedText?.entities?.applicant_mail ||
+                applicant?.extractedText?.applicant_mail ||
+                detail?.detailed_profile?.extractedText?.entities?.applicant_mail ||
+                null;
 
             if (confirmAction === 'accept') {
-                const payload = { 
+                const payload = {
                     applicationId: applicant.applicationId,
                     candidateId: applicant.candidateId,
-                    jobId: job_id, 
+                    jobId: job_id,
                     email: applicantEmail
                 };
-            
+
                 const response = await fetch('http://localhost:8000/api/interviews/generate-link', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1313,9 +1360,9 @@ export default function ApplicantDetails() {
                 });
 
                 if (!response.ok) {
-                    const errorText = await response.text(); 
+                    const errorText = await response.text();
                     try {
-                        const errorJson = JSON.parse(errorText); 
+                        const errorJson = JSON.parse(errorText);
                         throw new Error(`Failed to generate interview link: ${errorJson.detail ? JSON.stringify(errorJson.detail) : errorText}`);
                     } catch (e) {
                         throw new Error(`Failed to generate interview link: ${errorText}`);
@@ -1366,21 +1413,25 @@ export default function ApplicantDetails() {
         const weights = {
             "skills": { "relevance": 0.50, "proficiency": 0.35, "additionalSkill": 0.15 },
             "experience": { "jobExp": 0.50, "projectCocurricularExp": 0.30, "certification": 0.20 },
-            "education": { "studyLevel": 0.40, "awards": 0.30, "courseworkResearch": 0.30 }
+            "education": { "studyLevel": 0.40, "awards": 0.30, "courseworkResearch": 0.30 },
+            "culturalFit": { "collaborationStyle": 0.40, "growthMindset": 0.30, "communityEngagement": 0.30 }
         };
         const selectedCriteria = [];
         if (job.prompt.includes("Skills")) selectedCriteria.push("skills");
         if (job.prompt.includes("Experience")) selectedCriteria.push("experience");
         if (job.prompt.includes("Education")) selectedCriteria.push("education");
+        if (job.prompt.includes("Cultural Fit")) selectedCriteria.push("culturalFit");
         const criteriaDisplayNames = {
             "skills": { "relevance": "Relevance to Job", "proficiency": "Proficiency Level", "additionalSkill": "Additional Skills" },
             "experience": { "jobExp": "Job Experience", "projectCocurricularExp": "Projects & Co-curricular", "certification": "Certifications" },
-            "education": { "studyLevel": "Level of Study", "awards": "Awards & Achievements", "courseworkResearch": "Relevant Coursework" }
+            "education": { "studyLevel": "Level of Study", "awards": "Awards & Achievements", "courseworkResearch": "Relevant Coursework" },
+            "culturalFit": { "collaborationStyle": "Collaboration Style", "growthMindset": "Growth Mindset", "communityEngagement": "Community Engagement" }
         };
         const scores = {
             "skills": { "relevance": applicant.rank_score.relevance || 0, "proficiency": applicant.rank_score.proficiency || 0, "additionalSkill": applicant.rank_score.additionalSkill || 0 },
             "experience": { "jobExp": applicant.rank_score.jobExp || 0, "projectCocurricularExp": applicant.rank_score.projectCocurricularExp || 0, "certification": applicant.rank_score.certification || 0 },
-            "education": { "studyLevel": applicant.rank_score.studyLevel || 0, "awards": applicant.rank_score.awards || 0, "courseworkResearch": applicant.rank_score.courseworkResearch || 0 }
+            "education": { "studyLevel": applicant.rank_score.studyLevel || 0, "awards": applicant.rank_score.awards || 0, "courseworkResearch": applicant.rank_score.courseworkResearch || 0 },
+            "culturalFit": { "collaborationStyle": applicant.rank_score.collaborationStyle || 0, "growthMindset": applicant.rank_score.growthMindset || 0, "communityEngagement": applicant.rank_score.communityEngagement || 0 }
         };
         const weightedScores = {};
         Object.keys(scores).forEach(mainCriteria => {
@@ -1438,7 +1489,7 @@ export default function ApplicantDetails() {
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4', compress: true });
             pdf.setFont("helvetica");
             const signatureColors = {
-                primary: '#F9645F', skills: '#8250c8', experience: '#dd20c1', education: '#0066cc',
+                primary: '#F9645F', skills: '#8250c8', experience: '#dd20c1', education: '#0066cc', culturalFit: '#ffa000',
                 gradient: { start: '#F9645F', mid: '#ff8783', end: '#ffa799' }
             };
             const pageWidth = pdf.internal.pageSize.getWidth();
@@ -1523,20 +1574,24 @@ export default function ApplicantDetails() {
             if (job?.prompt?.includes("Skills")) selectedCriteriaPDF.push("skills");
             if (job?.prompt?.includes("Experience")) selectedCriteriaPDF.push("experience");
             if (job?.prompt?.includes("Education")) selectedCriteriaPDF.push("education");
+            if (job?.prompt?.includes("Cultural Fit")) selectedCriteriaPDF.push("culturalFit");
             const weightsPDF = {
                 "skills": { "relevance": 0.50, "proficiency": 0.35, "additionalSkill": 0.15 },
                 "experience": { "jobExp": 0.50, "projectCocurricularExp": 0.30, "certification": 0.20 },
-                "education": { "studyLevel": 0.40, "awards": 0.30, "courseworkResearch": 0.30 }
+                "education": { "studyLevel": 0.40, "awards": 0.30, "courseworkResearch": 0.30 },
+                "culturalFit": { "collaborationStyle": 0.40, "growthMindset": 0.30, "communityEngagement": 0.30 }
             };
             const criteriaDisplayNamesPDF = {
                 "skills": { "relevance": "Relevance to Job", "proficiency": "Proficiency Level", "additionalSkill": "Additional Skills" },
                 "experience": { "jobExp": "Job Experience", "projectCocurricularExp": "Projects & Co-curricular", "certification": "Certifications" },
-                "education": { "studyLevel": "Level of Study", "awards": "Awards & Achievements", "courseworkResearch": "Relevant Coursework" }
+                "education": { "studyLevel": "Level of Study", "awards": "Awards & Achievements", "courseworkResearch": "Relevant Coursework" },
+                "culturalFit": { "collaborationStyle": "Collaboration Style", "growthMindset": "Growth Mindset", "communityEngagement": "Community Engagement" }
             };
             const scoresPDF = {
                 "skills": { "relevance": applicant?.rank_score?.relevance || 0, "proficiency": applicant?.rank_score?.proficiency || 0, "additionalSkill": applicant?.rank_score?.additionalSkill || 0 },
                 "experience": { "jobExp": applicant?.rank_score?.jobExp || 0, "projectCocurricularExp": applicant?.rank_score?.projectCocurricularExp || 0, "certification": applicant?.rank_score?.certification || 0 },
-                "education": { "studyLevel": applicant?.rank_score?.studyLevel || 0, "awards": applicant?.rank_score?.awards || 0, "courseworkResearch": applicant?.rank_score?.courseworkResearch || 0 }
+                "education": { "studyLevel": applicant?.rank_score?.studyLevel || 0, "awards": applicant?.rank_score?.awards || 0, "courseworkResearch": applicant?.rank_score?.courseworkResearch || 0 },
+                "culturalFit": { "collaborationStyle": applicant?.rank_score?.collaborationStyle || 0, "growthMindset": applicant?.rank_score?.growthMindset || 0, "communityEngagement": applicant?.rank_score?.communityEngagement || 0 }
             };
             const addUnifiedReasoningContainer = (criteria, x, y, width) => {
                 const subCriteria = Object.keys(scoresPDF[criteria]);
@@ -1802,12 +1857,12 @@ export default function ApplicantDetails() {
                 className="status-modal-overlay"
                 role="dialog"
                 aria-modal="true"
-                onClick={() => setShowExportModal(false)} 
+                onClick={() => setShowExportModal(false)}
             >
                 <div
                     className="status-modal"
                     style={{ maxWidth: "400px" }}
-                    onClick={e => e.stopPropagation()} 
+                    onClick={e => e.stopPropagation()}
                 >
                     <div
                         className="status-icon"
@@ -1854,7 +1909,7 @@ export default function ApplicantDetails() {
         return (<div className="applicant-status-badge"><span className={badgeClass}>{applicant.status}</span></div>);
     };
 
-    if (isLoading || processingAction || isRegenerating) { 
+    if (isLoading || processingAction || isRegenerating) {
         return (
             <div className="detail-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', backgroundColor: 'rgb(255, 255, 255)' }}>
                 <div className="loading-indicator" style={{ textAlign: 'center' }}>
@@ -1872,10 +1927,10 @@ export default function ApplicantDetails() {
             <div className="detail-container" style={{ padding: '20px', textAlign: 'center' }}>
                 <h2>Profile Not Found</h2>
                 <p>{error || "The applicant's profile details could not be loaded. Please try again or go back."}</p>
-                <button className="back-button" style={{marginTop: '20px'}} onClick={handleBackToJob}>
+                <button className="back-button" style={{ marginTop: '20px' }} onClick={handleBackToJob}>
                     Go Back
                 </button>
-                {showErrorModal && <ErrorModal />} 
+                {showErrorModal && <ErrorModal />}
             </div>
         );
     }
@@ -1892,8 +1947,8 @@ export default function ApplicantDetails() {
                 <DetailedBreakdownModal job={job} applicant={applicant} setShowDetailedBreakdownModal={setShowDetailedBreakdownModal} />
             )}
             {showQuestionReminderModal && <QuestionReminderModal />}
-            {showScoringStandardModal && (<ScoringStandardModal onClose={() => setShowScoringStandardModal(false)} /> )}
-            {showDetailedScoringModal && ( <DetailedScoringModal applicant={applicant} onClose={() => setShowDetailedScoringModal(false)} /> )}
+            {showScoringStandardModal && (<ScoringStandardModal onClose={() => setShowScoringStandardModal(false)} />)}
+            {showDetailedScoringModal && (<DetailedScoringModal applicant={applicant} onClose={() => setShowDetailedScoringModal(false)} />)}
             {selectedScoreDetail && (
                 <ScoreDetailModal isOpen={!!selectedScoreDetail} onClose={closeScoreDetailModal} title={selectedScoreDetail.title} score={selectedScoreDetail.score} explanation={selectedScoreDetail.explanation} color={selectedScoreDetail.color} />
             )}
@@ -1901,8 +1956,8 @@ export default function ApplicantDetails() {
                 <InferredSkillModal
                     isOpen={showInferredSkillModal}
                     onClose={handleCloseInferredSkillModal}
-                    skillName={currentInferredSkillData.skillName} 
-                    categoryTitle={currentInferredSkillData.categoryTitle} 
+                    skillName={currentInferredSkillData.skillName}
+                    categoryTitle={currentInferredSkillData.categoryTitle}
                     explanationDetail={currentInferredSkillData.explanationDetail} // Pass the whole object
                 />
             )}
@@ -1926,7 +1981,7 @@ export default function ApplicantDetails() {
 
                     <div className="applicant-detail-content">
                         <div className="combined-container">
-                            {detail.detailed_profile?.summary ? ( 
+                            {detail.detailed_profile?.summary ? (
                                 <div className="info-group">
                                     <p className="info-label">Overall Summary:</p>
                                     <div className="experience-container">
@@ -1976,11 +2031,12 @@ export default function ApplicantDetails() {
                                     </div>
                                     <div className="criteria-labels-row">
                                         {(job?.prompt?.includes("Skills") || !job?.prompt) && (<div className="criteria-label"><span className="skills-label">Skills</span></div>)}
-                                        {(job?.prompt?.includes("Experience") || !job?.prompt) && (<div className="criteria-label"><span className="experience-label">Experience</span></div> )}
-                                        {(job?.prompt?.includes("Education") || !job?.prompt) && ( <div className="criteria-label"><span className="education-label">Education</span></div>)}
+                                        {(job?.prompt?.includes("Experience") || !job?.prompt) && (<div className="criteria-label"><span className="experience-label">Experience</span></div>)}
+                                        {(job?.prompt?.includes("Education") || !job?.prompt) && (<div className="criteria-label"><span className="education-label">Education</span></div>)}
+                                        {(job?.prompt?.includes("Cultural Fit") || !job?.prompt) && (<div className="criteria-label"><span className="cultural-fit-label">Cultural Fit</span></div>)}
                                     </div>
                                     {(!job?.prompt || job?.prompt === "") ? (
-                                        <div className="breakdown-columns three-columns">
+                                        <div className="breakdown-columns four-columns">
                                             <div className="breakdown-column">
                                                 <div className="score-card"><h4>Relevance to Job</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
                                                 <div className="score-card"><h4>Proficiency Level</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
@@ -1996,9 +2052,14 @@ export default function ApplicantDetails() {
                                                 <div className="score-card"><h4>Awards & Achievements</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
                                                 <div className="score-card"><h4>Relevant Coursework</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
                                             </div>
+                                            <div className="breakdown-column">
+                                                <div className="score-card"><h4>Collaboration Style</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
+                                                <div className="score-card"><h4>Growth Mindset</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
+                                                <div className="score-card"><h4>Community Engagement</h4><div className="progress-bar-container"><div className="progress-bar unranked" style={{ width: '100%', backgroundColor: '#d9d9d9' }}></div></div><p>N/A</p></div>
+                                            </div>
                                         </div>
                                     ) : (
-                                        <div className={`breakdown-columns ${[job?.prompt?.includes("Skills"), job?.prompt?.includes("Experience"), job?.prompt?.includes("Education")].filter(Boolean).length === 1 ? "single-column" : [job?.prompt?.includes("Skills"), job?.prompt?.includes("Experience"), job?.prompt?.includes("Education")].filter(Boolean).length === 2 ? "two-columns" : "three-columns"}`}>
+                                        <div className={`breakdown-columns ${[job?.prompt?.includes("Skills"), job?.prompt?.includes("Experience"), job?.prompt?.includes("Education"), job?.prompt?.includes("Cultural Fit")].filter(Boolean).length === 1 ? "single-column" : [job?.prompt?.includes("Skills"), job?.prompt?.includes("Experience"), job?.prompt?.includes("Education"), job?.prompt?.includes("Cultural Fit")].filter(Boolean).length === 2 ? "two-columns" : [job?.prompt?.includes("Skills"), job?.prompt?.includes("Experience"), job?.prompt?.includes("Education"), job?.prompt?.includes("Cultural Fit")].filter(Boolean).length === 3 ? "three-columns" : "four-columns"}`}>
                                             {job?.prompt?.includes("Skills") && (
                                                 <div className="breakdown-column">
                                                     <div className="score-card" onClick={() => handleScoreCardClick("Relevance to Job", applicant.rank_score?.relevance || 0, applicant.reasoning?.relevance, "#8250c8")}><h4>Relevance to Job</h4><div className="progress-bar-container"><div className={`progress-bar ${!job?.prompt?.includes("Skills") ? 'unranked' : ''}`} style={{ width: !job?.prompt?.includes("Skills") ? '100%' : `${applicant.rank_score?.relevance ? (applicant.rank_score.relevance * 10) : 0}%`, backgroundColor: !job?.prompt?.includes("Skills") ? '#d9d9d9' : '#8250c8' }}></div></div><p>{!job?.prompt?.includes("Skills") ? "Unranked" : (applicant.rank_score?.relevance ? `${applicant.rank_score.relevance}/10` : "0/10")}</p></div>
@@ -2020,6 +2081,13 @@ export default function ApplicantDetails() {
                                                     <div className="score-card" onClick={() => handleScoreCardClick("Relevant Coursework", applicant.rank_score?.courseworkResearch || 0, applicant.reasoning?.courseworkResearch, "#0066cc")}><h4>Relevant Coursework</h4><div className="progress-bar-container"><div className={`progress-bar ${!job?.prompt?.includes("Education") ? 'unranked' : ''}`} style={{ width: !job?.prompt?.includes("Education") ? '100%' : `${applicant.rank_score?.courseworkResearch ? (applicant.rank_score.courseworkResearch * 10) : 0}%`, backgroundColor: !job?.prompt?.includes("Education") ? '#d9d9d9' : '#0066cc' }}></div></div><p>{!job?.prompt?.includes("Education") ? "Unranked" : (applicant.rank_score?.courseworkResearch ? `${applicant.rank_score.courseworkResearch}/10` : "0/10")}</p></div>
                                                 </div>
                                             )}
+                                            {job?.prompt?.includes("Cultural Fit") && (
+                                                <div className="breakdown-column">
+                                                    <div className="score-card" onClick={() => handleScoreCardClick("Collaboration Style", applicant.rank_score?.collaborationStyle || 0, applicant.reasoning?.collaborationStyle, "#ffa000")}><h4>Collaboration Style</h4><div className="progress-bar-container"><div className={`progress-bar ${!job?.prompt?.includes("Cultural Fit") ? 'unranked' : ''}`} style={{ width: !job?.prompt?.includes("Cultural Fit") ? '100%' : `${applicant.rank_score?.collaborationStyle ? (applicant.rank_score.collaborationStyle * 10) : 0}%`, backgroundColor: !job?.prompt?.includes("Cultural Fit") ? '#d9d9d9' : '#ffa000' }}></div></div><p>{!job?.prompt?.includes("Cultural Fit") ? "Unranked" : (applicant.rank_score?.collaborationStyle ? `${applicant.rank_score.collaborationStyle}/10` : "0/10")}</p></div>
+                                                    <div className="score-card" onClick={() => handleScoreCardClick("Growth Mindset", applicant.rank_score?.growthMindset || 0, applicant.reasoning?.growthMindset, "#ffa000")}><h4>Growth Mindset</h4><div className="progress-bar-container"><div className={`progress-bar ${!job?.prompt?.includes("Cultural Fit") ? 'unranked' : ''}`} style={{ width: !job?.prompt?.includes("Cultural Fit") ? '100%' : `${applicant.rank_score?.growthMindset ? (applicant.rank_score.growthMindset * 10) : 0}%`, backgroundColor: !job?.prompt?.includes("Cultural Fit") ? '#d9d9d9' : '#ffa000' }}></div></div><p>{!job?.prompt?.includes("Cultural Fit") ? "Unranked" : (applicant.rank_score?.growthMindset ? `${applicant.rank_score.growthMindset}/10` : "0/10")}</p></div>
+                                                    <div className="score-card" onClick={() => handleScoreCardClick("Community Engagement", applicant.rank_score?.communityEngagement || 0, applicant.reasoning?.communityEngagement, "#ffa000")}><h4>Community Engagement</h4><div className="progress-bar-container"><div className={`progress-bar ${!job?.prompt?.includes("Cultural Fit") ? 'unranked' : ''}`} style={{ width: !job?.prompt?.includes("Cultural Fit") ? '100%' : `${applicant.rank_score?.communityEngagement ? (applicant.rank_score.communityEngagement * 10) : 0}%`, backgroundColor: !job?.prompt?.includes("Cultural Fit") ? '#d9d9d9' : '#ffa000' }}></div></div><p>{!job?.prompt?.includes("Cultural Fit") ? "Unranked" : (applicant.rank_score?.communityEngagement ? `${applicant.rank_score.communityEngagement}/10` : "0/10")}</p></div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -2033,9 +2101,9 @@ export default function ApplicantDetails() {
                                 <button className={`candidate-tab ${activeDetailTab === 'experience' ? 'active' : ''}`} onClick={() => setActiveDetailTab('experience')}>Experience</button>
                             </div>
                             <div className="candidate-tab-content">
-                                {activeDetailTab === 'skills' && (<SkillsTabContent detail={detail} handleRegenerateProfile={handleRegenerateProfile} onOpenInferredSkillModal={handleOpenInferredSkillModal} /> )}
-                                {activeDetailTab === 'education' && (<EducationTabContent detail={detail} /> )}
-                                {activeDetailTab === 'experience' && ( <ExperienceTabContent detail={detail} /> )}
+                                {activeDetailTab === 'skills' && (<SkillsTabContent detail={detail} handleRegenerateProfile={handleRegenerateProfile} onOpenInferredSkillModal={handleOpenInferredSkillModal} />)}
+                                {activeDetailTab === 'education' && (<EducationTabContent detail={detail} />)}
+                                {activeDetailTab === 'experience' && (<ExperienceTabContent detail={detail} />)}
                             </div>
                         </div>
                     </div>
