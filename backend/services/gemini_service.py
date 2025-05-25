@@ -1,6 +1,6 @@
 import os
 import json
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from fastapi import HTTPException
 from functools import lru_cache
 import google.generativeai as genai
@@ -647,58 +647,27 @@ class GeminiService:
 
         **Instructions:**
 
-        1. **Generate a `summary`:**
-            * Provide a concise paragraph (around 3-5 sentences) highlighting the candidate's key strengths, notable experiences/projects, and potentially areas for development or missing information.
-            * Synthesize information from *all* relevant input fields (skills, experience, education, projects, etc.).
-            * Use `<strong>` tags to emphasize truly significant points (e.g., key skills, major achievements).
-            * **IMPORTANT:** Always use "he/she" pronouns rather than "they/them" when referring to the candidate.
-            * **Crucially, OMIT any Personal Identifying Information (PII)** like name, email, phone number, or explicit bio text from the summary.
+        1.  **Generate a `summary`:** 
+            {... keep summary instructions as before ...}
 
-        2. **Extract and Structure Categorical Information:** Populate the following fields in the JSON output. If the corresponding information is not available in the input, OMIT the field entirely from the JSON.
-            * **`soft_skills`**: If a list of soft skills is provided in the input, use that list directly. Otherwise, extract from relevant text. Output as a list of strings.
-            * **`technical_skills`**: If a list of technical skills is provided, use it directly. Otherwise, extract from relevant text. Output as a list of strings.
-            * **`languages`**: If a list of languages is provided, use it directly. Otherwise, extract from relevant text. Output as a list of strings.
-            * **`education`**: Process the `education_paragraph`. For each education entry:
-                * Format as:
-                    - First line: `<strong>Degree/Program</strong>` (bold) on the left, `<strong>Date</strong>` (bold) on the right (use "DNS" if date not specified).
-                    - Second line: Institution name (if available).
-                    - Third line: Additional details (if available), each as a separate point.
-            * **`certifications`**: Process the `certifications_paragraph`. For each certification:
-                * Format as:
-                    - First line: `<strong>Certification Name</strong>` (bold) on the left, `<strong>Date</strong>` (bold) on the right (use "DNS" if date not specified).
-                    - Second line: Issuing organization (if available).
-                    - Third line: Additional details (if available), each as a separate point.
-            * **`awards`**: Process the `awards_paragraph`. For each award:
-                * Format as:
-                    - First line: `<strong>Award Name</strong>` (bold) on the left, `<strong>Date</strong>` (bold) on the right (use "DNS" if date not specified).
-                    - Second line: Awarding organization (if available).
-                    - Third line: Additional details (if available), each as a separate point.
-            * **`work_experience`**: Process the `work_experience_paragraph`. For each job/role:
-                * Format as:
-                    - First line: `<strong>Job Title</strong>` (bold) on the left, `<strong>Duration</strong>` (bold) on the right (use "DNS" if duration not specified).
-                    - Second line: Company name (if available).
-                    - Third line: Responsibilities/achievements, each as a separate point.
-            * **`projects`**: Process the `projects_paragraph`. For each project:
-                * Format as:
-                    - First line: `<strong>Project Title</strong>` (bold) on the left, `<strong>Date</strong>` (bold) on the right (use "DNS" if date not specified).
-                    - Second line: Small title/description (if available).
-                    - Third line: Additional details (if available), each as a separate point.
-            * **`co_curricular_activities`**: Process the `co_curricular_activities_paragraph`. For each activity:
-                * Format as:
-                    - First line: `<strong>Activity Name/Role</strong>` (bold) on the left, `<strong>Duration</strong>` (bold) on the right (use "DNS" if duration not specified).
-                    - Second line: Organization name (if available).
-                    - Third line: Additional details (if available), each as a separate point.
+        2.  **Extract and Structure Categorical Information:** Populate the following fields in the JSON output. If the corresponding information is not available in the input, OMIT the field entirely from the JSON.
+            *   **`soft_skills`**: If a list of soft skills is provided in the input, use that list. Otherwise, extract from relevant text. Output as a list of INDIVIDUAL skill strings. If skills are listed together (e.g., "Teamwork and Communication"), please list them as separate items: ["Teamwork", "Communication"].
+            *   **`technical_skills`**: If a list of technical skills is provided, use it directly. Otherwise, extract from relevant text. Output as a list of INDIVIDUAL skill strings. If skills are listed with separators like '•' or '/' (e.g., "Docker • Python"), list them as separate items: ["Docker", "Python"].
+            *   **`languages`**: If a list of languages is provided, use it directly. Otherwise, extract from relevant text. Output as a list of INDIVIDUAL language strings.
+            *   **`education`**: {... keep education instructions ...}
+            *   **`certifications`**: {... keep certifications instructions ...}
+            *   **`awards`**: {... keep awards instructions ...}
+            *   **`work_experience`**: {... keep work experience instructions ...}
+            *   **`projects`**: {... keep projects instructions ...}
+            *   **`co_curricular_activities`**: {... keep co-curricular instructions ...}
 
         **VERY IMPORTANT:**
-        * **Format Structure:** For all entries (education, work experience, projects, etc.):
-            - Use square brackets [ ] to enclose date/duration information, placing it at the end of the title line.
-            - Always use "\\n" to create a new line for additional details after the title line.
-            - Never omit or summarize any details from the original text - preserve all content.
-            - The frontend will render the "\\n" as proper line breaks.
-        * **Respond ONLY with a valid JSON object.** No introductory text, no explanations, no markdown formatting around the JSON.
-        * **Strictly EXCLUDE PII:** Do not include applicant_contactNum, applicant_mail, applicant_name, specific bio text, or any other directly identifying information in the output JSON.
-        * **Omit Empty Fields:** If a category (e.g., `awards`) has no information in the input resume data, do not include the corresponding key in the output JSON.
-        * **Preserve Structure in Lists:** Each item in a list should correspond to one distinct entry from the resume.
+        *   **Skill Separation:** For `soft_skills`, `technical_skills`, and `languages`, ensure each skill is a separate string in the list. Do not group multiple skills into one string.
+        *   **Format Structure:** {... keep format structure instructions ...}
+        *   **Respond ONLY with a valid JSON object.** {... keep this instruction ...}
+        *   **Strictly EXCLUDE PII:** {... keep this instruction ...}
+        *   **Omit Empty Fields:** {... keep this instruction ...}
+        *   **Preserve Structure in Lists:** Each item in a list should correspond to one distinct entry from the resume (except for skills which should be individualized).
 
         **Output JSON Format Example:**
         ```json
@@ -781,6 +750,39 @@ class GeminiService:
                     profile_data['inferred_technical_skills'] = inferred_skills.get('technical_skills', [])
                     profile_data['inferred_soft_skills'] = inferred_skills.get('soft_skills', [])
                     profile_data['inferred_languages'] = inferred_skills.get('languages', [])
+
+                if inferred_skills and any(s_list for s_list in inferred_skills.values() if s_list): # Check if any inferred skill list is non-empty
+                    # Re-create contextual_info if not readily available
+                    # This should be the same context used for inferring skills.
+                    contextual_info_for_explanation = ""
+                    for key, value in resume_data.items(): # resume_data was prepared earlier in this method
+                        if key in ["work_experience_paragraph", "projects_paragraph", "education_paragraph",
+                                  "certifications_paragraph", "co_curricular_activities_paragraph", "bio"]: # Added bio as potential context
+                            if isinstance(value, str) and value.strip():
+                                contextual_info_for_explanation += f"{value}\n\n"
+                    
+                    if contextual_info_for_explanation.strip():
+                        try:
+                            from .inferred_skills_explanation_service import InferredSkillsExplanationService 
+                            explanation_service = InferredSkillsExplanationService(gemini_service=self) 
+                            explanations = await explanation_service.generate_explanations( # This is the call
+                                inferred_skills, # This is Dict[str, List[str]]
+                                contextual_info_for_explanation
+                            )
+                            # 'explanations' will now be Dict[str, Dict[str, str]]
+                            if explanations and any(cat_explanations for cat_explanations in explanations.values() if cat_explanations):
+                                profile_data['inferred_skills_explanations'] = explanations # Store the new structure
+                                logger.info("Successfully generated and added individual inferred skills explanations.")
+                            else:
+                                logger.info("Explanation service returned empty or no valid explanations.")
+                        except ImportError:
+                            logger.error("Could not import InferredSkillsExplanationService. Explanations not generated.")
+                        except Exception as ex_gen_e:
+                            logger.error(f"Error generating inferred skills explanations: {ex_gen_e}", exc_info=True)
+                    else:
+                        logger.info("No contextual info available; skipping inferred skills explanation generation.")
+                else:
+                    logger.info("No skills were inferred; skipping explanation generation.")
 
                 # Validate minimum required fields (e.g., summary)
                 if 'summary' not in profile_data or not profile_data['summary']:
@@ -954,110 +956,211 @@ class GeminiService:
     async def infer_additional_skills(self, resume_data: Dict[str, Any], profile_data: Dict[str, Any]) -> Dict[str, List[str]]:
         """
         Infers skills that are implied but not explicitly mentioned in the resume.
-        
-        Args:
-            resume_data: Raw resume data extracted from the candidate's application
-            profile_data: Processed profile data including already extracted skills
-            
-        Returns:
-            Dictionary containing lists of inferred technical_skills, soft_skills, and languages
         """
-        # Extract existing skills to avoid duplicates
         existing_technical = set(profile_data.get('technical_skills', []))
         existing_soft = set(profile_data.get('soft_skills', []))
-        existing_languages = set(profile_data.get('languages', []))
+        existing_languages = set(profile_data.get('languages', [])) # Ensure this includes initially parsed languages
         
-        # Create a consolidated text from work experience, education, etc.
         contextual_info = ""
         for key, value in resume_data.items():
             if key in ["work_experience_paragraph", "projects_paragraph", "education_paragraph", 
-                      "certifications_paragraph", "co_curricular_activities_paragraph"]:
+                      "certifications_paragraph", "co_curricular_activities_paragraph", "bio", "full_text", "extractedText"]: # Added full_text and extractedText as possible context sources
                 if isinstance(value, str) and value.strip():
-                    contextual_info += f"{value}\n\n"
+                    # If 'extractedText' is a dict, we might want its 'full_text' or similar
+                    if key == "extractedText" and isinstance(value, dict):
+                        contextual_info += value.get("full_text", "") + "\n\n"
+                    else:
+                        contextual_info += f"{value}\n\n"
         
-        # If there's not enough contextual info, return empty results
-        if len(contextual_info.strip()) < 100:
+        if len(contextual_info.strip()) < 100: # Increased slightly, but main check is if any text exists
+            logger.info("Not enough contextual information to reliably infer additional skills.")
             return {"technical_skills": [], "soft_skills": [], "languages": []}
         
-        # Create a prompt for Gemini to infer skills
+        # Prepare the list of already identified skills for the prompt accurately
+        already_identified_prompt_part = "Already identified skills (DO NOT INCLUDE THESE OR VARIANTS):\n"
+        if existing_technical:
+            already_identified_prompt_part += f"- Technical: {', '.join(existing_technical)}\n"
+        if existing_soft:
+            already_identified_prompt_part += f"- Soft: {', '.join(existing_soft)}\n"
+        if existing_languages:
+            already_identified_prompt_part += f"- Languages: {', '.join(existing_languages)}\n"
+        if not (existing_technical or existing_soft or existing_languages):
+            already_identified_prompt_part = "No skills were explicitly listed in the resume.\n"
+
+
         inference_prompt = f"""
         You are an expert HR skills analyzer. Based on the following resume information, 
-        infer skills that are IMPLIED but NOT EXPLICITLY MENTIONED. Only include skills that are 
-        strongly suggested by the work experience, projects, and other details.
-        
-        Resume information:
-        {contextual_info}
-        
-        Already identified skills (DO NOT INCLUDE THESE):
-        Technical skills: {", ".join(existing_technical)}
-        Soft skills: {", ".join(existing_soft)}
-        Languages: {", ".join(existing_languages)}
-        
+        infer skills that are IMPLIED but NOT EXPLICITLY MENTIONED in the 'Already identified skills' list. 
+        Only include skills that are strongly suggested by the work experience, projects, and other details.
+
+        Resume Information (this is the primary text to analyze):
+        ---
+        {contextual_info[:6000]} 
+        ---
+
+        {already_identified_prompt_part}
+
         Output ONLY a valid JSON object with these fields:
-        1. technical_skills: An array of implied technical skills (max 5)
-        2. soft_skills: An array of implied soft skills (max 5)
-        3. languages: An array of implied programming or human languages (max 3)
-        
+        1. technical_skills: An array of implied technical skills (max 5-7).
+        2. soft_skills: An array of implied soft skills (max 5-7).
+        3. languages: An array of implied programming or human languages (max 3-4). 
+           IMPORTANT FOR HUMAN LANGUAGES: If the 'Resume Information' itself is clearly written in a common language (e.g., English) AND that language is NOT in the 'Already identified skills - Languages' list, you MUST include it as an inferred language.
+
         Only include skills with high confidence based on the resume context.
-        If no additional skills can be reasonably inferred for a category, provide an empty array.
+        If no additional skills can be reasonably inferred for a category, provide an empty array for that category.
+        Do not infer overly generic skills unless strongly supported.
         """
         
         try:
-            # Make the API call to Gemini
+            logger.info(f"Inferring additional skills. Context length: {len(contextual_info)}. Already identified: T={len(existing_technical)}, S={len(existing_soft)}, L={len(existing_languages)}")
             inference_response = await self.model.generate_content_async([inference_prompt])
             inference_text = inference_response.text
             
-            # Extract JSON from the response
             start_idx = inference_text.find('{')
             end_idx = inference_text.rfind('}') + 1
             
             if start_idx != -1 and end_idx != -1:
-                inferred_json = inference_text[start_idx:end_idx]
-                inferred_data = json.loads(inferred_json)
+                inferred_json_str = inference_text[start_idx:end_idx]
+                inferred_data = json.loads(inferred_json_str)
                 
-                # Clean the inferred skills
+                # Ensure all expected keys are present and are lists
+                final_inferred_data = {
+                    "technical_skills": [], "soft_skills": [], "languages": []
+                }
                 for skill_type in ['technical_skills', 'soft_skills', 'languages']:
-                    if skill_type in inferred_data:
-                        inferred_data[skill_type] = self.clean_and_split_skills(inferred_data[skill_type])
+                    if skill_type in inferred_data and isinstance(inferred_data[skill_type], list):
+                        # Clean and filter out already existing skills again, just in case LLM included them
+                        cleaned_and_new_skills = []
+                        existing_for_type = set()
+                        if skill_type == 'technical_skills': existing_for_type = existing_technical
+                        elif skill_type == 'soft_skills': existing_for_type = existing_soft
+                        elif skill_type == 'languages': existing_for_type = existing_languages
+                        
+                        for skill in self.clean_and_split_skills(inferred_data[skill_type]):
+                            if skill.lower() not in (s.lower() for s in existing_for_type): # Case-insensitive check
+                                cleaned_and_new_skills.append(skill)
+                        final_inferred_data[skill_type] = list(dict.fromkeys(cleaned_and_new_skills)) # Deduplicate while preserving order
+
+                # Specific check for English if it wasn't inferred by LLM but resume implies it
+                # This is a heuristic fallback.
+                is_english_present = any('english' == lang.lower() for lang in final_inferred_data['languages']) or \
+                                     any('english' == lang.lower() for lang in existing_languages)
                 
-                return inferred_data
+                if not is_english_present:
+                    # Basic heuristic: if context contains common English words and is of reasonable length.
+                    # A more robust solution would use a language detection library here if needed.
+                    english_indicators = ["the", "and", "is", "are", "project", "experience", "skill"]
+                    if len(contextual_info) > 200 and any(indicator in contextual_info.lower() for indicator in english_indicators):
+                        logger.info("Heuristically adding 'English' as an inferred language as it was not explicitly listed or inferred by LLM but context suggests it.")
+                        if "English" not in final_inferred_data['languages'] and "english" not in (l.lower() for l in final_inferred_data['languages']):
+                             final_inferred_data['languages'].append("English")
+
+
+                logger.info(f"Inferred skills after cleaning: {final_inferred_data}")
+                return final_inferred_data
             else:
-                logger.warning("Could not extract valid JSON from inference response")
+                logger.warning(f"Could not extract valid JSON from skill inference response: {inference_text}")
                 return {"technical_skills": [], "soft_skills": [], "languages": []}
                 
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decoding JSON from skill inference: {e}. Response: {inference_text}")
+            return {"technical_skills": [], "soft_skills": [], "languages": []}
         except Exception as e:
-            logger.error(f"Error inferring additional skills: {str(e)}")
+            logger.error(f"Error inferring additional skills: {e}", exc_info=True)
             return {"technical_skills": [], "soft_skills": [], "languages": []}
 
-    def clean_and_split_skills(self, skills_list: List[str]) -> List[str]:
+    def clean_and_split_skills(self, skills_input: Union[List[str], str, None]) -> List[str]:
         """
-        Clean and split skills that may contain commas, ampersands or other separators.
+        Clean and split skills that may contain various separators.
+        Handles input that is a list of strings or a single string.
         
         Args:
-            skills_list: Original list of skills which may contain combined skills
+            skills_input: Original list of skills or a single string of skills.
             
         Returns:
-            List of individual skills properly separated and cleaned
+            List of individual skills properly separated and cleaned.
         """
+        if not skills_input:
+            return []
+
+        if isinstance(skills_input, str):
+            skills_list = [skills_input] # Treat a single string as a list with one item
+        elif isinstance(skills_input, list):
+            skills_list = skills_input
+        else:
+            logger.warning(f"Unexpected type for skills_input: {type(skills_input)}. Returning empty list.")
+            return []
+
         cleaned_skills = []
+        # Define a more comprehensive set of delimiters using regex
+        # This pattern will split by ',', '•', ' and ', '/', '|', and also handle surrounding spaces.
+        # It uses lookarounds to keep delimiters like 'C++' or 'Node.js' intact.
+        # Simpler approach: split by common characters then refine.
         
-        for skill in skills_list:
-            # First replace ampersands with commas
-            skill = skill.replace(' & ', ', ').replace('&', ', ')
+        delimiters = [",", "•", "/", "|", " and "] # Common explicit delimiters
+
+        for skill_entry in skills_list:
+            if not isinstance(skill_entry, str): # Skip if an item in the list is not a string
+                if skill_entry is not None: # Log if it's not None but also not a string
+                    logger.warning(f"Non-string item found in skills list: {skill_entry}. Skipping.")
+                continue
+
+            # Normalize multiple spaces to single space first
+            processed_skill_entry = ' '.join(skill_entry.split())
+
+            # Iteratively replace delimiters with a standard one (e.g., comma)
+            # Be careful with " and " to not split words like "Branding and Marketing" incorrectly if "and" is part of a skill.
+            # This is tricky. Let's prioritize clear delimiters first.
             
-            # Split by comma and process each part
-            parts = [part.strip() for part in skill.split(',')]
+            processed_skill_entry = processed_skill_entry.replace(' & ', ', ')
+            processed_skill_entry = processed_skill_entry.replace('&', ', ')
+            processed_skill_entry = processed_skill_entry.replace(' • ', ', ')
+            processed_skill_entry = processed_skill_entry.replace('•', ', ')
+            processed_skill_entry = processed_skill_entry.replace(' / ', ', ')
+            processed_skill_entry = processed_skill_entry.replace('/', ', ')
+            processed_skill_entry = processed_skill_entry.replace(' | ', ', ')
+            processed_skill_entry = processed_skill_entry.replace('|', ', ')
+            # For "and", we need to be more careful. Only split if it's likely a separator.
+            # This heuristic is imperfect. A more advanced NLP approach might be needed for perfect "and" splitting.
+            # For now, let's assume "and" used with spaces around it between distinct skill terms is a separator.
+            parts = processed_skill_entry.split(',') # Initial split by comma
+
+            temp_parts = []
+            for part in parts:
+                # Further split parts that might contain "and" as a separator
+                # but try to preserve "Branding and Identity" or similar phrases
+                # A simple heuristic: if " and " is present and words on both sides are capitalized or common skill terms.
+                # This is complex to get right with simple string ops.
+                # For now, let's just trim and add. The LLM should ideally separate these better in the first place.
+                sub_parts = [p.strip() for p in part.split(' and ') if p.strip()] # Basic split by 'and'
+                
+                # If splitting by 'and' resulted in multiple parts, and the original part was likely a list
+                # (e.g., "SkillA and SkillB" rather than "Research and Development"), add them.
+                # Otherwise, keep the part as is.
+                # This logic is still heuristic.
+                if len(sub_parts) > 1 and len(part) < 50 : # Arbitrary length to guess if it's a list vs. a single skill name
+                    temp_parts.extend(sub_parts)
+                else:
+                    temp_parts.append(part.strip())
             
-            # Filter out empty parts and add to the cleaned list
-            cleaned_skills.extend([part for part in parts if part])
-        
-        # Remove duplicates while preserving order
-        unique_skills = []
+            cleaned_skills.extend([p for p in temp_parts if p])
+
+
+        # Final pass: Remove duplicates while preserving order and ensure proper trimming
+        unique_skills_set = set()
+        final_unique_skills = []
         for skill in cleaned_skills:
-            if skill not in unique_skills:
-                unique_skills.append(skill)
+            trimmed_skill = skill.strip()
+            # Further common cleanup: e.g., remove trailing punctuation if not part of skill name like C++
+            if trimmed_skill.endswith(('.', ';')) and not trimmed_skill.lower() in ['c++', 'node.js']: # Add other exceptions
+                 trimmed_skill = trimmed_skill[:-1].strip()
+
+            if trimmed_skill and trimmed_skill.lower() not in unique_skills_set:
+                final_unique_skills.append(trimmed_skill)
+                unique_skills_set.add(trimmed_skill.lower())
         
-        return unique_skills
+        logger.debug(f"Original skills input: {skills_input}, Cleaned and split skills: {final_unique_skills}")
+        return final_unique_skills
 
     async def interpret_facial_expressions(
             self,
