@@ -1011,11 +1011,20 @@ class GeminiService:
 
         {already_identified_prompt_part}
 
+        Instructions for Inferring Skills:
+        1.  **Technical Skills & Soft Skills (max 5-7 each category):**
+            *   Infer skills directly suggested by descriptions of job duties, project responsibilities, tools used, methodologies mentioned, or significant achievements.
+            *   Avoid overly generic skills unless the context provides strong, specific examples of their application.
+        2.  **Languages (max 3-4 human or programming languages):**
+            *   **Primary Language of Resume:** If the resume is predominantly written in a specific language (e.g., English, Spanish, French) AND this language is NOT in the "Already explicitly listed skills - Languages" list, you MUST infer it.
+            *   **Contextual Language Clues:** Look for strong indicators such as:
+                -   Education undertaken in a country where a specific language is primary (e.g., studying in Germany implies German).
+                -   Significant work experience in a country/region where that language is primary.
+                -   Projects explicitly targeting or involving collaboration with regions speaking a specific language.
+                -   Phrases like "fluent in [Language]" or "native [Language]" found within general text but not in a dedicated skills list.
+            *   **Weak Clues (AVOID inferring from these alone):** Do NOT infer a language solely because a project was mentioned in foreign news or because a company has international offices, unless there's direct evidence of the *candidate's* interaction or need for that language.
+
         Output ONLY a valid JSON object with these fields:
-        1. technical_skills: An array of implied technical skills (max 5-7).
-        2. soft_skills: An array of implied soft skills (max 5-7).
-        3. languages: An array of implied programming or human languages (max 3-4). 
-           IMPORTANT FOR HUMAN LANGUAGES: If the 'Resume Information' itself is clearly written in a common language (e.g., English) AND that language is NOT in the 'Already identified skills - Languages' list, you MUST include it as an inferred language.
 
         Only include skills with high confidence based on the resume context.
         If no additional skills can be reasonably inferred for a category, provide an empty array for that category.

@@ -65,7 +65,7 @@ class InferredSkillsExplanationService:
         1.  **Formulate Justification (Mandatory)**: Write a 1-2 sentence justification explaining *why* this skill was inferred from the "Resume Context".
             *   CRITICAL: If the evidence contains dates (e.g., project completion, employment period like "Jan 2022 - Mar 2023", "Q1 2023", "2020-2022"), you MUST explicitly include these dates in your justification string. Format dates clearly, e.g., "[Jan 2022 - Mar 2023]".
             *   ABSOLUTELY NO "Could not find justification" OR SIMILAR PHRASES. You MUST provide a reasoned justification. If direct evidence is sparse, state how the skill is *subtly implied* or *suggested* by broader experiences, achievements, or the nature of roles/projects described. For example: "While 'Strategic Planning' isn't explicitly stated, it's strongly implied by the candidate's senior role in 'developing long-term product roadmaps' for Product X from [2021-2023]."
-        2.  **Extract Verbatim Evidence (Mandatory)**: Identify and quote the *exact, original sentence(s)* (max 2-3 short, relevant sentences) from the "Resume Context" that provide the strongest support for this skill inference. This must be a verbatim copy. If direct verbatim evidence is very weak but the skill is implied, pick the closest related sentences and state in the explanation how they contribute to the implication. If no sentence is even remotely relevant, you may state: "Evidence is based on overall context rather than a specific sentence."
+        2.  **Extract Verbatim Evidence (Mandatory)**: Identify and quote the *exact, original sentence(s)* (max 2-5 short, relevant sentences) from the "Resume Context" that provide the strongest support for this skill inference. This must be a verbatim copy. If direct verbatim evidence is very weak but the skill is implied, pick the closest related sentences and state in the explanation how they contribute to the implication. If no sentence is even remotely relevant, you may state: "Evidence is based on overall context."
         3.  **Identify Highlight Keywords (Mandatory)**: From YOUR "Extract Verbatim Evidence" (step 2), list 3-5 key phrases or words that are most crucial for supporting the skill inference. If "evidence_sentence" is "Evidence is based on overall context...", then `highlighted_keywords` should be an empty array.
 
         Output ONLY a valid JSON object. The top-level keys are "technical_skills", "soft_skills", and "languages".
@@ -73,7 +73,7 @@ class InferredSkillsExplanationService:
             - Keys are the *exact skill names* (e.g., "Python", "Time Management").
             - Values are JSON objects containing three fields:
                 - "explanation": (String) Your detailed justification, including dates.
-                - "evidence_sentence": (String) The verbatim sentence(s) extracted from the resume OR "Evidence is based on overall context rather than a specific sentence."
+                - "evidence_sentence": (String) The verbatim sentence(s) extracted from the resume OR "Evidence is based on overall context."
                 - "highlighted_keywords": (Array of Strings) The key phrases/words from the evidence, or an empty array.
 
         Example JSON Output (for "Time Management" under "soft_skills"):
