@@ -66,10 +66,7 @@
 }
 
 .rank-modal-body {
-  display: flex;
-  flex-direction: row; /* Arrange label-container and checkbox-container side by side */
-  gap: 2rem; /* Add spacing between the two columns */
-  align-items: flex-start; /* Align items at the top */
+    padding: 1rem;
 }
 
 .rank-modal-description {
@@ -123,6 +120,7 @@
   display: flex;
   flex-direction: column; /* Arrange text in rows */
   gap: 1rem; /* Add spacing between rows */
+  padding-left: 1rem;
   font-size: 1rem;
   color: #333;
 }
@@ -130,8 +128,7 @@
 .label-row {
   font-size: 1.2rem;
   color: #333;
-  padding-top: 1rem;
-  padding-left: 0.5rem;
+  padding-top: 2rem;
   margin-bottom: 0.5rem;
 }
 
@@ -146,6 +143,21 @@
   color: #666;
 }
 
+.criteria-row {
+    display: flex; /* Aligns label and checkbox on the same line */
+    align-items: center; /* Vertically aligns items in the center */
+    justify-content: space-between; /* Puts space between label and checkbox */
+    margin-bottom: 0.75rem; /* Adds some space between each criteria row */
+    padding-left: 1rem; /* Replicates the original margin-left for labels */
+    padding-right: 0.5rem; /* Replicates the original margin-right for checkboxes */
+}
+
+.criteria-row .label-row {
+    /* Labels will take up available space, pushing checkbox to the right */
+    flex-grow: 1;
+    /* You might not need margin-left here anymore if handled by .criteria-row padding */
+}
+
 /* Checkbox container styling */
 .checkbox-container {
   flex: 1; /* Take up equal space as the label-container */
@@ -156,9 +168,11 @@
   padding-right: 1rem; /* Add padding to the right */
 }
 
-.checkbox-wrapper-26 * {
-  -webkit-tap-highlight-color: transparent;
-  outline: none;
+.checkbox-wrapper-26 {
+    position: relative;
+    height: 20px; 
+    width: 20px; 
+    padding-right: 3rem;
 }
 
 .checkbox-wrapper-26 input[type="checkbox"] {

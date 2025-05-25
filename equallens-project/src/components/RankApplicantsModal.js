@@ -103,14 +103,9 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
                 </div>
 
                 <div className="rank-modal-body">
-                    <div className="label-container">
-                        <div className="label-row" style={{ marginLeft: "1rem" }}>Skills</div>
-                        <div className="label-row" style={{ marginLeft: "1rem" }}>Experience</div>
-                        <div className="label-row" style={{ marginLeft: "1rem" }}>Education</div>
-                        <div className="label-row" style={{ marginLeft: "1rem" }}>Cultural Fit</div>
-                    </div>
-                    <div className="checkbox-container">
-                        <div className="checkbox-wrapper-26" style={{ marginRight: "0.5rem" }}>
+                    <div className="criteria-row">
+                        <div className="label-row">Skills</div>
+                        <div className="checkbox-wrapper-26">
                             <input
                                 type="checkbox"
                                 id="skills-checkbox"
@@ -121,7 +116,10 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
                                 <div className="tick_mark"></div>
                             </label>
                         </div>
-                        <div className="checkbox-wrapper-26" style={{ marginRight: "0.5rem" }}>
+                    </div>
+                    <div className="criteria-row">
+                        <div className="label-row">Experience</div>
+                        <div className="checkbox-wrapper-26">
                             <input
                                 type="checkbox"
                                 id="experience-checkbox"
@@ -132,7 +130,10 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
                                 <div className="tick_mark"></div>
                             </label>
                         </div>
-                        <div className="checkbox-wrapper-26" style={{ marginRight: "0.5rem" }}>
+                    </div>
+                    <div className="criteria-row">
+                        <div className="label-row">Education</div>
+                        <div className="checkbox-wrapper-26">
                             <input
                                 type="checkbox"
                                 id="education-checkbox"
@@ -143,7 +144,10 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
                                 <div className="tick_mark"></div>
                             </label>
                         </div>
-                        <div className="checkbox-wrapper-26" style={{ marginRight: "0.5rem", marginBottom: "1rem" }}>
+                    </div>
+                    <div className="criteria-row" style={{ marginBottom: "1rem" }}>
+                        <div className="label-row">Cultural Fit</div>
+                        <div className="checkbox-wrapper-26">
                             <input
                                 type="checkbox"
                                 id="culturalfit-checkbox"
