@@ -628,26 +628,57 @@ class GeminiService:
         **Instructions:**
 
         1.  **Generate a `summary`:** 
-            {... keep summary instructions as before ...}
+            * Provide a concise paragraph (around 3-5 sentences) highlighting the candidate's key strengths, notable experiences/projects, and potentially areas for development or missing information.
+            * Synthesize information from *all* relevant input fields (skills, experience, education, projects, etc.).
+            * Use `<strong>` tags to emphasize truly significant points (e.g., key skills, major achievements).
+            * **IMPORTANT:** Always use "he/she" pronouns rather than "they/them" when referring to the candidate.
+            * **Crucially, OMIT any Personal Identifying Information (PII)** like name, email, phone number, or explicit bio text from the summary.
 
         2.  **Extract and Structure Categorical Information:** Populate the following fields in the JSON output. If the corresponding information is not available in the input, OMIT the field entirely from the JSON.
-            *   **`soft_skills`**: If a list of soft skills is provided in the input, use that list. Otherwise, extract from relevant text. Output as a list of INDIVIDUAL skill strings. If skills are listed together (e.g., "Teamwork and Communication"), please list them as separate items: ["Teamwork", "Communication"].
-            *   **`technical_skills`**: If a list of technical skills is provided, use it directly. Otherwise, extract from relevant text. Output as a list of INDIVIDUAL skill strings. If skills are listed with separators like '•' or '/' (e.g., "Docker • Python"), list them as separate items: ["Docker", "Python"].
-            *   **`languages`**: If a list of languages is provided, use it directly. Otherwise, extract from relevant text. Output as a list of INDIVIDUAL language strings.
-            *   **`education`**: {... keep education instructions ...}
-            *   **`certifications`**: {... keep certifications instructions ...}
-            *   **`awards`**: {... keep awards instructions ...}
-            *   **`work_experience`**: {... keep work experience instructions ...}
-            *   **`projects`**: {... keep projects instructions ...}
-            *   **`co_curricular_activities`**: {... keep co-curricular instructions ...}
+            * **`soft_skills`**: If a list of soft skills is provided in the input, use that list directly. Otherwise, extract from relevant text. Output as a list of strings.
+            * **`technical_skills`**: If a list of technical skills is provided, use it directly. Otherwise, extract from relevant text. Output as a list of strings.
+            * **`languages`**: If a list of languages is provided, use it directly. Otherwise, extract from relevant text. Output as a list of strings.
+            * **`education`**: Process the `education_paragraph`. For each education entry:
+                * Format as:
+                    - First line: `<strong>Degree/Program</strong>` (bold) on the left, `<strong>Date</strong>` (bold) on the right (use "DNS" if date not specified).
+                    - Second line: Institution name (if available).
+                    - Third line: Additional details (if available), each as a separate point.
+            * **`certifications`**: Process the `certifications_paragraph`. For each certification:
+                * Format as:
+                    - First line: `<strong>Certification Name</strong>` (bold) on the left, `<strong>Date</strong>` (bold) on the right (use "DNS" if date not specified).
+                    - Second line: Issuing organization (if available).
+                    - Third line: Additional details (if available), each as a separate point.
+            * **`awards`**: Process the `awards_paragraph`. For each award:
+                * Format as:
+                    - First line: `<strong>Award Name</strong>` (bold) on the left, `<strong>Date</strong>` (bold) on the right (use "DNS" if date not specified).
+                    - Second line: Awarding organization (if available).
+                    - Third line: Additional details (if available), each as a separate point.
+            * **`work_experience`**: Process the `work_experience_paragraph`. For each job/role:
+                * Format as:
+                    - First line: `<strong>Job Title</strong>` (bold) on the left, `<strong>Duration</strong>` (bold) on the right (use "DNS" if duration not specified).
+                    - Second line: Company name (if available).
+                    - Third line: Responsibilities/achievements, each as a separate point.
+            * **`projects`**: Process the `projects_paragraph`. For each project:
+                * Format as:
+                    - First line: `<strong>Project Title</strong>` (bold) on the left, `<strong>Date</strong>` (bold) on the right (use "DNS" if date not specified).
+                    - Second line: Small title/description (if available).
+                    - Third line: Additional details (if available), each as a separate point.
+            * **`co_curricular_activities`**: Process the `co_curricular_activities_paragraph`. For each activity:
+                * Format as:
+                    - First line: `<strong>Activity Name/Role</strong>` (bold) on the left, `<strong>Duration</strong>` (bold) on the right (use "DNS" if duration not specified).
+                    - Second line: Organization name (if available).
+                    - Third line: Additional details (if available), each as a separate point.
 
         **VERY IMPORTANT:**
-        *   **Skill Separation:** For `soft_skills`, `technical_skills`, and `languages`, ensure each skill is a separate string in the list. Do not group multiple skills into one string.
-        *   **Format Structure:** {... keep format structure instructions ...}
-        *   **Respond ONLY with a valid JSON object.** {... keep this instruction ...}
-        *   **Strictly EXCLUDE PII:** {... keep this instruction ...}
-        *   **Omit Empty Fields:** {... keep this instruction ...}
-        *   **Preserve Structure in Lists:** Each item in a list should correspond to one distinct entry from the resume (except for skills which should be individualized).
+        * **Format Structure:** For all entries (education, work experience, projects, etc.):
+            - Use square brackets [ ] to enclose date/duration information, placing it at the end of the title line.
+            - Always use "\\n" to create a new line for additional details after the title line.
+            - Never omit or summarize any details from the original text - preserve all content.
+            - The frontend will render the "\\n" as proper line breaks.
+        * **Respond ONLY with a valid JSON object.** No introductory text, no explanations, no markdown formatting around the JSON.
+        * **Strictly EXCLUDE PII:** Do not include applicant_contactNum, applicant_mail, applicant_name, specific bio text, or any other directly identifying information in the output JSON.
+        * **Omit Empty Fields:** If a category (e.g., `awards`) has no information in the input resume data, do not include the corresponding key in the output JSON.
+        * **Preserve Structure in Lists:** Each item in a list should correspond to one distinct entry from the resume.
 
         **Output JSON Format Example:**
         ```json
