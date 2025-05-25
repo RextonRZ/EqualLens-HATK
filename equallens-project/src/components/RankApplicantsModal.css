@@ -26,16 +26,17 @@
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
 }
 
-.modal-header {
+.rank-modal-header {
   padding: 1.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #eee;
-  background-color: #fff;
   border-radius: 8px 8px 0 0;
+  flex-shrink: 0; 
 }
 
 .modal-title {
@@ -66,23 +67,27 @@
 }
 
 .rank-modal-body {
-    padding: 1rem;
+  padding: 1rem;
+  overflow-y: auto; /* Enable vertical scrolling */
+  max-height: 50vh; /* Set a maximum height */
+  flex: 1; /* Allow it to grow and take available space */
 }
 
 .rank-modal-description {
-  display: flex; /* Arrange label-container and checkbox-container side by side */
-  padding-left: 1rem; /* Add spacing between the two columns */
-  align-items: flex-start; /* Align items at the top */
+  display: flex; 
+  padding-left: 1rem; 
+  align-items: flex-start; 
+  flex-shrink: 0; 
 }
 
-.modal-footer {
+.rank-modal-footer {
   padding: 1rem 1.5rem;
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
   border-top: 1px solid #eee;
-  background-color: #fff;
   border-radius: 0 0 8px 8px;
+  flex-shrink: 0; 
 }
 
 .modal-button {
@@ -132,6 +137,71 @@
   margin-bottom: 0.5rem;
 }
 
+/* Make label row clickable */
+.label-row.clickable {
+    cursor: pointer;
+    flex-grow: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 500;
+    color: #333;
+}
+
+.label-row.clickable:hover {
+    color: #0066cc;
+}
+
+/* Expand/collapse icon */
+.expand-icon {
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+    color: #777;
+    transition: transform 0.2s ease;
+}
+
+.expanded .expand-icon {
+    transform: rotate(180deg);
+}
+
+/* Criteria details section */
+.criteria-details {
+    padding: 0.75rem 1rem;
+    background-color: #ffffff;
+    border-radius: 0 0 6px 6px;
+    padding-top: 0; 
+}
+
+/* Subcriteria styling */
+.subcriteria-item {
+    margin-bottom: 1rem; 
+    font-size: 0.95rem; 
+    padding-left: 1.25rem;
+    position: relative;
+    line-height: 1.6; 
+}
+
+.subcriteria-item:last-child {
+    margin-bottom: 0;
+}
+
+.subcriteria-item:before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #666;
+}
+
+.subcriteria-title {
+    font-weight: 500;
+    margin-right: 0.25rem;
+    color: #333;
+}
+
+.subcriteria-description {
+    color: #555;
+}
+
 .label-container h3 {
   margin-bottom: 0.5rem;
   font-size: 1.2rem;
@@ -144,18 +214,46 @@
 }
 
 .criteria-row {
-    display: flex; /* Aligns label and checkbox on the same line */
-    align-items: center; /* Vertically aligns items in the center */
-    justify-content: space-between; /* Puts space between label and checkbox */
-    margin-bottom: 0.75rem; /* Adds some space between each criteria row */
-    padding-left: 1rem; /* Replicates the original margin-left for labels */
-    padding-right: 0.5rem; /* Replicates the original margin-right for checkboxes */
+    display: flex; 
+    align-items: center;
+    justify-content: space-between; 
+    margin-bottom: 0.75rem;
+    padding-left: 1rem; 
+    padding-right: 0.5rem; 
 }
 
 .criteria-row .label-row {
-    /* Labels will take up available space, pushing checkbox to the right */
     flex-grow: 1;
-    /* You might not need margin-left here anymore if handled by .criteria-row padding */
+}
+
+/* Criteria container styles */
+.criteria-container {
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    border: 1px solid transparent;
+}
+
+.criteria-container.expanded {
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    margin-bottom: 1rem;
+    background-color: #ffffff; /* Add this to ensure entire container is white */
+}
+
+/* Criteria row styling */
+.criteria-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+}
+
+.expanded .criteria-row {
+    background-color: #ffffff; /* Change from #f9f9f9 to white */
+    border-radius: 6px 6px 0 0;
+    border-bottom: none; /* Remove the divider */
 }
 
 /* Checkbox container styling */
@@ -373,4 +471,47 @@
     max-height: 200px;
     overflow-y: auto;
   }
+}
+
+.rank-modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.rank-modal-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.rank-modal-body::-webkit-scrollbar-thumb {
+  background: #ffbeba;
+  border-radius: 4px;
+}
+
+.rank-modal-body::-webkit-scrollbar-thumb:hover {
+  background: #ff9d96;
+}
+
+/* Make criteria rows shorter */
+.criteria-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem; /* Reduced from 0.75rem to 0.5rem */
+  border-radius: 6px;
+}
+
+.criteria-container[data-criteria="Skills"] .label-row.clickable:hover {
+  color: #8250c8;
+}
+
+.criteria-container[data-criteria="Education"] .label-row.clickable:hover {
+  color: #0066cc;
+}
+
+.criteria-container[data-criteria="Experience"] .label-row.clickable:hover {
+  color: #dd20c1;
+}
+
+.criteria-container[data-criteria="Cultural Fit"] .label-row.clickable:hover {
+  color: #ffa000;
 }

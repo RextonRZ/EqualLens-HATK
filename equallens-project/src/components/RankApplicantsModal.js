@@ -5,13 +5,14 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
     const [selectedOptions, setSelectedOptions] = useState([]);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [showMissingModal, setShowMissingModal] = useState(false);
+    const [expandedCriteria, setExpandedCriteria] = useState(null);
 
     // Parse current prompt and pre-select checkboxes based on it
     useEffect(() => {
         if (currentPrompt) {
             const newSelectedOptions = [];
             const promptLower = currentPrompt.toLowerCase();
-            
+
             // Check for each criteria in the prompt
             if (promptLower.includes("skill")) {
                 newSelectedOptions.push("Skills");
@@ -25,7 +26,7 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
             if (promptLower.includes("cultural fit")) {
                 newSelectedOptions.push("Cultural Fit");
             }
-            
+
             setSelectedOptions(newSelectedOptions);
         }
     }, [currentPrompt]);
@@ -51,6 +52,41 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
             // Add the option if not already selected and limit is not exceeded
             setSelectedOptions([...selectedOptions, option]);
         }
+    };
+
+    // Function to toggle the expanded criteria
+    const toggleExpand = (criteria) => {
+        if (expandedCriteria === criteria) {
+            // If already expanded, collapse it
+            setExpandedCriteria(null);
+        } else {
+            // Otherwise, expand this criteria and collapse any other
+            setExpandedCriteria(criteria);
+        }
+    };
+
+    // Subcriteria descriptions
+    const criteriaDetails = {
+        Skills: [
+            { title: "Relevance to Job", description: "Evaluate how well the candidate's skills match the job description." },
+            { title: "Proficiency", description: "Assess the candidate's level of skill proficiency which would benefit the job description." },
+            { title: "Additional Skills", description: "Identify additional skills the candidate has that are not listed in the job description." }
+        ],
+        Experience: [
+            { title: "Job Experience", description: "Evaluate the alignment of the candidate's previous job experience with the job description." },
+            { title: "Projects & Co-curricular", description: "Assess the relevance of the candidate's projects and co-curricular activities that relates to the job." },
+            { title: "Certifications", description: "Evaluate the certifications and training the candidate has completed which would benefit the job description." }
+        ],
+        Education: [
+            { title: "Level of Study", description: "Assess the candidate's level of study and education." },
+            { title: "Awards & Achievements", description: "Evaluate the candidate's awards and achievements which would benefit the job description." },
+            { title: "Relevant Coursework", description: "Assess the relevance of the candidate's coursework and research that relates to the job." }
+        ],
+        "Cultural Fit": [
+            { title: "Collaboration Style", description: "Evaluate how well the candidate demonstrates the ability to work with others, such as leadership roles, teamwork, or group project experience." },
+            { title: "Growth Mindset", description: "Assess the candidate's willingness to learn, improve, and adapt through certifications, awards, or self-initiated learning." },
+            { title: "Community Engagement", description: "Evaluate the candidate's involvement in community, volunteering, or organizational activities that showcase cultural adaptability and inclusive contributions." }
+        ]
     };
 
     const handleSubmit = () => {
@@ -82,7 +118,7 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
                 className="modal-content"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="modal-header">
+                <div className="rank-modal-header">
                     <h2 id="modal-title" className="modal-title">
                         Rank Applicants for {jobTitle}
                     </h2>
@@ -103,65 +139,47 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
                 </div>
 
                 <div className="rank-modal-body">
-                    <div className="criteria-row">
-                        <div className="label-row">Skills</div>
-                        <div className="checkbox-wrapper-26">
-                            <input
-                                type="checkbox"
-                                id="skills-checkbox"
-                                checked={selectedOptions.includes("Skills")}
-                                onChange={() => handleCheckboxChange("Skills")}
-                            />
-                            <label htmlFor="skills-checkbox">
-                                <div className="tick_mark"></div>
-                            </label>
+                    {["Skills", "Experience", "Education", "Cultural Fit"].map((criteria, index) => (
+                        <div
+                            key={criteria}
+                            className={`criteria-container ${expandedCriteria === criteria ? 'expanded' : ''}`}
+                            data-criteria={criteria}
+                        >
+                            <div className="criteria-row">
+                                <div
+                                    className="label-row clickable"
+                                    onClick={() => toggleExpand(criteria)}
+                                >
+                                    <span>{criteria}</span>
+                                </div>
+                                <div className="checkbox-wrapper-26">
+                                    <input
+                                        type="checkbox"
+                                        id={`${criteria.toLowerCase().replace(' ', '-')}-checkbox`}
+                                        checked={selectedOptions.includes(criteria)}
+                                        onChange={() => handleCheckboxChange(criteria)}
+                                    />
+                                    <label htmlFor={`${criteria.toLowerCase().replace(' ', '-')}-checkbox`}>
+                                        <div className="tick_mark"></div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {expandedCriteria === criteria && (
+                                <div className="criteria-details">
+                                    {criteriaDetails[criteria].map((detail, i) => (
+                                        <div key={i} className="subcriteria-item">
+                                            <span className="subcriteria-title">{detail.title}:</span>
+                                            <span className="subcriteria-description">{detail.description}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                    </div>
-                    <div className="criteria-row">
-                        <div className="label-row">Experience</div>
-                        <div className="checkbox-wrapper-26">
-                            <input
-                                type="checkbox"
-                                id="experience-checkbox"
-                                checked={selectedOptions.includes("Experience")}
-                                onChange={() => handleCheckboxChange("Experience")}
-                            />
-                            <label htmlFor="experience-checkbox">
-                                <div className="tick_mark"></div>
-                            </label>
-                        </div>
-                    </div>
-                    <div className="criteria-row">
-                        <div className="label-row">Education</div>
-                        <div className="checkbox-wrapper-26">
-                            <input
-                                type="checkbox"
-                                id="education-checkbox"
-                                checked={selectedOptions.includes("Education")}
-                                onChange={() => handleCheckboxChange("Education")}
-                            />
-                            <label htmlFor="education-checkbox">
-                                <div className="tick_mark"></div>
-                            </label>
-                        </div>
-                    </div>
-                    <div className="criteria-row" style={{ marginBottom: "1rem" }}>
-                        <div className="label-row">Cultural Fit</div>
-                        <div className="checkbox-wrapper-26">
-                            <input
-                                type="checkbox"
-                                id="culturalfit-checkbox"
-                                checked={selectedOptions.includes("Cultural Fit")}
-                                onChange={() => handleCheckboxChange("Cultural Fit")}
-                            />
-                            <label htmlFor="culturalfit-checkbox">
-                                <div className="tick_mark"></div>
-                            </label>
-                        </div>
-                    </div>
+                    ))}
                 </div>
 
-                <div className="modal-footer">
+                <div className="rank-modal-footer">
                     <button
                         className="modal-button secondary-button"
                         onClick={onClose}

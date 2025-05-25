@@ -11,6 +11,7 @@ const RankCriteriaContent = ({ prompt = "" }) => {
         skills: '#8250c8', // Purple for Skills
         experience: '#dd20c1', // Pink for Experience
         education: '#0066cc', // Blue for Education
+        culturalFit: '#ffa000' // Orange for Cultural Fit
     };
 
     // Define subcriteria details with weights
@@ -29,6 +30,11 @@ const RankCriteriaContent = ({ prompt = "" }) => {
             studyLevel: 40,
             awards: 30,
             courseworkResearch: 30
+        },
+        culturalFit: {
+            collaborationStyle: 40,
+            growthMindset: 30,
+            communityEngagement: 30
         }
     };
 
@@ -37,6 +43,7 @@ const RankCriteriaContent = ({ prompt = "" }) => {
         skills: 'Skills',
         experience: 'Experience',
         education: 'Education',
+        culturalFit: 'Cultural Fit',
         relevance: 'Relevance',
         proficiency: 'Proficiency',
         additionalSkill: 'Additional Skills',
@@ -45,7 +52,10 @@ const RankCriteriaContent = ({ prompt = "" }) => {
         certification: 'Certification',
         studyLevel: 'Study Level',
         awards: 'Awards',
-        courseworkResearch: 'Coursework & Research'
+        courseworkResearch: 'Coursework & Research',
+        collaborationStyle: 'Collaboration Style',
+        growthMindset: 'Growth Mindset',
+        communityEngagement: 'Community Engagement'
     };
 
     // Determine which criteria are mentioned in the prompt
@@ -53,7 +63,8 @@ const RankCriteriaContent = ({ prompt = "" }) => {
     const criteriaPresent = {
         'skills': promptLower.includes('skills'),
         'experience': promptLower.includes('experience'),
-        'education': promptLower.includes('education')
+        'education': promptLower.includes('education'),
+        'culturalFit': promptLower.includes('cultural fit')
     };
 
     // If no criteria explicitly mentioned, assume all are present
