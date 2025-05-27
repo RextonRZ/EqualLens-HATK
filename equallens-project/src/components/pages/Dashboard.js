@@ -1636,9 +1636,9 @@ export default function Dashboard() {
             const candidateSkillMap = new Map(); // Map<candidateId, {soft: Set, tech: Set, inferredSoft: Set, inferredTech: Set}>
 
             candidates.forEach(c => {
-                const soft = new Set(c.detailed_profile?.soft_skills || []);
+                const soft = new Set((c.detailed_profile?.soft_skills || []).map(s => s.toUpperCase().replace(/-/g, ' ')));
                 const tech = new Set(c.detailed_profile?.technical_skills || []);
-                const inferredSoft = new Set(c.detailed_profile?.inferred_soft_skills || []);
+                const inferredSoft = new Set((c.detailed_profile?.inferred_soft_skills || []).map(s => s.toUpperCase().replace(/-/g, ' ')));
                 const inferredTech = new Set(c.detailed_profile?.inferred_technical_skills || []);
 
                 soft.forEach(s => allSoftSkills.add(s));
