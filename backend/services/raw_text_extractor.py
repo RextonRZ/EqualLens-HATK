@@ -157,7 +157,7 @@ class RawTextExtractor:
         ]
 
         email_pattern = re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}')
-        text_without_emails = email_pattern.sub(' ', text)
+        text_without_emails = email_pattern.sub(' ', text) # Replace emails with space to avoid them being parsed as URLs
 
         found_urls_set: Set[str] = set()
 
@@ -182,6 +182,10 @@ class RawTextExtractor:
         # Parentheses and quotes are handled more carefully.
 
         for url in found_urls_set:
+            # Filter out mailto and tel links first
+            if url.lower().startswith("mailto:") or url.lower().startswith("tel:"):
+                continue
+
             temp_url = url
 
             # Strip common trailing punctuation iteratively
@@ -208,12 +212,13 @@ class RawTextExtractor:
                     final_cleaned_urls.add(temp_url)
 
         logger.info(
-            f"Extracted {len(final_cleaned_urls)} unique text-based URLs from raw text after cleaning. Preview: {sorted(list(final_cleaned_urls))[:5]}")
+            f"Extracted {len(final_cleaned_urls)} unique text-based URLs from raw text after cleaning and filtering. Preview: {sorted(list(final_cleaned_urls))[:5]}")
         return sorted(list(final_cleaned_urls))
 
     def extract_all_urls(self, file_bytes: bytes, file_name: str) -> List[str]:
         """
         Extracts all URLs from a file: embedded hyperlinks (PDFs) and text-based URLs.
+        Filters out mailto: and tel: links.
         """
         lower_file_name = file_name.lower()
         raw_text = ""
@@ -231,17 +236,19 @@ class RawTextExtractor:
                 logger.warning(f"Could not decode file {file_name} as text: {e}")
                 raw_text = ""
 
-        text_based_urls = self.extract_urls_from_text(raw_text)
+        text_based_urls = self.extract_urls_from_text(raw_text) # This now includes mailto/tel filtering
 
         all_urls_set = set()
         for url in embedded_hyperlinks:
             if url and url.strip():  # Ensure embedded links are not empty/whitespace
-                all_urls_set.add(url.strip())
+                cleaned_url = url.strip()
+                if not (cleaned_url.lower().startswith("mailto:") or cleaned_url.lower().startswith("tel:")):
+                    all_urls_set.add(cleaned_url)
 
-        for url in text_based_urls:  # text_based_urls are already processed
+        for url in text_based_urls:  # text_based_urls are already filtered and processed
             all_urls_set.add(url)
 
         final_url_list = sorted(list(all_urls_set))
         logger.info(
-            f"Total {len(final_url_list)} unique URLs extracted from {file_name} (embedded + text-based). Preview: {final_url_list[:10]}")
+            f"Total {len(final_url_list)} unique URLs extracted from {file_name} (embedded + text-based, filtered). Preview: {final_url_list[:10]}")
         return final_url_list
