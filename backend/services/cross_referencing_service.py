@@ -92,7 +92,7 @@ class CrossReferencingService:
             # extracted_name is display name for user, or full_name for repo
             "description": None, "error_message": None,  # description is bio for user, or description for repo
             "api_data": None, "owner_login": None,  # owner_login is login for user, or owner.login for repo
-            "project_similarity_score": None
+            "project_similarity_score": 0.0
         }
         match = GITHUB_USER_REPO_FROM_URL_REGEX.search(url)
         if not match:
@@ -142,6 +142,8 @@ class CrossReferencingService:
                             api_result["entity_type"] = "organization"
                     logger.info(
                         f"GitHub API success for {url}. Type: {api_result['entity_type']}, Extracted Name/ID: {api_result['extracted_name']}, Login: {api_result['owner_login']}")
+                    logger.info(
+                        f"... Project Similarity Score: {api_result['project_similarity_score']:.2f}")
                     break
                 elif response.status_code == 404:
                     api_result["error_message"] = f"GitHub {api_result['entity_type']} not found via API (404)"
@@ -461,8 +463,8 @@ class CrossReferencingService:
                                 detail.validation_notes += f" Desc: {item_description_from_api[:70]}..."
                             sim_score = process_res.get("project_similarity_score")
                             if sim_score is not None:
-                                detail.project_similarity_score = sim_score
-                                detail.validation_notes += f" Project Match (README vs Resume): {sim_score:.2f}."
+                                detail.project_similarity_score = float(process_res.get("project_similarity_score", 0.0))
+                                detail.validation_notes += f" Project Match (README vs Resume): {detail.project_similarity_score:.2f}."
                             # For repositories, owner name vs. resume name match is not a primary signal.
                             detail.validation_notes += " (Repo owner name not scored against resume name)."
 
@@ -925,7 +927,7 @@ Provide your answer in the following JSON format ONLY, with no other text or mar
             notes.append(f"{live_url_count}/{total_urls_attempted} URLs live.")
             # Add project similarity summary if any
             project_match_scores = [res.project_similarity_score for res in final_result.urls_validated if
-                                    res.project_similarity_score is not None]
+                                    res.project_similarity_score > 0.0]
             if project_match_scores:
                 avg_project_match = sum(project_match_scores) / len(project_match_scores)
                 notes.append(f"Avg GitHub project match: {avg_project_match:.2f} ({len(project_match_scores)} repos).")

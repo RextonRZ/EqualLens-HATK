@@ -87,7 +87,11 @@ For scores where data might be insufficient (e.g. achievement_specificity_score 
 {{
   "timeline_coherence": {{
     "consistent": true/false,
-    "issues_found": ["Description of issue 1 (e.g., 'Overlapping dates for Job A and Degree B')", "..."]
+    "issues_found": ["Description of issue 1 (e.g., 'Unexplained gap of 2 years between 2018-2020')", "Highly improbable overlap: Full-time CEO at Company X [2019-2021] and full-time PhD in another country [2019-2022]."]
+    // Note on timeline_coherence: Assess the chronological consistency of education and work experience.
+    // Flag significant unexplained gaps (e.g., >1 year) or highly improbable overlaps (e.g., two demanding full-time roles simultaneously for an extended period in different cities, or a full-time job clashing with intensive full-time study).
+    // Short overlaps between jobs (e.g., 1-2 months), part-time work during studies, concurrent freelance projects, or parallel volunteer activities are often normal and should NOT be flagged unless the context makes them highly suspect.
+    // Focus on clear, substantial inconsistencies.
   }},
   "skill_experience_education_alignment": {{
     "aligned": true/false,
@@ -107,23 +111,16 @@ For scores where data might be insufficient (e.g. achievement_specificity_score 
 
     async def analyze_resume_content(
             self,
-            # This dictionary should ideally come from DocumentAI's structured output
-            # or be consistently structured if parsed differently.
             extracted_data_from_document_ai: Dict[str, Any],
             candidate_name: Optional[str] = None
     ) -> AuthenticityAnalysisResult:
-
-        # Prepare the sections for the prompt based on typical DocumentAI entity types
-        # or your custom parsing structure.
         prompt_sections = {
             "education_paragraph": extracted_data_from_document_ai.get("education_paragraph"),
             "work_experience_paragraph": extracted_data_from_document_ai.get("work_experience_paragraph"),
             "technical_skills": extracted_data_from_document_ai.get("technical_skills"),
             "soft_skills": extracted_data_from_document_ai.get("soft_skills"),
             "skills": extracted_data_from_document_ai.get("skills"),  # General skills if others not present
-            "projects_paragraph": extracted_data_from_document_ai.get("projects_paragraph"),
-            # Add other relevant sections if your DocumentAI processor extracts them,
-            # e.g., "summary_section", "awards_paragraph", "publications_paragraph"
+            "projects_paragraph": extracted_data_from_document_ai.get("projects_paragraph")
         }
 
         prompt = self._construct_gemini_prompt(prompt_sections, candidate_name)
@@ -137,6 +134,8 @@ For scores where data might be insufficient (e.g. achievement_specificity_score 
             cleaned_response_str = response_str.strip()
             if cleaned_response_str.startswith("```json"):
                 cleaned_response_str = cleaned_response_str[7:]
+            elif cleaned_response_str.startswith("```"):
+                cleaned_response_str = cleaned_response_str[3:]
             if cleaned_response_str.endswith("```"):
                 cleaned_response_str = cleaned_response_str[:-3]
             cleaned_response_str = cleaned_response_str.strip()
@@ -186,6 +185,13 @@ For scores where data might be insufficient (e.g. achievement_specificity_score 
                     "authenticity_summary_explanation_by_content_module",
                     "AI analysis did not provide a specific summary for content module.")
             }
+
+            if "aligned" in response_json.get("skill_experience_education_alignment", {}):
+                alignment_data = response_json.get("skill_experience_education_alignment")
+                analysis_data["skill_experience_education_alignment"] = CoherenceCheck(
+                    consistent=alignment_data.get("aligned", True),
+                    issues_found=alignment_data.get("issues_found", [])
+                )
 
             return AuthenticityAnalysisResult(**analysis_data)
 

@@ -389,8 +389,6 @@ class GeminiService:
             formatted_text = f"Job Description:\n{job_description}\n\nResume Information:\n"
             for key, value in extracted_text.items():
                 formatted_text += f"{key}: {value}\n\n"
-                
-            logger.info(f"Displaying formatted text for Gemini:\n{formatted_text}...")  
 
             # Send the prompt to Gemini
             response = await self.model.generate_content_async(

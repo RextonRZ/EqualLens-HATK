@@ -10,7 +10,7 @@ class URLValidationDetail(BaseModel):
     extracted_profile_name: Optional[str] = None  # For LinkedIn/GitHub profile names
     name_on_resume_for_comparison: Optional[str] = None  # Candidate's name from resume
     name_match_score: Optional[float] = Field(None, ge=0.0, le=1.0)  # Levenshtein or similar
-    project_similarity_score: Optional[float] = Field(None, ge=0.0, le=1.0)
+    project_similarity_score: float = Field(default=0.0, ge=0.0, le=1.0)
     validation_notes: str
     error_message: Optional[str] = None
 

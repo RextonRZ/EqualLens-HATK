@@ -365,6 +365,7 @@ class CandidateService:
         doc_ai_entities: Dict[str, Any] = {}
         work_experience_text: Optional[str] = None
         education_text: Optional[str] = None
+        projects_text_from_doc_ai: Optional[str] = None
         full_text_from_doc_ai: Optional[str] = None  # To store full text
 
         try:
@@ -396,10 +397,16 @@ class CandidateService:
             candidate_name_from_doc_ai = doc_ai_entities.get("applicant_name")
             work_experience_text = doc_ai_entities.get("work_experience_paragraph")
             education_text = doc_ai_entities.get("education_paragraph")
+            projects_text_from_doc_ai = doc_ai_entities.get("projects_paragraph")
             if candidate_name_from_doc_ai:
                 logger.info(f"[{candidate_id_for_logging}] Candidate name from DocAI: {candidate_name_from_doc_ai}")
             else:
                 logger.warning(f"[{candidate_id_for_logging}] Applicant name not found by DocumentAI in entities.")
+            if projects_text_from_doc_ai:
+                logger.info(
+                    f"[{candidate_id_for_logging}] Projects paragraph found by DocumentAI (length: {len(projects_text_from_doc_ai)}).")
+            else:
+                logger.warning(f"[{candidate_id_for_logging}] Projects paragraph not found by DocumentAI in entities.")
 
         except Exception as e:
             logger.error(f"[{candidate_id_for_logging}] Critical error during DocumentAI task for {file_name}: {e}",
@@ -453,8 +460,8 @@ class CandidateService:
                 candidate_name_on_resume=candidate_name_from_doc_ai,
                 work_experience_paragraph=work_experience_text,
                 education_paragraph=education_text,
-                pre_extracted_entities=None
-                # resume_projects_paragraph can be added if DocAI provides it
+                pre_extracted_entities=None,
+                resume_projects_paragraph=projects_text_from_doc_ai
             )
         )
 
