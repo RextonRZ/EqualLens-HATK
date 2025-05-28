@@ -1706,8 +1706,6 @@ export default function Dashboard() {
             };
 
             candidates.forEach(c => {
-
-
                 const soft = new Set((c.detailed_profile?.soft_skills || []).map(s => titleCaseSkill(s)));
                 const tech = new Set(c.detailed_profile?.technical_skills || []);
                 const inferredSoft = new Set((c.detailed_profile?.inferred_soft_skills || []).map(s => titleCaseSkill(s)));
