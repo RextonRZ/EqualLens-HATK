@@ -169,9 +169,9 @@ export default function Dashboard() {
             <>
                 {displaySkills.map((skill, index) => (
                     // Use the new component here
-                    <SkillTagWithLogo 
+                    <SkillTagWithLogo
                         key={`${jobId}-skill-${index}-${skill}`} // Make key more unique
-                        skillName={skill} 
+                        skillName={skill}
                     />
                 ))}
                 {!showAllSkills && skills.length > 3 && (
@@ -1635,10 +1635,82 @@ export default function Dashboard() {
             const inferredTechMap = new Map(); // Map<candidateId, Set<skill>>
             const candidateSkillMap = new Map(); // Map<candidateId, {soft: Set, tech: Set, inferredSoft: Set, inferredTech: Set}>
 
+            const acronyms = new Set([
+                    "OOP", "API", "SQL", "JSON", "XML", "HTML", "CSS", "JS", "AI", "ML", "DL", "CV", "UI", "UX",
+                    "CRM", "ERP", "SDK", "IDE", "REST", "SOAP", "JWT", "AWS", "GCP", "CI/CD", "QA", "HR",
+                    "IT", "DB", "BI", "ETL", "SaaS", "PaaS", "IaaS", "KPI", "ROI", "TDD", "BDD", "SCRUM",
+                    "AGILE", "DEVOPS", "SCRUM", "KANBAN", "XP", "CI", "CD", "SRE", "K8S", "DOCKER", "GIT",
+                    "JIRA", "CONFLUENCE", "SLACK", "ZOOM", "TEAMS", "VPN", "SSH", "TLS", "SSL", "HTTP",
+                    "HTTPS", "FTP", "SFTP", "DNS", "IP", "TCP", "UDP", "LAN", "WAN", "VPN", "VPC",
+                    "ACL", "NAT", "DHCP", "BGP", "OSPF", "MPLS", "VLAN", "WLAN", "SSID", "WPA", "WEP",
+                    "RADIUS", "LDAP", "SAML", "OAuth", "OpenAI", "GPT", "LLM", "NLP", "CV",
+                    "RPA", "IoT", "IIoT", "AR", "VR", "MR", "XR", "5G", "6G", "Blockchain", "DApp"
+                ]);
+
+            const titleCaseSkill = (skill) => {
+                if (!skill) return '';
+                return skill
+                    .replace(/-/g, ' ') // Replace hyphens with spaces first
+                    .split(' ')
+                    .map(word => {
+                        if (!word) return '';
+
+                        // Check for words with trailing parenthesized content, e.g., "skill(API)"
+                        const trailingParenMatch = word.match(/^(.*)\(([A-Za-z0-9_]+)\)$/);
+                        if (trailingParenMatch) {
+                            const mainPart = trailingParenMatch[1];
+                            const contentInParen = trailingParenMatch[2];
+                            let processedMainPart = '';
+
+                            if (mainPart.length > 0) {
+                                if (acronyms.has(mainPart.toUpperCase())) {
+                                    processedMainPart = mainPart.toUpperCase();
+                                } else {
+                                    processedMainPart = mainPart.charAt(0).toUpperCase() + mainPart.slice(1).toLowerCase();
+                                }
+                            }
+
+                            if (acronyms.has(contentInParen.toUpperCase())) {
+                                return `${processedMainPart}(${contentInParen.toUpperCase()})`;
+                            } else {
+                                const titleCasedParenContent = contentInParen.charAt(0).toUpperCase() + contentInParen.slice(1).toLowerCase();
+                                return `${processedMainPart}(${titleCasedParenContent})`;
+                            }
+                        }
+
+                        // Check for words entirely within parentheses, e.g., "(OOP)"
+                        const fullParenMatch = word.match(/^\((.*)\)$/);
+                        if (fullParenMatch) {
+                            const content = fullParenMatch[1];
+                            if (acronyms.has(content.toUpperCase())) {
+                                return `(${content.toUpperCase()})`;
+                            }
+                            if (content.length > 0) { // Title case content if not an acronym
+                                return `(${content.charAt(0).toUpperCase() + content.slice(1).toLowerCase()})`;
+                            }
+                            return '()'; // Empty parentheses
+                        }
+
+                        // Check if the word itself is a standalone acronym
+                        if (acronyms.has(word.toUpperCase())) {
+                            return word.toUpperCase();
+                        }
+
+                        // Default: Title Case the word (capitalize first letter, lowercase rest)
+                        if (word.length > 0) {
+                            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+                        }
+                        return '';
+                    })
+                    .join(' ');
+            };
+
             candidates.forEach(c => {
-                const soft = new Set((c.detailed_profile?.soft_skills || []).map(s => s.toUpperCase().replace(/-/g, ' ')));
+
+
+                const soft = new Set((c.detailed_profile?.soft_skills || []).map(s => titleCaseSkill(s)));
                 const tech = new Set(c.detailed_profile?.technical_skills || []);
-                const inferredSoft = new Set((c.detailed_profile?.inferred_soft_skills || []).map(s => s.toUpperCase().replace(/-/g, ' ')));
+                const inferredSoft = new Set((c.detailed_profile?.inferred_soft_skills || []).map(s => titleCaseSkill(s)));
                 const inferredTech = new Set(c.detailed_profile?.inferred_technical_skills || []);
 
                 soft.forEach(s => allSoftSkills.add(s));
@@ -1693,8 +1765,8 @@ export default function Dashboard() {
                     pdf.addPage();
                     // Add full header for each new page that starts a candidate chunk.
                     // addHeaderFooter resets currentY to contentStartY.
-                    addHeaderFooter(pdf.internal.getNumberOfPages(), { drawHeader: true }); 
-                    
+                    addHeaderFooter(pdf.internal.getNumberOfPages(), { drawHeader: true });
+
                     let tableContentStartY = currentY; // This is contentStartY after addHeaderFooter
 
                     if (chunkIndex === 0) { // Main title and legend only for the very first chunk of this skill type
@@ -1720,11 +1792,11 @@ export default function Dashboard() {
                         pdf.setFont(undefined, 'normal');
                         tableContentStartY += legendLineHeight + 15;
                     } else { // "Continued" title for subsequent chunks of candidates
-                        pdf.setFontSize(14); 
+                        pdf.setFontSize(14);
                         pdf.setTextColor(60, 60, 60);
                         const setName = `(Set ${chunkIndex + 1} of ${numCandidateChunks})`;
                         pdf.text(`Soft Skills Comparison ${setName}`, pageWidth / 2, tableContentStartY, { align: 'center' });
-                        tableContentStartY += 20; 
+                        tableContentStartY += 20;
                     }
 
                     const { head, body } = generateHorizontalSkillTable(uniqueSoftSkills, 'soft', candidateSlice);
@@ -1732,24 +1804,24 @@ export default function Dashboard() {
                     autoTable(pdf, {
                         head: head,
                         body: body,
-                        startY: tableContentStartY, 
+                        startY: tableContentStartY,
                         margin: { left: pageMargin, right: pageMargin },
                         theme: 'grid',
                         styles: { fontSize: 8, cellPadding: 2, halign: 'center', valign: 'middle' },
                         headStyles: { fillColor: [100, 100, 100], textColor: 255, fontSize: 8, halign: 'center' },
-                        columnStyles: { 
-                            0: { 
-                                halign: 'left', 
-                                fontStyle: 'bold', 
-                                cellWidth: 150 
-                            } 
+                        columnStyles: {
+                            0: {
+                                halign: 'left',
+                                fontStyle: 'bold',
+                                cellWidth: 150
+                            }
                         },
                         didDrawPage: (data) => {
-                            addHeaderFooter(pdf.internal.getNumberOfPages(), { drawHeader: false }); 
+                            addHeaderFooter(pdf.internal.getNumberOfPages(), { drawHeader: false });
                             data.cursor.y = currentY; // Start table content at top margin on this new page
                         }
                     });
-                    currentY = pdf.lastAutoTable.finalY + 30; 
+                    currentY = pdf.lastAutoTable.finalY + 30;
                 }
             }
 
@@ -1766,11 +1838,11 @@ export default function Dashboard() {
                     if (candidateSlice.length === 0) continue; // Should not happen with Math.ceil
 
                     pdf.addPage();
-                    addHeaderFooter(pdf.internal.getNumberOfPages(), { drawHeader: true }); 
-                    
+                    addHeaderFooter(pdf.internal.getNumberOfPages(), { drawHeader: true });
+
                     let tableContentStartY = currentY; // This is contentStartY after addHeaderFooter
 
-                    if (chunkIndex === 0) { 
+                    if (chunkIndex === 0) {
                         pdf.setFontSize(16);
                         pdf.setTextColor(60, 60, 60);
                         const setName = `(Set ${chunkIndex + 1} of ${numCandidateChunks})`;
@@ -1793,11 +1865,11 @@ export default function Dashboard() {
                         pdf.setFont(undefined, 'normal');
                         tableContentStartY += legendLineHeight + 15;
                     } else { // "Continued" title for subsequent chunks of candidates
-                        pdf.setFontSize(14); 
+                        pdf.setFontSize(14);
                         pdf.setTextColor(60, 60, 60);
                         const setName = `(Set ${chunkIndex + 1} of ${numCandidateChunks})`;
                         pdf.text(`Technical Skills Comparison ${setName}`, pageWidth / 2, tableContentStartY, { align: 'center' });
-                        tableContentStartY += 20; 
+                        tableContentStartY += 20;
                     }
 
                     // Generate table data for the current slice of candidates
@@ -1811,21 +1883,21 @@ export default function Dashboard() {
                         theme: 'grid',
                         styles: { fontSize: 8, cellPadding: 2, halign: 'center', valign: 'middle' },
                         headStyles: { fillColor: [100, 100, 100], textColor: 255, fontSize: 8, halign: 'center' },
-                        columnStyles: { 
-                            0: { 
-                                halign: 'left', 
-                                fontStyle: 'bold', 
+                        columnStyles: {
+                            0: {
+                                halign: 'left',
+                                fontStyle: 'bold',
                                 cellWidth: 150 // Fixed width for the skill name column
-                            } 
+                            }
                             // Candidate columns will auto-adjust width based on remaining space and number of candidates in the slice
                         },
                         didDrawPage: (data) => {
-                            addHeaderFooter(pdf.internal.getNumberOfPages(), { drawHeader: false }); 
+                            addHeaderFooter(pdf.internal.getNumberOfPages(), { drawHeader: false });
                             // currentY is now pageMargin (from addHeaderFooter with drawHeader:false)
                             data.cursor.y = currentY; // Start table content at top margin on this new page
                         }
                     });
-                    currentY = pdf.lastAutoTable.finalY + 30; 
+                    currentY = pdf.lastAutoTable.finalY + 30;
                 }
             }
 
@@ -1860,7 +1932,7 @@ export default function Dashboard() {
 
                     pdf.addPage();
                     addHeaderFooter(pdf.internal.getNumberOfPages(), { drawHeader: true });
-                    
+
                     let tableContentStartY = currentY;
 
                     pdf.setFontSize(16);
@@ -1880,8 +1952,8 @@ export default function Dashboard() {
                             const rawScore = candidate.rank_score?.[sub] || 0;
                             const weight = weights[criteria][sub] || 0;
                             const weightedScore = rawScore * weight;
-                            rowData.push(rawScore.toFixed(1)); 
-                            rowData.push(weightedScore.toFixed(2)); 
+                            rowData.push(rawScore.toFixed(1));
+                            rowData.push(weightedScore.toFixed(2));
                             criterionTotalWeightedScore += weightedScore; // Accumulate weighted score
                         });
                         rowData.push(criterionTotalWeightedScore.toFixed(2)); // New: Add the sum of weighted scores for the criterion
@@ -1912,7 +1984,7 @@ export default function Dashboard() {
                         },
                         didDrawPage: (data) => {
                             addHeaderFooter(pdf.internal.getNumberOfPages(), { drawHeader: false });
-                            data.cursor.y = currentY; 
+                            data.cursor.y = currentY;
                         }
                     });
                     let scoresTableFinalY = pdf.lastAutoTable.finalY;
@@ -1925,8 +1997,8 @@ export default function Dashboard() {
 
                         if (weightageTableStartY <= scoresTableFinalY + 10) {
                             pdf.addPage();
-                            addHeaderFooter(pdf.internal.getNumberOfPages(), { drawHeader: true }); 
-                            weightageTableStartY = pageHeight - pageMargin - 15 - weightageTableHeightEstimate; 
+                            addHeaderFooter(pdf.internal.getNumberOfPages(), { drawHeader: true });
+                            weightageTableStartY = pageHeight - pageMargin - 15 - weightageTableHeightEstimate;
                         }
 
                         const weightageHead = [['Sub-Criterion', 'Weight']];
@@ -1953,7 +2025,7 @@ export default function Dashboard() {
                     } else {
                         currentY = scoresTableFinalY + 20;
                     }
-                } 
+                }
             });
 
             // --- New Page: Total Candidate Score Table ---
@@ -1976,7 +2048,7 @@ export default function Dashboard() {
                     pdf.setFontSize(18);
                     pdf.setTextColor(60, 60, 60); // Neutral color for this summary title
                     let totalScorePageTitle = "Total Candidate Score";
-                     if (numTotalScoreCandidateChunks > 1) {
+                    if (numTotalScoreCandidateChunks > 1) {
                         totalScorePageTitle += ` (Set ${chunkIndex + 1} of ${numTotalScoreCandidateChunks})`;
                     }
                     pdf.text(totalScorePageTitle, pageWidth / 2, tableContentStartY, { align: 'center' });
@@ -2029,8 +2101,8 @@ export default function Dashboard() {
                             sumOfCriterionTotals += currentCriterionTotal;
                         });
 
-                        const finalBalancedScore = actualCriteriaCountForCandidate > 0 
-                            ? (sumOfCriterionTotals / actualCriteriaCountForCandidate).toFixed(2) 
+                        const finalBalancedScore = actualCriteriaCountForCandidate > 0
+                            ? (sumOfCriterionTotals / actualCriteriaCountForCandidate).toFixed(2)
                             : '0.00';
                         row.push(finalBalancedScore);
                         return row;
@@ -2936,9 +3008,9 @@ export default function Dashboard() {
                                                         <div className="skills-display"> {/* This div helps with flex-wrap if needed */}
                                                             {selectedJob.requiredSkills && selectedJob.requiredSkills.length > 0 ? (
                                                                 selectedJob.requiredSkills.map((skill, index) => (
-                                                                    <SkillTagWithLogo 
+                                                                    <SkillTagWithLogo
                                                                         key={`detail-skill-${index}-${skill}`} // Make key more unique 
-                                                                        skillName={skill} 
+                                                                        skillName={skill}
                                                                     />
                                                                 ))
                                                             ) : (
