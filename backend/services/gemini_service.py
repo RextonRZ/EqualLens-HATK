@@ -845,22 +845,17 @@ class GeminiService:
 
     async def analyze_job_relevance(self, candidate_profile, job_description):
         """
-        Analyzes candidate profile items against job description to identify relevant matches.
-        
-        Args:
-            candidate_profile: Dictionary containing candidate's detailed profile
-            job_description: String containing the job description
-            
-        Returns:
-            Dictionary with relevance scores and sorted items for each category
+        Analyzes candidate profile items against job description to identify relevant matches and overall fit.
+        Determines if the job is "technical" or "managerial" and calculates an overall relevance score.
+        Only the top 3 items (by score) in each category are used for scoring.
+        If the result is Irrelevant, uses Gemini to generate a brief explanation.
         """
         if not candidate_profile or not job_description:
             logger.warning("Missing candidate profile or job description for relevance analysis")
             return {}
-            
-        # Log the beginning of analysis
+
         logger.info(f"Starting job relevance analysis with job description length: {len(job_description)}")
-        
+
         # Check if we have actual data to analyze
         has_data = False
         data_sources = [
@@ -868,33 +863,55 @@ class GeminiService:
             "education", "certifications", "awards",
             "work_experience", "projects", "co_curricular_activities"
         ]
-        
+
         for source in data_sources:
             if source in candidate_profile and candidate_profile[source]:
                 has_data = True
                 break
-                
+
         if not has_data:
             logger.warning("No analyzable data found in candidate profile")
             return {}
-        
-        # Prepare context for Gemini
+
+        # --- Step 1: Determine job type (technical or managerial) using Gemini ---
+        job_type_prompt = f"""
+        You are an expert HR analyst. Based on the following job description, determine if the job is primarily "technical" or "managerial".
+        Respond with ONLY one word: "technical" or "managerial". Do not include any explanation or extra text.
+
+        Job Description:
+        {job_description}
+        """
+        try:
+            job_type_response = await self.model.generate_content_async([job_type_prompt])
+            job_type_text = job_type_response.text.strip().lower()
+            if "technical" in job_type_text:
+                job_type = "technical"
+            elif "managerial" in job_type_text:
+                job_type = "managerial"
+            else:
+                job_type = "technical"
+            logger.info(f"Determined job type as: {job_type}")
+        except Exception as e:
+            logger.error(f"Error determining job type: {e}")
+            job_type = "technical"
+
+        # --- Step 2: Prepare context for Gemini for relevance analysis ---
         system_prompt = f"""
         You are an expert talent evaluator. Analyze the candidate's profile against the job description 
         and identify which specific skills, experiences, and qualifications are most relevant to the job.
-        
+
         For each category below:
         1. Evaluate each item's direct relevance to the job description on a scale of 1-10
         2. Add a "relevant" flag (true/false) ONLY to items scoring 8 or higher
         3. Sort items by relevance score (highest to lowest)
-        
+
         IMPORTANT RULES:
         - Be extremely selective with high scores (8+)
         - Only 10-20% of items should be marked as "relevant: true"
         - Focus on specific, direct matches to job requirements
         - Don't mark generic or common skills/experiences as highly relevant
         - Always maintain original item text/descriptions
-        
+
         Return a JSON object with the following structure:
         {{
           "technical_skills": [
@@ -910,17 +927,29 @@ class GeminiService:
           "projects": [ ... ],
           "co_curricular_activities": [ ... ]
         }}
-        
+
         Respond ONLY with valid JSON and no additional text.
         """
-        
-        # Extract key data from profile
-        profile_data = {
-            "technical_skills": candidate_profile.get("technical_skills", []) + 
+        logger.info(f"[analyze_job_relevance] candidate_profile received: {candidate_profile}")
+
+        tech_skills = candidate_profile.get("technical_skills", [])
+        if isinstance(tech_skills, str):
+            tech_skills = [tech_skills]
+
+        soft_skills = candidate_profile.get("soft_skills", [])
+        if isinstance(soft_skills, str):
+            soft_skills = [soft_skills]
+
+        languages = candidate_profile.get("languages", [])
+        if isinstance(languages, str):
+            languages = [languages]
+
+        profile_data = {            
+            "technical_skills": tech_skills + 
                                candidate_profile.get("inferred_technical_skills", []),
-            "soft_skills": candidate_profile.get("soft_skills", []) + 
+            "soft_skills": soft_skills + 
                           candidate_profile.get("inferred_soft_skills", []),
-            "languages": candidate_profile.get("languages", []) + 
+            "languages": languages + 
                         candidate_profile.get("inferred_languages", []),
             "education": candidate_profile.get("education", []),
             "certifications": candidate_profile.get("certifications", []),
@@ -929,40 +958,86 @@ class GeminiService:
             "projects": candidate_profile.get("projects", []),
             "co_curricular_activities": candidate_profile.get("co_curricular_activities", [])
         }
-        
-        # Create compact profile summary for Gemini
+
+        logger.info(f"[analyze_job_relevance] profile_data constructed: {profile_data}")
+
         profile_summary = "Candidate Profile:\n"
-        
         for category, items in profile_data.items():
             if items:
                 profile_summary += f"\n{category.replace('_', ' ').title()}:\n"
                 for item in items:
                     profile_summary += f"- {item}\n"
-        
+
         try:
-            # Call Gemini to analyze relevance
             logger.info("Sending job relevance analysis request to Gemini")
             response = await self.model.generate_content_async([
                 system_prompt, 
                 f"Job Description:\n{job_description}\n\n{profile_summary}"
             ])
-            
             response_text = response.text
-            logger.debug(f"Raw response from job relevance analysis: {response_text[:200]}...")  # Log beginning of response
-            
-            # Extract JSON from response
+            logger.debug(f"Raw response from job relevance analysis: {response_text[:200]}...")
+
             start_idx = response_text.find('{')
             end_idx = response_text.rfind('}') + 1
-            
+
             if start_idx != -1 and end_idx != -1:
                 json_str = response_text[start_idx:end_idx]
                 relevance_data = json.loads(json_str)
-                
+
                 # Ensure all expected categories exist
                 for category in profile_data.keys():
                     if category not in relevance_data:
                         relevance_data[category] = []
-                
+
+                # --- Only keep top 3 items by score in each category ---
+                for cat in relevance_data:
+                    items = relevance_data[cat]
+                    if isinstance(items, list) and items and isinstance(items[0], dict) and "relevance" in items[0]:
+                        # Sort by relevance descending, keep top 3
+                        relevance_data[cat] = sorted(items, key=lambda x: x.get("relevance", 0), reverse=True)[:3]
+
+                # --- Step 3: Calculate overall relevance score based on job type ---
+                if job_type == "technical":
+                    weights = {
+                        "soft_skills": 0.05,
+                        "technical_skills": 0.30,
+                        "languages": 0.05,
+                        "education": 0.10,
+                        "certifications": 0.05,
+                        "awards": 0.05,
+                        "work_experience": 0.15,
+                        "projects": 0.20,
+                        "co_curricular_activities": 0.05
+                    }
+                else:  # managerial
+                    weights = {
+                        "soft_skills": 0.15,
+                        "technical_skills": 0.10,
+                        "languages": 0.10,
+                        "education": 0.10,
+                        "certifications": 0.05,
+                        "awards": 0.05,
+                        "work_experience": 0.15,
+                        "projects": 0.20,
+                        "co_curricular_activities": 0.10
+                    }
+
+                def avg_relevance(items):
+                    if not items:
+                        return 0.0
+                    scores = [item.get("relevance", 0) for item in items if isinstance(item, dict)]
+                    return sum(scores) / len(scores) / 10.0 if scores else 0.0
+
+                total_score = 0.0
+                # Log average scores for each category before calculating total
+                for cat, weight in weights.items():
+                    avg_score = avg_relevance(relevance_data.get(cat, []))
+                    logger.info(f"Category '{cat}': avg_score={avg_score*10:.2f} (weight={weight*100:.0f}%)")
+                    total_score += avg_score * weight
+
+                total_score_percent = round(total_score * 100, 2)
+                label = "Relevant" if total_score_percent >= 50 else "Irrelevant"
+
                 # Log results summary
                 relevant_count = 0
                 for category, items in relevance_data.items():
@@ -970,18 +1045,47 @@ class GeminiService:
                         for item in items:
                             if item.get("relevant") == True:
                                 relevant_count += 1
-                
+
                 logger.info(f"Job relevance analysis complete: {relevant_count} items marked as relevant out of {sum(len(cat) for cat in relevance_data.values() if isinstance(cat, list))} total items")
+                logger.info(f"Overall relevance score: {total_score_percent}%, Label: {label}")
+
+                relevance_data["job_type"] = job_type
+                relevance_data["overall_relevance_score"] = total_score_percent
+                relevance_data["relevance_label"] = label
+
+                # If label is Irrelevant, use Gemini to generate a reason
+                if label == "Irrelevant":
+                    try:
+                        explanation_prompt = f"""
+                        You are an expert HR analyst. The following candidate profile was analyzed against the job description, and the overall relevance score was below 50%, so the candidate is labeled as "Irrelevant".
+                        Please provide a brief, clear explanation (3-4 sentences) for a non-technical user, summarizing the main reasons why this candidate is not a good fit for the job. Focus on the most important gaps or mismatches.
+                        Respond with ONLY the explanation text, no JSON, no extra formatting.
+
+                        Job Description:
+                        {job_description}
+
+                        Candidate Profile Summary:
+                        {profile_summary}
+                        """
+                        explanation_response = await self.model.generate_content_async([explanation_prompt])
+                        explanation_text = explanation_response.text.strip()
+                        relevance_data["irrelevant_reason"] = explanation_text
+                        logger.info(f"Generated irrelevance explanation: {explanation_text}")
+                    except Exception as e:
+                        logger.error(f"Error generating irrelevance explanation: {e}")
+                        relevance_data["irrelevant_reason"] = "Candidate profile does not sufficiently match the job requirements."
+
+                logger.info(f"Returning relevance_data to orchestrator: {json.dumps(relevance_data, indent=2)}")
                 return relevance_data
             else:
                 logger.error("Failed to extract JSON from Gemini response for job relevance analysis")
                 logger.error(f"Response text: {response_text}")
                 return {}
-                
+
         except Exception as e:
             logger.error(f"Error analyzing job relevance: {str(e)}")
             return {}
-
+        
     async def infer_additional_skills(self, resume_data: Dict[str, Any], profile_data: Dict[str, Any]) -> Dict[str, List[str]]:
         """
         Infers skills that are implied but not explicitly mentioned in the resume.

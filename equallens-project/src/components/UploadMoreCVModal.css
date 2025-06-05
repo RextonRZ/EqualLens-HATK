@@ -226,6 +226,29 @@
   /* Specify a fixed height */
 }
 
+.irrelevant-flagged-file {
+  background-color: #fff0f0;
+  border-left: 4px solid #e74c3c;
+  position: relative;
+}
+
+.irrelevant-flagged-file::after {
+  content: "Irrelevant";
+  position: absolute;
+  top: 12px;
+  right: 48px;
+  background-color: #e74c3c;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 12px;
+  border-radius: 10px;
+  opacity: 0.90;
+  display: flex;
+  align-items: center;
+  height: 20px;
+}
+
 /* Add styles for the close button if it exists, or create a new class */
 .ai-flagged-close {
   position: absolute;
