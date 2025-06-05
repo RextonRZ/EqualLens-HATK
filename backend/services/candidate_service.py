@@ -623,11 +623,12 @@ class CandidateService:
             override_duplicates: bool = False,  # This is for duplicate modal
             user_time_zone: Optional[str] = "UTC",
             # New parameter to be passed from jobs.py
-            force_problematic_upload: bool = False
+            force_problematic_upload: bool = False,
+            force_irrelevant_upload: bool = False
     ) -> Optional[Dict[str, Any]]:
         temp_candidate_id_for_logging = f"temp-orch-{uuid.uuid4()}"
         logger.info(
-            f"[{temp_candidate_id_for_logging}] Orchestrating candidate process for {file_name}, job {job_id}. Override Duplicates: {override_duplicates}, Force Problematic: {force_problematic_upload}")
+            f"[{temp_candidate_id_for_logging}] Orchestrating candidate process for {file_name}, job {job_id}. Override Duplicates: {override_duplicates}, Force Problematic: {force_problematic_upload}, Irrelevant Upload: {force_irrelevant_upload}")
 
         document_ai_results, authenticity_analysis, cross_referencing_analysis, external_ai_detection_data = \
             await self._run_full_analysis_pipeline(
@@ -655,7 +656,49 @@ class CandidateService:
             authenticity_analysis.final_spam_likelihood_score = final_assessment_data.get("final_spam_likelihood_score")
             authenticity_analysis.final_xai_summary = final_assessment_data.get("final_xai_summary")
 
+        # --- Irrelevance Check before Duplicate ---
+        document_ai_results["is_irrelevant"] = False  # Initialize
+        document_ai_results["gemini_irrelevant"] = None
+
+        logger.info(
+            f"[{temp_candidate_id_for_logging}] After initialization, document_ai_results contains is_irrelevant={document_ai_results.get('is_irrelevant')}, gemini_irrelevant={document_ai_results.get('gemini_irrelevant')}"
+        )
+
+        # Determine job relevance before doing anything else
+        try:
+            from services.job_service import JobService
+            job_details = JobService.get_job(job_id)
+            logger.info(f"[{temp_candidate_id_for_logging}] job_details for {job_id}: {job_details}")
+            logger.info(f"[{temp_candidate_id_for_logging}] document_ai_results full_text: {bool(document_ai_results and document_ai_results.get('full_text'))}")
+            if document_ai_results and document_ai_results.get("full_text") and job_details and job_details.get('jobDescription'):
+                logger.info(f"[{temp_candidate_id_for_logging}] Calling analyze_job_relevance with candidate_profile keys: {list(document_ai_results.get('entities', {}).keys())} and job_description: {job_details.get('jobDescription', '')}")
+                relevant_info = await self.gemini_service.analyze_job_relevance(
+                    candidate_profile=document_ai_results.get('entities', {}),
+                    job_description=job_details.get('jobDescription')
+                )
+                logger.info(f"[{temp_candidate_id_for_logging}] analyze_job_relevance returned: {relevant_info}")
+                if relevant_info and relevant_info.get("relevance_label") == "Irrelevant":
+                    reason = relevant_info.get("irrelevant_reason")
+                    if isinstance(reason, list):
+                        reason = ", ".join(str(r) for r in reason)
+                    relevance_score = relevant_info.get("overall_relevance_score")
+                    document_ai_results["is_irrelevant"] = True
+                    document_ai_results["gemini_irrelevant"] = {
+                        "reason": reason,
+                        "relevance_score": relevance_score
+                    }
+                    logger.info(f"[{temp_candidate_id_for_logging}] Candidate marked as irrelevant: {document_ai_results}")
+                else:
+                    logger.info(f"Candidate is relevant for job {job_id}")
+            else:
+                logger.warning(f"Missing data for irrelevance check of {file_name}")
+        except Exception as e_irr:
+            logger.error(f"Exception while irrelevance-checking {file_name}: {e_irr}", exc_info=True)
+            document_ai_results["gemini_irrelevant"] = {"error": f"Irrelevance check error: {e_irr}"}
+
         # --- Duplicate Check ---
+        #This makes irrelevance to not check if Ai-gen so moving before
+
         if not override_duplicates:  # Only check for duplicates if not explicitly overriding
             duplicate_check_result = self.check_duplicate_candidate(job_id, document_ai_results)
             if duplicate_check_result.get("is_duplicate"):
@@ -688,15 +731,37 @@ class CandidateService:
             "predicted_class_label") == "AI-generated" if external_ai_detection_data else False
         is_problematic_internally = (overall_auth_score < FINAL_AUTH_FLAG_THRESHOLD) or \
                                     (spam_score > SPAM_FLAG_THRESHOLD)
-        is_globally_problematic = is_externally_flagged_ai or is_problematic_internally
+        is_globally_problematic = is_externally_flagged_ai or is_problematic_internally  # AND change to OR
 
-        if is_globally_problematic and not force_problematic_upload:
+        if (is_globally_problematic or document_ai_results["is_irrelevant"]) and not force_problematic_upload:
             logger.info(
-                f"[{temp_candidate_id_for_logging}] File {file_name} is problematic and not forced. External AI: {is_externally_flagged_ai}, Internal Problem: {is_problematic_internally}")
+                f"[{temp_candidate_id_for_logging}] File {file_name} is problematic or irrelevant. External AI: {is_externally_flagged_ai}, Internal Problem: {is_problematic_internally}, Gemini Irrelevant: {document_ai_results['is_irrelevant']}")
+
             # Return all necessary data for the AIConfirmationModal and for later candidate creation if confirmed
             return {
                 "is_problematic_pending_confirmation": True,
                 "fileName": file_name,
+                "aiFiles": [  # List of files flagged by AI
+                    {
+                        "filename": file_name,
+                        "is_ai_generated": is_externally_flagged_ai or is_problematic_internally,
+                        "confidence": external_ai_detection_data.get("confidence") if external_ai_detection_data else None,
+                        "details": {
+                            "authenticity_analysis": authenticity_analysis.model_dump(exclude_none=True) if authenticity_analysis else None,
+                            "cross_referencing_analysis": cross_referencing_analysis.model_dump(exclude_none=True) if cross_referencing_analysis else None,
+                            "external_ai_prediction": external_ai_detection_data,
+                            # more info as needed
+                        }
+                    }
+                ] if is_externally_flagged_ai or is_problematic_internally else [],
+                "irrelevantFiles": [  # List of files flagged as irrelevant
+                    {
+                        "filename": file_name,
+                        "gemini_irrelevant": document_ai_results.get("gemini_irrelevant"),
+                        "is_irrelevant": document_ai_results["is_irrelevant"],
+                        #more info as needed
+                    }
+                ] if document_ai_results["is_irrelevant"] else [],
                 "analysis_data": {  # This data will be used by jobs.py to form ai_detection_payload
                     "document_ai_results": document_ai_results,
                     "authenticity_analysis_result": authenticity_analysis.model_dump(
@@ -741,6 +806,8 @@ class CandidateService:
                 candidate_creation_result['extractedDataFromDocAI'] = document_ai_results  # Add it if missing
             asyncio.create_task(self._generate_and_save_profile_background(candidate_creation_result))
 
+        logger.info(f"[{actual_candidate_id}] Returning candidate_creation_result: {candidate_creation_result}")  # <--- Add this line
+
         return candidate_creation_result
 
     async def _generate_and_save_profile_background(self, candidate_info_dict: Dict[str, Any]):
@@ -769,7 +836,7 @@ class CandidateService:
     @staticmethod
     def get_candidate(candidate_id: str) -> Optional[Dict[str, Any]]:
         # ... (get_candidate implementation remains the same) ...
-        try:
+        try:     
             candidate = firebase_client.get_document('candidates', candidate_id)
             if candidate and isinstance(candidate, dict):
                 return candidate

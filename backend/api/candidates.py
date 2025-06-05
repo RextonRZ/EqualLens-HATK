@@ -250,12 +250,6 @@ async def get_candidate_detail(candidate_id: str, job_id: str = None, force: boo
                 # Create an instance of GeminiService
                 gemini_service = GeminiService()
                 
-                # Add relevance analysis to existing profile
-                relevance_data = await gemini_service.analyze_job_relevance(
-                    candidate["detailed_profile"], 
-                    job_description
-                )
-                
                 if relevance_data:
                     candidate["detailed_profile"]["relevance_analysis"] = relevance_data
                     # Update the candidate with the enhanced profile

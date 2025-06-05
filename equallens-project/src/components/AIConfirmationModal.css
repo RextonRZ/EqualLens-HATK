@@ -34,22 +34,25 @@
     background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
 }
 
-.header-content {
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-}
-
 .warning-icon {
     flex-shrink: 0;
-    width: 12px;
-    height: 12px;
+    width: 32px;           /* Smaller size */
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
     background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #dc2626;
+    margin-top: 0;         /* Remove any offset */
+}
+
+.header-content {
+    display: flex;
+    align-items: center;   /* Center icon and text vertically */
+    gap: 16px;
 }
 
 .header-text {
@@ -158,6 +161,13 @@
     font-size: 0.95rem;
 }
 
+
+.badges-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 .confidence-badge {
     padding: 6px 12px;
     border-radius: 20px;
@@ -182,6 +192,17 @@
     color: #6b7280;
 }
 
+.irrelevant-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: #fef2f2;
+    color: #f9645f;
+}
+
 /* Analysis Content */
 .analysis-content {
     padding: 20px;
@@ -194,7 +215,10 @@
 .analysis-section {
     border: 1px solid #e5e7eb;
     border-radius: 12px;
-    overflow: hidden;
+    background: none;    /* Remove white background */
+    overflow: visible;
+    padding: 0;
+    margin-bottom: 16px;
 }
 
 .section-header {
@@ -221,6 +245,8 @@
 /* ML Section Specific */
 .ml-section .section-header {
     background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border-radius: 12px 12px 0 0;
+    border: 1px solid #e5e7eb;
 }
 
 .ml-section .section-header h3 {
@@ -295,6 +321,8 @@
 /* Auth Section Specific */
 .auth-section .section-header {
     background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border-radius: 12px 12px 0 0;
+    border: 1px solid #e5e7eb;
 }
 
 .auth-section .section-header h3 {
@@ -304,6 +332,8 @@
 /* Entities Section Specific */
 .entities-section .section-header {
     background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-radius: 12px 12px 0 0;
+    border: 1px solid #e5e7eb;
 }
 
 .entities-section .section-header h3 {
@@ -313,6 +343,8 @@
 /* URLs Section Specific */
 .urls-section .section-header {
     background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+    border-radius: 12px 12px 0 0;
+    border: 1px solid #e5e7eb;
 }
 
 .urls-section .section-header h3 {
@@ -651,7 +683,7 @@
 
 .btn {
     padding: 10px 20px;
-    border-radius: 8px;
+    border-radius: 12px;
     font-weight: 600;
     font-size: 0.9rem;
     cursor: pointer;
@@ -680,14 +712,14 @@
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    background: linear-gradient(135deg, #f9645f 0%, #f45a55 100%);
     color: white;
-    border-color: #2563eb;
+    border-color: #f45a55;
 }
 
 .btn-primary:hover:not(:disabled) {
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-    border-color: #1d4ed8;
+    background: linear-gradient(135deg, #db5c57 0%, #db5c57 100%);
+    border-color: #f45a55;
 }
 
 .spinner {
@@ -798,4 +830,70 @@
     .url-status {
         margin-left: 0;
     }
+}
+
+.ai-modal-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+    padding: 0 24px;
+}
+
+.ai-modal-tab {
+    background: none;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #6b7280;
+    padding: 14px 32px 12px 32px;
+    margin: 0;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-bottom 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center; 
+}
+
+.ai-modal-tab.active {
+    color: #f9645f;
+    border-bottom: 2.5px solid #f9645f;
+    background: none;
+}
+
+.empty-tab-message {
+    color: #9ca3af;
+    font-size: 1rem;
+    padding: 32px 0;
+    text-align: center;
+}
+
+.spam-section .section-header {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border-radius: 12px 12px 0 0;
+    border: 1px solid #fecaca;
+}
+
+.spam-section .section-header h3 {
+    color: #f9645f;
+}
+
+.spam-section .section-header .section-title {
+    text-align: left;
+    justify-content: flex-start;
+    display: flex;
+}
+
+.spam-reason {
+    background: #fff;
+    color: #000000; /* or any red shade you prefer */
+    border-radius: 10px;
+    padding: 18px 16px;
+    font-size: 1.0em;
+    font-weight: 400;
+    margin-top: 0;
+    margin-bottom: 0;
+    border: none;
 }

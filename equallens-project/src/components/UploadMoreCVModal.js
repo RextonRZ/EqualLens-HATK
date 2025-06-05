@@ -349,15 +349,16 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
 
             let displayErrorMessage = "An error occurred. Please try again.";
 
-            // Check if it's the specific AI_CONTENT_DETECTED error from the backend
-            if (!sendForceAiToBackend &&
+            // Show AIConfirmationModal for flagged files (AI, Irrelevant, or both)
+            if (
                 error.name === "APIError" &&
                 error.status === 422 &&
                 error.data &&
-                error.data.error_type === "AI_CONTENT_DETECTED") {
-
-                console.log("AI Content Detected - showing AIConfirmationModal. Flagged files:", error.data.flagged_files);
-                setFlaggedAIData(error.data.flagged_files || []);
+                error.data.error_type === "FLAGGED_CONTENT" &&
+                error.data.flagged_files &&
+                error.data.flagged_files.length > 0
+            ) {
+                setFlaggedAIData(error.data.flagged_files);
                 setShowAIConfirmModal(true);
                 setApiStatus("idle");
                 setSubmitProgress(0);
@@ -585,13 +586,37 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                                 {fileState.selectedFiles.length === 0 ? (<div className="no-files"><p className="no-files-text">No files selected yet</p></div>) : (
                                     <div className="files-list" role="list" aria-labelledby="uploaded-files-heading">
                                         {fileState.selectedFiles.map((file, index) => (
-                                            <div key={index} className={`file-item ${aiHighlightedFiles && aiHighlightedFiles.includes(file.name) ? 'ai-flagged-file' : ''}`} role="listitem">
+                                            <div
+                                                key={index}
+                                                className={`file-item ${
+                                                    file.is_irrelevant
+                                                    ? 'irrelevant-flagged-file'
+                                                    : aiHighlightedFiles && aiHighlightedFiles.includes(file.name)
+                                                        ? 'ai-flagged-file'
+                                                        : ''
+                                                }`}
+                                                role="listitem"
+                                            >
                                                 <div className="file-content">
                                                     {getFileIcon(file.name)}
                                                     <div className="file-details">
                                                         <div className="file-header">
-                                                            <p className="file-name" title={file.name}>{file.name.length > 80 ? file.name.substring(0, 80) + '...' : file.name}</p>
-                                                            <button onClick={() => removeFile(index)} className="delete-button" aria-label={`Remove file ${file.name}`} disabled={fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle'}><svg className="delete-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                                                            <p className="file-name" title={file.name}>
+                                                                {file.name.length > 80 ? file.name.substring(0, 80) + '...' : file.name}
+                                                            </p>
+                                                            {file.is_irrelevant && (
+                                                                <span className="irrelevant-badge">
+                                                                    {file.irrelevance_score !== undefined && file.irrelevance_score !== null
+                                                                        ? `${file.irrelevance_score.toFixed(2)}% Irrelevant`
+                                                                        : "Irrelevant"}
+                                                                </span>
+                                                            )}
+                                                            {file.is_ai_generated && (
+                                                                <span className="ai-badge">AI Detected</span>
+                                                            )}
+                                                            <button onClick={() => removeFile(index)} className="delete-button" aria-label={`Remove file ${file.name}`} disabled={fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle'}>
+                                                                <svg className="delete-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                            </button>
                                                         </div>
                                                         {(fileState.isLoading && fileState.uploadProgress[file.name] !== undefined && fileState.uploadProgress[file.name] < 100) ? (<div className="progress-bar-container"><div className="progress-bar" style={{ width: `${fileState.uploadProgress[file.name]}%` }}></div><span className="progress-text">{fileState.uploadProgress[file.name]}%</span></div>) : (fileState.processingFiles && fileState.uploadProgress[file.name] === undefined && fileState.uploadQueue && fileState.uploadQueue.some(queueFile => queueFile.name === file.name)) ? (<div className="waiting-container"><p className="waiting-text">Waiting to upload...</p></div>) : (<p className="file-size">{(file.size / 1024).toFixed(1)} KB</p>)}
                                                     </div>
