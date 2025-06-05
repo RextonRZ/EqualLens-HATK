@@ -5,7 +5,7 @@ import "../components/pageloading.css"; // Ensure this path is correct
 import DuplicateFilesModal from "./DuplicateFilesModal"; // Ensure this path is correct
 import AIConfirmationModal from '../components/AIConfirmationModal.js';
 
-// File upload reducer
+// File upload reducer (remains largely the same, ensure RESET clears relevant states)
 const fileUploadReducer = (state, action) => {
     switch (action.type) {
         case 'ADD_FILES':
@@ -59,6 +59,7 @@ const fileUploadReducer = (state, action) => {
                 duplicateFiles: [],
                 showDuplicatesModal: false,
                 isModalHidden: false
+                // fileFlags will be reset outside the reducer
             };
         default:
             return state;
@@ -91,35 +92,24 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
     const [apiStatus, setApiStatus] = useState("idle");
     const [submitProgress, setSubmitProgress] = useState(0);
 
-    // Removed states for UploadMoreCVModal's own success modal:
-    // const [showSuccessModal, setShowSuccessModal] = useState(false);
-    // const [uploadedCount, setUploadedCount] = useState(0);
-    // const [successModalTitle, setSuccessModalTitle] = useState("Upload Complete!");
-    // const [successModalMessage, setSuccessModalMessage] = useState("");
-
     const [showErrorModal, setShowErrorModal] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [userConsentedToAIUpload, setUserConsentedToAIUpload] = useState(false);
+    const [userConsentedToIrrelevantUpload, setUserConsentedToIrrelevantUpload] = useState(false);
+
 
     const [showAIConfirmModal, setShowAIConfirmModal] = useState(false);
     const [flaggedAIData, setFlaggedAIData] = useState([]);
-    const [aiHighlightedFiles, setAIHighlightedFiles] = useState([]);
+    const [fileFlags, setFileFlags] = useState({});
 
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
-            // Reset state when modal opens, except for files if desired
-            // For a clean open, ensure full reset is handled or initial state is always clean.
-            // Resetting userConsentedToAIUpload on open:
             setUserConsentedToAIUpload(false);
+            setUserConsentedToIrrelevantUpload(false);
         } else {
             document.body.style.overflow = 'visible';
-            setAIHighlightedFiles([]);
-            // If modal is closed externally (e.g. ESC key, or parent changes isOpen)
-            // ensure states are reset. fileDispatch RESET might be too aggressive
-            // if user just temporarily hides it.
-            // However, standard modal closure often implies discarding current operation.
         }
         return () => {
             document.body.style.overflow = 'visible';
@@ -142,6 +132,8 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
         }
         let updatedFiles = [...fileState.selectedFiles];
         let newFiles = [];
+        const newFileFlags = { ...fileFlags };
+
         for (const fileToProcess of files) {
             const extension = fileToProcess.name.split('.').pop().toLowerCase();
             const validExtensions = ['pdf', 'doc', 'docx'];
@@ -152,20 +144,23 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
             const existingIndex = updatedFiles.findIndex(file => file.name === fileToProcess.name);
             if (existingIndex !== -1) {
                 if (window.confirm(`A file named "${fileToProcess.name}" already exists. Do you want to replace it?`)) {
-                    setAIHighlightedFiles(prevFlagged => prevFlagged.filter(filename => filename !== fileToProcess.name));
+                    delete newFileFlags[fileToProcess.name];
                     updatedFiles[existingIndex] = fileToProcess;
                     newFiles.push(fileToProcess);
                 }
             } else {
+                delete newFileFlags[fileToProcess.name];
                 updatedFiles.push(fileToProcess);
                 newFiles.push(fileToProcess);
             }
         }
         if (newFiles.length > 0) {
+            setFileFlags(newFileFlags);
             const newQueue = [...fileState.uploadQueue.filter(queueFile => !newFiles.some(newFile => newFile.name === queueFile.name)), ...newFiles];
             fileDispatch({ type: 'ADD_FILES', payload: { updatedFiles, newQueue } });
         }
-    }, [fileState.selectedFiles, fileState.isLoading, fileState.processingFiles, fileState.uploadQueue, apiStatus]);
+    }, [fileState.selectedFiles, fileState.isLoading, fileState.processingFiles, fileState.uploadQueue, apiStatus, fileFlags]);
+
 
     useEffect(() => {
         if (fileState.uploadQueue.length === 0) {
@@ -223,7 +218,19 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
     const handleDragOver = (event) => { event.preventDefault(); if (!fileState.isLoading && !fileState.processingFiles) event.dataTransfer.dropEffect = 'copy'; else event.dataTransfer.dropEffect = 'none'; };
     const handleDrop = (event) => { event.preventDefault(); setIsDragging(false); if (fileState.isLoading || fileState.processingFiles) { alert("Please wait for current operation."); return; } const files = Array.from(event.dataTransfer.files); if (files.length > 0) processFiles(files); };
     const handleFileInputKeyDown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current.click(); } };
-    const removeFile = (index) => { const fileToRemove = fileState.selectedFiles[index]; if (fileToRemove) setAIHighlightedFiles(prevFlagged => prevFlagged.filter(filename => filename !== fileToRemove.name)); fileDispatch({ type: 'REMOVE_FILE', payload: { index } }); };
+
+    const removeFile = (index) => {
+        const fileToRemove = fileState.selectedFiles[index];
+        if (fileToRemove) {
+            setFileFlags(prevFlags => {
+                const newFlags = { ...prevFlags };
+                delete newFlags[fileToRemove.name];
+                return newFlags;
+            });
+        }
+        fileDispatch({ type: 'REMOVE_FILE', payload: { index } });
+    };
+
     const handleChooseFile = () => fileInputRef.current.click();
     const getFileIcon = (fileName) => { const ext = fileName.split('.').pop().toLowerCase(); if (ext === 'pdf') return <div className="file-icon pdf-icon">PDF</div>; if (['doc', 'docx'].includes(ext)) return <div className="file-icon doc-icon">DOC</div>; return <div className="file-icon default-icon">FILE</div>; };
     const getFullPageOverlay = () => { if (!isDragging) return null; return (<div className="fullpage-drop-overlay"><div className="drop-content"><div className="file-preview"><div className="file-icon-large pdf-icon-large">FILE</div>{fileState.selectedFiles.length > 0 && <div className="copy-badge">Copy</div>}</div><h2 className="drop-title">Drop files anywhere</h2><p className="drop-subtitle">Drop file(s) to upload it</p></div></div>); };
@@ -250,22 +257,22 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
         return { processedCount, failedCount };
     };
 
+    // MODIFIED: executeUpload now accepts force flags directly.
     const executeUpload = async (filesForUpload, options = {}) => {
         const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const {
-            forceAiFlag: optionForceAiFlag = false,
             isOverwriting = false,
-            selectedFilenamesForAction = null
+            selectedFilenamesForAction = null,
+            forceAi = false,
+            forceIrrelevant = false
         } = options;
-
-        const sendForceAiToBackend = optionForceAiFlag || userConsentedToAIUpload;
 
         if (!filesForUpload || filesForUpload.length === 0) {
             setErrorMessage("Please select files to upload.");
             setShowErrorModal(true);
             return;
         }
-        setShowAIConfirmModal(false); // Ensure AI modal is closed if this function is reached differently
+        setShowAIConfirmModal(false);
 
         try {
             if (progressAnimationRef.current) cancelAnimationFrame(progressAnimationRef.current);
@@ -278,9 +285,14 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
             formData.append("user_time_zone", userTimeZone);
             filesForUpload.forEach(file => formData.append("files", file));
 
-            if (sendForceAiToBackend) {
+            // MODIFIED: Use the passed parameters to set force flags.
+            if (forceAi) {
                 formData.append("force_upload_ai_flagged", "true");
             }
+            if (forceIrrelevant) {
+                formData.append("force_upload_irrelevant", "true");
+            }
+
             formData.append("override_duplicates", String(isOverwriting));
             if (isOverwriting && selectedFilenamesForAction && selectedFilenamesForAction.length > 0) {
                 formData.append("selected_filenames", JSON.stringify(selectedFilenamesForAction));
@@ -304,21 +316,26 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ detail: "Unknown error from server." }));
-                if (!sendForceAiToBackend && response.status === 422 && errorData.detail?.error_type === "AI_CONTENT_DETECTED") {
-                    setFlaggedAIData(errorData.detail.flagged_files || []);
-                    setShowAIConfirmModal(true);
-                    setApiStatus("idle"); setSubmitProgress(0);
-                    return;
+                if (response.status === 422 && errorData.error_type === "FLAGGED_CONTENT") {
+                    // MODIFIED: Check if consent is still needed. This logic is now more robust because the re-upload will have the force flags.
+                    const filesNeedAIConsent = errorData.flagged_files.some(f => f.is_ai_generated);
+                    const filesNeedIrrelevantConsent = errorData.flagged_files.some(f => f.is_irrelevant);
+
+                    if (filesNeedAIConsent || filesNeedIrrelevantConsent) {
+                        setFlaggedAIData(errorData.flagged_files || []);
+                        setShowAIConfirmModal(true);
+                        setApiStatus("idle"); setSubmitProgress(0);
+                        return;
+                    }
                 }
                 if (response.status === 409 && errorData.duplicates && errorData.duplicates.length > 0) {
                     const duplicateFileNames = errorData.duplicates.map(d => d.fileName);
                     const nonDuplicateOriginalFiles = fileState.selectedFiles.filter(file => !duplicateFileNames.includes(file.name));
-                    console.log("FOUND_DUPLICATES payload:", { duplicates: errorData.duplicates, nonDuplicateFiles: nonDuplicateOriginalFiles });
                     fileDispatch({ type: 'FOUND_DUPLICATES', payload: { duplicates: errorData.duplicates, nonDuplicateFiles: nonDuplicateOriginalFiles } });
                     setApiStatus("idle"); setSubmitProgress(0);
                     return;
                 }
-                throw { name: "APIError", status: response.status, data: errorData, message: errorData.detail?.message || JSON.stringify(errorData.detail) || `HTTP error ${response.status}` };
+                throw { name: "APIError", status: response.status, data: errorData, message: errorData.message || JSON.stringify(errorData.detail) || `HTTP error ${response.status}` };
             }
 
             const responseData = await response.json();
@@ -328,17 +345,16 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
             }
             setSubmitProgress(100);
             const count = responseData.applicationCount || responseData.newApplicationCount || filesForUpload.length;
-            
-            // Call onUploadComplete to notify Dashboard.js
-            if (onUploadComplete) onUploadComplete(count);
-            
 
-            // Reset state and close this modal
+            if (onUploadComplete) onUploadComplete(count);
+
+            setFileFlags({});
             fileDispatch({ type: 'RESET' });
             setUserConsentedToAIUpload(false);
+            setUserConsentedToIrrelevantUpload(false);
             setApiStatus("idle");
             setSubmitProgress(0);
-            onClose(); // This will hide UploadMoreCVModal
+            onClose();
 
         } catch (error) {
             if (progressAnimationRef.current) {
@@ -349,7 +365,6 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
 
             let displayErrorMessage = "An error occurred. Please try again.";
 
-            // Show AIConfirmationModal for flagged files (AI, Irrelevant, or both)
             if (
                 error.name === "APIError" &&
                 error.status === 422 &&
@@ -358,27 +373,27 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                 error.data.flagged_files &&
                 error.data.flagged_files.length > 0
             ) {
-                setFlaggedAIData(error.data.flagged_files);
-                setShowAIConfirmModal(true);
-                setApiStatus("idle");
-                setSubmitProgress(0);
-                return;
-            }
+                const filesNeedAIConsent = error.data.flagged_files.some(f => f.is_ai_generated);
+                const filesNeedIrrelevantConsent = error.data.flagged_files.some(f => f.is_irrelevant);
 
-            // If it's the specific DUPLICATE_FILES_DETECTED error
-            // Use error.status and error.data here
-            if (error.name === "APIError" && // Good practice to check error.name too
+                if (filesNeedAIConsent || filesNeedIrrelevantConsent) {
+                    setFlaggedAIData(error.data.flagged_files);
+                    setShowAIConfirmModal(true);
+                    setApiStatus("idle");
+                    setSubmitProgress(0);
+                    return;
+                } else {
+                    displayErrorMessage = error.data.message || "Flagged content error, but consent was given. Please check server logs.";
+                }
+            } else if (error.name === "APIError" &&
                 error.status === 409 &&
                 error.data &&
                 error.data.error_type === "DUPLICATE_FILES_DETECTED") {
 
                 const duplicateFileNames = error.data.duplicates.map(d => d.fileName);
-                // Ensure fileState.selectedFiles is used for filtering non-duplicates
                 const nonDuplicateOriginalFiles = fileState.selectedFiles.filter(file =>
                     !duplicateFileNames.includes(file.name)
                 );
-
-                console.log("Duplicate Files Detected - showing DuplicateFilesModal. Duplicates:", error.data.duplicates);
                 fileDispatch({
                     type: 'FOUND_DUPLICATES',
                     payload: {
@@ -391,7 +406,6 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                 return;
             }
 
-            // For other errors or if the AI/Duplicate error wasn't caught above
             if (error.data && error.data.message) {
                 displayErrorMessage = error.data.message;
             } else if (error.message && !error.message.toLowerCase().includes("http error")) {
@@ -406,39 +420,72 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
         }
     };
 
+    // MODIFIED: Initial upload call passes default false flags.
     const handleInitialUpload = () => {
         if (!fileState.selectedFiles || fileState.selectedFiles.length === 0) {
             setErrorMessage("Please upload at least one CV file"); setShowErrorModal(true); return;
         }
         setUserConsentedToAIUpload(false);
-        executeUpload(fileState.selectedFiles, { forceAiFlag: false, isOverwriting: false });
+        setUserConsentedToIrrelevantUpload(false);
+        executeUpload(fileState.selectedFiles, { forceAi: false, forceIrrelevant: false });
     };
 
     const handleAIReviewCVs = () => {
-        setAIHighlightedFiles(flaggedAIData.map(file => file.filename));
-        setShowAIConfirmModal(false); setApiStatus("idle"); setSubmitProgress(0);
+        const newFlags = {};
+        flaggedAIData.forEach(flaggedFile => {
+            newFlags[flaggedFile.filename] = {
+                is_ai_generated: flaggedFile.is_ai_generated || false,
+                ai_confidence: flaggedFile.confidence,
+                is_irrelevant: flaggedFile.is_irrelevant || false,
+                irrelevance_score: flaggedFile.irrelevance_score,
+            };
+        });
+        setFileFlags(newFlags);
+        setShowAIConfirmModal(false);
+        setApiStatus("idle");
+        setSubmitProgress(0);
     };
 
+    // MODIFIED: This function now passes the force flags directly to executeUpload.
     const handleAIContinueAnyways = () => {
         setShowAIConfirmModal(false);
-        setUserConsentedToAIUpload(true);
-        executeUpload(fileState.selectedFiles, { forceAiFlag: true, isOverwriting: false });
+        let consentAI = false;
+        let consentIrrelevant = false;
+        flaggedAIData.forEach(file => {
+            if (file.is_ai_generated) consentAI = true;
+            if (file.is_irrelevant) consentIrrelevant = true;
+        });
+
+        // Set state for future actions (like duplicate handling)
+        setUserConsentedToAIUpload(consentAI);
+        setUserConsentedToIrrelevantUpload(consentIrrelevant);
+
+        // Call executeUpload with the determined flags immediately
+        executeUpload(fileState.selectedFiles, {
+            forceAi: consentAI,
+            forceIrrelevant: consentIrrelevant
+        });
     };
 
+
+    // MODIFIED: These handlers now pass the current consent state.
     const handleUploadNonDuplicatesFromModal = async () => {
         fileDispatch({ type: 'CLOSE_DUPLICATES_MODAL' });
         if (!fileState.nonDuplicateFiles || fileState.nonDuplicateFiles.length === 0) {
-            if (onUploadComplete) onUploadComplete(0); // Notify dashboard that 0 new files were processed this way
-            // Close the main modal as well, as the duplicate flow is finished
-            // No new non-duplicates means this path of upload is done.
+            if (onUploadComplete) onUploadComplete(0);
             fileDispatch({ type: 'RESET' });
+            setFileFlags({});
             setUserConsentedToAIUpload(false);
+            setUserConsentedToIrrelevantUpload(false);
             setApiStatus("idle");
             setSubmitProgress(0);
             onClose();
             return;
         }
-        executeUpload(fileState.nonDuplicateFiles, { forceAiFlag: userConsentedToAIUpload, isOverwriting: false });
+        executeUpload(fileState.nonDuplicateFiles, {
+            forceAi: userConsentedToAIUpload,
+            forceIrrelevant: userConsentedToIrrelevantUpload
+        });
     };
 
     const handleProceedWithDuplicatesFromModal = async (selectedDuplicateNamesToOverwrite = []) => {
@@ -459,11 +506,14 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
             setApiStatus("idle");
             return;
         }
-        executeUpload(filesToSubmitForOverwrite, { forceAiFlag: userConsentedToAIUpload, isOverwriting: true, selectedFilenamesForAction: namesToSubmitForOverwrite });
+        executeUpload(filesToSubmitForOverwrite, {
+            isOverwriting: true,
+            selectedFilenamesForAction: namesToSubmitForOverwrite,
+            forceAi: userConsentedToAIUpload,
+            forceIrrelevant: userConsentedToIrrelevantUpload
+        });
     };
 
-    // Removed SuccessModal and closeSuccessModal as they are no longer used here.
-    // Dashboard.js will handle the success UI.
 
     const ErrorModal = () => (
         <div className="status-modal-overlay" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} >
@@ -476,10 +526,10 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                 <div className="status-buttons">
                     <button
                         className="status-button primary-button"
-                        onClick={() => { // Modified onClick
+                        onClick={() => {
                             setShowErrorModal(false);
-                            setApiStatus("idle"); // Reset API status
-                            setSubmitProgress(0); // Reset progress
+                            setApiStatus("idle");
+                            setSubmitProgress(0);
                         }}
                         autoFocus
                     >
@@ -492,12 +542,14 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
 
     const handleFullClose = () => {
         fileDispatch({ type: 'RESET' });
+        setFileFlags({});
         setUserConsentedToAIUpload(false);
+        setUserConsentedToIrrelevantUpload(false);
         setApiStatus("idle");
         setSubmitProgress(0);
         onClose();
     };
-    
+
     const handleCancelClick = () => { if (fileState.selectedFiles.length > 0 && apiStatus === 'idle') setShowConfirmModal(true); else handleFullClose(); };
     const handleConfirmDiscard = () => { setShowConfirmModal(false); handleFullClose(); };
     const handleCancelDiscard = () => setShowConfirmModal(false);
@@ -513,11 +565,11 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
     );
 
     const handleOverlayClick = (e) => { if (!fileState.isLoading && !fileState.processingFiles && apiStatus === 'idle') { if (fileState.selectedFiles.length > 0) setShowConfirmModal(true); else handleFullClose(); } };
-    
+
     const handleCloseDuplicatesModal = (action) => {
         if (action === 'closeAll') {
             fileDispatch({ type: 'CLOSE_DUPLICATES_MODAL' });
-            handleFullClose(); // Use the full close an`d reset logic
+            handleFullClose();
         } else {
             fileDispatch({ type: 'CLOSE_DUPLICATES_MODAL' });
         }
@@ -538,7 +590,6 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                         </div>
                     </div>
                 )}
-                {/* SuccessModal removed from here */}
                 {showErrorModal && <ErrorModal />}
                 {showConfirmModal && <ConfirmModal />}
                 {showAIConfirmModal && (
@@ -548,6 +599,10 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                         onContinue={handleAIContinueAnyways}
                         flaggedFiles={flaggedAIData}
                         isLoading={apiStatus === "uploading" || apiStatus === "overwriting"}
+                        onClose={() => {
+                            setShowAIConfirmModal(false);
+                            handleAIReviewCVs();
+                        }}
                     />
                 )}
                 {fileState.showDuplicatesModal && (
@@ -585,44 +640,50 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                                 <h3 className="files-title" id="uploaded-files-heading">Selected Files</h3>
                                 {fileState.selectedFiles.length === 0 ? (<div className="no-files"><p className="no-files-text">No files selected yet</p></div>) : (
                                     <div className="files-list" role="list" aria-labelledby="uploaded-files-heading">
-                                        {fileState.selectedFiles.map((file, index) => (
-                                            <div
-                                                key={index}
-                                                className={`file-item ${
-                                                    file.is_irrelevant
-                                                    ? 'irrelevant-flagged-file'
-                                                    : aiHighlightedFiles && aiHighlightedFiles.includes(file.name)
-                                                        ? 'ai-flagged-file'
-                                                        : ''
-                                                }`}
-                                                role="listitem"
-                                            >
-                                                <div className="file-content">
-                                                    {getFileIcon(file.name)}
-                                                    <div className="file-details">
-                                                        <div className="file-header">
-                                                            <p className="file-name" title={file.name}>
-                                                                {file.name.length > 80 ? file.name.substring(0, 80) + '...' : file.name}
-                                                            </p>
-                                                            {file.is_irrelevant && (
-                                                                <span className="irrelevant-badge">
-                                                                    {file.irrelevance_score !== undefined && file.irrelevance_score !== null
-                                                                        ? `${file.irrelevance_score.toFixed(2)}% Irrelevant`
-                                                                        : "Irrelevant"}
-                                                                </span>
-                                                            )}
-                                                            {file.is_ai_generated && (
-                                                                <span className="ai-badge">AI Detected</span>
-                                                            )}
-                                                            <button onClick={() => removeFile(index)} className="delete-button" aria-label={`Remove file ${file.name}`} disabled={fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle'}>
-                                                                <svg className="delete-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                                            </button>
+                                        {fileState.selectedFiles.map((file, index) => {
+                                            const flags = fileFlags[file.name] || {};
+                                            const isAI = flags.is_ai_generated;
+                                            const isIrrelevant = flags.is_irrelevant;
+                                            const irrelevanceScore = flags.irrelevance_score;
+                                            const aiConfidence = flags.ai_confidence;
+
+                                            let fileItemClasses = "file-item";
+                                            if (isIrrelevant) fileItemClasses += " irrelevant-item-highlight";
+                                            else if (isAI) fileItemClasses += " ai-item-highlight";
+
+                                            return (
+                                                <div key={index} className={fileItemClasses} role="listitem">
+                                                    <div className="file-content">
+                                                        {getFileIcon(file.name)}
+                                                        <div className="file-details">
+                                                            <div className="file-header">
+                                                                <p className="file-name" title={file.name}>
+                                                                    {file.name.length > 60 ? file.name.substring(0, 60) + '...' : file.name}
+                                                                </p>
+                                                                <div className="badges-main-list">
+                                                                    {isAI && (
+                                                                        <span className="badge-main-list ai-badge-main-list">
+                                                                            AI Detected {aiConfidence ? `(${(aiConfidence * 100).toFixed(0)}%)` : ''}
+                                                                        </span>
+                                                                    )}
+                                                                    {isIrrelevant && (
+                                                                        <span className="badge-main-list irrelevant-badge-main-list">
+                                                                            {irrelevanceScore !== undefined && irrelevanceScore !== null
+                                                                                ? `${irrelevanceScore.toFixed(0)}% Irrelevant`
+                                                                                : "Irrelevant"}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <button onClick={() => removeFile(index)} className="delete-button" aria-label={`Remove file ${file.name}`} disabled={fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle'}>
+                                                                    <svg className="delete-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                                </button>
+                                                            </div>
+                                                            {(fileState.isLoading && fileState.uploadProgress[file.name] !== undefined && fileState.uploadProgress[file.name] < 100) ? (<div className="progress-bar-container"><div className="progress-bar" style={{ width: `${fileState.uploadProgress[file.name]}%` }}></div><span className="progress-text">{fileState.uploadProgress[file.name]}%</span></div>) : (fileState.processingFiles && fileState.uploadProgress[file.name] === undefined && fileState.uploadQueue && fileState.uploadQueue.some(queueFile => queueFile.name === file.name)) ? (<div className="waiting-container"><p className="waiting-text">Waiting to upload...</p></div>) : (<p className="file-size">{(file.size / 1024).toFixed(1)} KB</p>)}
                                                         </div>
-                                                        {(fileState.isLoading && fileState.uploadProgress[file.name] !== undefined && fileState.uploadProgress[file.name] < 100) ? (<div className="progress-bar-container"><div className="progress-bar" style={{ width: `${fileState.uploadProgress[file.name]}%` }}></div><span className="progress-text">{fileState.uploadProgress[file.name]}%</span></div>) : (fileState.processingFiles && fileState.uploadProgress[file.name] === undefined && fileState.uploadQueue && fileState.uploadQueue.some(queueFile => queueFile.name === file.name)) ? (<div className="waiting-container"><p className="waiting-text">Waiting to upload...</p></div>) : (<p className="file-size">{(file.size / 1024).toFixed(1)} KB</p>)}
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
