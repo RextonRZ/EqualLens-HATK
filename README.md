@@ -86,7 +86,7 @@ EqualLens offers a comprehensive suite of features to address these challenges:
 ## Technology Stack
 
 - **Frontend**: React.js, React Router, Axios, Chart.js, Recharts, jsPDF, html2canvas
-- **Backend**: Python 3.10+, FastAPI, Uvicorn
+- **Backend**: Python 3.12, FastAPI, Uvicorn
 - **Database & Storage**: Firebase Firestore, Firebase Storage
 - **AI & Machine Learning**:
   - **LLMs**: Google Gemini (Primary), Google Gemma (Fallback)
@@ -379,7 +379,7 @@ The React application will start and should open in your default web browser at 
 -   **6 Months**:
     -   **Approach Startups & SMEs**: Targeted outreach to businesses in the trade sector.
     -   **Advanced XAI & Feedback Loops**: Improve explainability of AI decisions and incorporate user feedback to refine models.
-    -   **Expanded Multilingual Support (APAC Focused)**: Crucial for global trade, support more languages for resume parsing, transcription, and UI, with a focus on the APAC region.
+    -   **Expanded Multilingual Support**: Crucial for global trade, support more languages for resume parsing, transcription, and UI, with a focus on the APAC region.
     -   **Mobile Accessibility (Candidate Portal)**: Enhance the candidate experience on mobile devices.
 -   **1 Year**:
     -   **Approach & Integrate with MNCs**: Scale the platform for larger multinational corporations involved in global trade.
