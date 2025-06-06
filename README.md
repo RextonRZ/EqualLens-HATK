@@ -1,4 +1,3 @@
-# HackAttack 2.0
 # EqualLens - AI-Powered Talent Acquisition System
 
 EqualLens is an advanced AI-powered Talent Acquisition System designed to revolutionize the hiring process by enhancing efficiency, ensuring fairness, and improving the quality of hires. It addresses the critical challenges faced by modern HR departments, such as managing high volumes of applications, mitigating unconscious bias, verifying candidate authenticity, and streamlining the entire recruitment lifecycle from job posting creation to interview analysis.
@@ -396,7 +395,7 @@ The React application will start and should open in your default web browser at 
 We welcome contributions to EqualLens! If you're interested in helping us build a fairer and more efficient future for recruitment in global trade, please check out our contribution guidelines.
 
 ---
-Built with ❤️ by **Ctrl+C Ctrl+V** (Lim Hong Yu, Ooi Rui Zhe, Khor Rui Zhe, Vanness Liu Chuen Wei) for HackAttack 2.0.
+Built with ❤️ by **Ctrl+C Ctrl+V** (Lim Hong Yu, Ooi Rui Zhe, Khor Rui Zhe, Vanness Liu Chuen Wei).
 
 **Notice:**
 This project is the intellectual property of the original authors. Unauthorized copying, distribution, or use of any part of this codebase without explicit permission is strictly prohibited. All rights reserved.
