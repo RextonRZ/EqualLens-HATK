@@ -3,6 +3,12 @@
 
 EqualLens is an advanced AI-powered Talent Acquisition System designed to revolutionize the hiring process by enhancing efficiency, ensuring fairness, and improving the quality of hires. It addresses the critical challenges faced by modern HR departments, such as managing high volumes of applications, mitigating unconscious bias, verifying candidate authenticity, and streamlining the entire recruitment lifecycle from job posting creation to interview analysis.
 
+## Ctrl+C Ctrl+V Team Members
+1. Lim Hong Yu
+2. Ooi Rui Zhe
+3. Khor Rui Zhe
+4. Vanness Liu Chuen Wei
+
 ## Table of Contents
 
 - [Introduction](#introduction)
@@ -223,7 +229,7 @@ The backend exposes a set of RESTful API endpoints for the frontend to consume.
 │   │   └── scoring_aggregation_service.py
 │   ├── main.py
 │   └── firebase_config.json
-├── frontend/
+├── equallens-project/
 │   ├── public/
 │   ├── src/
 │   │   ├── components/
@@ -248,7 +254,7 @@ Follow these steps to set up and run the EqualLens project on your local machine
 
 ### Prerequisites
 
-- Python 3.10 or higher
+- Python 3.12
 - Node.js and npm (or yarn)
 - FFmpeg installed and available in your system's PATH
 - Access to Google Cloud Platform with the following APIs enabled:
@@ -329,7 +335,7 @@ EXTERNAL_AI_DETECTOR_URL=https://your-classifier-url.run.app/predict
 Navigate to the frontend directory:
 
 ```bash
-cd frontend
+cd equallens-project
 ```
 
 Install Node.js dependencies:
@@ -360,9 +366,37 @@ npm start
 
 The React application will start and should open in your default web browser at `http://localhost:3000`.
 
-## Authors
+## 🔮 Future Roadmap
 
-- **Lim Hong Yu**
-- **Ooi Rui Zhe**
-- **Vanness Liu Chuen Wei**
-- **Khor Rui Zhe**
+-   **1 Month**:
+    -   **Integrate and Aggregate Recruiting Platforms**: Allow sourcing candidates from diverse platforms.
+    -   **Customized Scoring Weightage and Rubrics**: More granular control for HR over ranking.
+    -   **Enhanced Privacy and Security (RBAC, PII)**: Implement Role-Based Access Control and further strengthen PII protection.
+-   **3 Months**:
+    -   **AR Interview Session (Concept & WebXR dev)**: Explore augmented reality for more immersive remote interview experiences.
+    -   **Address Legacy Security Concerns**: Continuous security auditing and hardening.
+    -   **Integration with HRMS/ATS (API dev)**: Connect EqualLens with existing Human Resource Management Systems.
+-   **6 Months**:
+    -   **Approach Startups & SMEs**: Targeted outreach to businesses in the trade sector.
+    -   **Advanced XAI & Feedback Loops**: Improve explainability of AI decisions and incorporate user feedback to refine models.
+    -   **Expanded Multilingual Support (APAC Focused)**: Crucial for global trade, support more languages for resume parsing, transcription, and UI, with a focus on the APAC region.
+    -   **Mobile Accessibility (Candidate Portal)**: Enhance the candidate experience on mobile devices.
+-   **1 Year**:
+    -   **Approach & Integrate with MNCs**: Scale the platform for larger multinational corporations involved in global trade.
+    -   **Proactive Bias Mitigation Nudges**: AI suggestions to HR during candidate review to highlight potential unconscious biases.
+    -   **Candidate Experience Enhancements**: Further improvements to the candidate journey.
+    -   **Benchmarking and Analytics**: Provide broader industry benchmarks and more sophisticated HR analytics.
+-   **Beyond 1 Year**:
+    -   **On-premise/VPC Deployment Options**: Offer deployment flexibility for enterprises with specific data residency or security needs.
+    -   **Gamification in Interviews**: Introduce elements to make the interview process more engaging for candidates.
+    -   **Supply Chain & Logistics Talent Specialization**: Develop specialized modules or ranking criteria for roles critical to the trade and logistics industry.
+    -   **Cross-Border Compliance Assistance**: AI tools to help flag potential visa or work permit considerations for international candidates (preliminary information).
+
+## 🤝 Contributing
+We welcome contributions to EqualLens! If you're interested in helping us build a fairer and more efficient future for recruitment in global trade, please check out our contribution guidelines.
+
+---
+Built with ❤️ by **Ctrl+C Ctrl+V** (Lim Hong Yu, Ooi Rui Zhe, Khor Rui Zhe, Vanness Liu Chuen Wei) for HackAttack 2.0.
+
+**Notice:**
+This project is the intellectual property of the original authors. Unauthorized copying, distribution, or use of any part of this codebase without explicit permission is strictly prohibited. All rights reserved.
