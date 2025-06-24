@@ -274,7 +274,6 @@ class GeminiService:
         """
         async with self.semaphore: # Ensure rate limiting for all calls through this method
             try:
-                logger.info(f"Sending content to Gemini model. Prompt snippet: {str(prompt_content)[:150]}...")
                 # Determine which generation config to use
                 current_gen_config = generation_config_override if generation_config_override else self.stable_generation_config
 
@@ -999,27 +998,15 @@ class GeminiService:
                 # --- Step 3: Calculate overall relevance score based on job type ---
                 if job_type == "technical":
                     weights = {
-                        "soft_skills": 0.05,
-                        "technical_skills": 0.30,
-                        "languages": 0.05,
-                        "education": 0.10,
-                        "certifications": 0.05,
-                        "awards": 0.05,
-                        "work_experience": 0.15,
-                        "projects": 0.20,
-                        "co_curricular_activities": 0.05
+                        "soft_skills": 0.3,
+                        "technical_skills": 0.6,
+                        "languages": 0.1
                     }
                 else:  # managerial
                     weights = {
-                        "soft_skills": 0.15,
-                        "technical_skills": 0.10,
-                        "languages": 0.10,
-                        "education": 0.10,
-                        "certifications": 0.05,
-                        "awards": 0.05,
-                        "work_experience": 0.15,
-                        "projects": 0.20,
-                        "co_curricular_activities": 0.10
+                        "soft_skills": 0.5,
+                        "technical_skills": 0.3,
+                        "languages": 0.2
                     }
 
                 def avg_relevance(items):
@@ -1198,7 +1185,6 @@ class GeminiService:
                              final_inferred_data['languages'].append("English")
 
 
-                logger.info(f"Inferred skills after cleaning: {final_inferred_data}")
                 return final_inferred_data
             else:
                 logger.warning(f"Could not extract valid JSON from skill inference response: {inference_text}")

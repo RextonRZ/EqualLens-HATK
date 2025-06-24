@@ -274,3 +274,74 @@
   padding-right: 120px;
   /* Add more space for the AI label */
 }
+
+.badges-main-list {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: auto; /* Pushes badges to the right, before delete button */
+    padding-right: 10px; /* Space before delete button if delete button is part of this flex container */
+}
+
+.badge-main-list {
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem; /* Slightly smaller for the main list */
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.ai-badge-main-list {
+    background: #fee2e2; /* Consistent with AIConfirmationModal */
+    color: #dc2626;    /* Consistent with AIConfirmationModal */
+    border: 1px solid #fca5a5; /* Optional: slight border */
+}
+
+.irrelevant-badge-main-list {
+    background: #fffbeb; /* A light yellow/orange for irrelevance */
+    color: #d97706;    /* A darker yellow/orange text */
+    border: 1px solid #fcd34d; /* Optional: slight border */
+}
+
+/* Optional: if you want background highlights on the file item itself */
+.ai-item-highlight {
+  background-color: #fff0f0; /* Pastel red background */
+  /* border-left: 4px solid #F9645F; */ /* You can keep or remove this */
+}
+
+.irrelevant-item-highlight {
+  background-color: #fffbeb; /* Light yellow/orange background */
+  /* border-left: 4px solid #f59e0b; */ /* You can keep or remove this */
+}
+
+
+/* Adjust file-header to accommodate badges if needed */
+.file-header {
+    display: flex;
+    align-items: center; /* Vertically align items in the header */
+    justify-content: space-between; /* Pushes delete button to the far right */
+    width: 100%;
+}
+
+.file-header .file-name {
+    flex-grow: 1; /* Allow filename to take available space */
+    margin-right: 10px; /* Space between filename and badges */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-header .delete-button {
+    flex-shrink: 0; /* Prevent delete button from shrinking */
+}
+
+/* Remove ::after content if previously used for text badges on these classes */
+.ai-flagged-file::after {
+  content: ""; /* Remove text if you used ::after for "AI Detected" */
+}
+
+.irrelevant-flagged-file::after {
+  content: ""; /* Remove text if you used ::after for "Irrelevant" */
+}

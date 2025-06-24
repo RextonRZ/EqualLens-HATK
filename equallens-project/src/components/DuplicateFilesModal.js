@@ -514,24 +514,6 @@ const DuplicateFilesModal = ({ isOpen, duplicates, onClose, onProceed, onUploadN
                                   )}
                                 </div>
                               )}
-                              {/* Display New File Authenticity/Spam Analysis Summary */}
-                              {newFileExternalAIPred && (
-                                  <div className="new-file-external-ai-details">
-                                      <h6>External Model (New File):</h6>
-                                      {newFileExternalAIPred.error ? (
-                                          <p className="error-text small-text">Error: {newFileExternalAIPred.error} {newFileExternalAIPred.details || ''}</p>
-                                      ) : (
-                                          <>
-                                              <p className="small-text">
-                                                  Prediction: {newFileExternalAIPred.predicted_class_label || "N/A"}
-                                                  {newFileExternalAIPred.confidence_scores &&
-                                                   ` (AI: ${newFileExternalAIPred.confidence_scores.ai_generated !== undefined ? (newFileExternalAIPred.confidence_scores.ai_generated * 100).toFixed(0) + '%' : 'N/A'}, Human: ${newFileExternalAIPred.confidence_scores.human_written !== undefined ? (newFileExternalAIPred.confidence_scores.human_written * 100).toFixed(0) + '%' : 'N/A'})`
-                                                  }
-                                              </p>
-                                          </>
-                                      )}
-                                  </div>
-                              )}
 
                               {/* Existing Internal Analysis Summary */}
                               {newFileAnalysis.finalXAISummary && (

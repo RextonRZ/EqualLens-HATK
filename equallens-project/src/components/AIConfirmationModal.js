@@ -157,18 +157,10 @@ const AIConfirmationModal = ({
                                                     <span className="file-name">{file.filename}</span>
                                                 </div>
                                                 <div className="badges-container">
-                                                    {file.is_ai_generated && (
-                                                        <div className={`confidence-badge ${confidenceClass}`}>
-                                                             {confidenceText}
-                                                         </div>
-                                                    )}
-                                                    {file.is_irrelevant && (
-                                                        <div className="irrelevant-badge">
-                                                            {file.irrelevance_score !== undefined && file.irrelevance_score !== null
-                                                                ? `${file.irrelevance_score.toFixed(2)}% Irrelevant`
-                                                                : "Irrelevant"}
-                                                        </div>
-                                                    )}
+                                                    {/* AI Confidence Badge - always show as this is the AI tab */}
+                                                    <div className={`confidence-badge ${confidenceClass}`}>
+                                                         {confidenceText}
+                                                     </div>
                                                 </div>
                                             </div>
 
@@ -327,7 +319,7 @@ const AIConfirmationModal = ({
                                                                             </div>
                                                                         ))}
                                                                     </div>
-                                                                </div>                                        
+                                                                </div>
                                                         </div>
                                                     )}
 
@@ -369,7 +361,7 @@ const AIConfirmationModal = ({
                                                                             );
                                                                         })}
                                                                     </div>
-                                                                </div>                                                            
+                                                                </div>
                                                         </div>
                                                     )}
                                                 </div>
@@ -407,11 +399,12 @@ const AIConfirmationModal = ({
                                                 </div>
                                                 <span className="file-name">{file.filename}</span>
                                             </div>
-                                            {/* Add the irrelevant badge here */}
-                                            <div className="irrelevant-badge">
-                                                {file.irrelevance_score !== undefined && file.irrelevance_score !== null
-                                                    ? `${file.irrelevance_score.toFixed(2)}% Irrelevant`
-                                                    : "Irrelevant"}
+                                            <div className="badges-container">
+                                                <div className="irrelevant-badge">
+                                                    {file.irrelevance_score !== undefined && file.irrelevance_score !== null
+                                                        ? `${file.irrelevance_score.toFixed(2)}% Irrelevant`
+                                                        : "Irrelevant"}
+                                                </div>
                                             </div>
                                         </div>
                                         {expandedSpam[idx] && (

@@ -8,7 +8,8 @@ from fastapi.encoders import jsonable_encoder
 
 from models.job import JobCreate, JobResponse, JobUpdate, JobSuggestionContext, JobSuggestionResponse
 from models.candidate import CandidateUpdate
-from models.ai_detection import AIDetectionResult  # For type hinting if needed, though not directly returned as Pydantic model by these endpoints
+from models.ai_detection import \
+    AIDetectionResult  # For type hinting if needed, though not directly returned as Pydantic model by these endpoints
 from models.authenticity_analysis import AuthenticityAnalysisResult
 from models.cross_referencing import CrossReferencingResult
 
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 gemini_service_global_instance = GeminiService()
 candidate_service_instance = CandidateService(gemini_service_instance=gemini_service_global_instance)
 ai_detection_formatter_instance = AIDetectionService()
+
 
 @router.get("/", response_model=List[JobResponse])
 async def get_jobs_list():  # Renamed to avoid conflict with get_job
@@ -93,7 +95,7 @@ async def _process_single_file_for_candidate_creation(
         override_duplicates_from_form: bool,
         force_upload_problematic_from_form: bool,
         force_upload_irrelevant_from_form: bool
-    ) -> Dict[str, Any]:
+) -> Dict[str, Any]:
     file_content_bytes = await file_obj.read()
     file_name_val = file_obj.filename
     content_type_val = file_obj.content_type or "application/pdf"
@@ -108,8 +110,6 @@ async def _process_single_file_for_candidate_creation(
         force_problematic_upload=force_upload_problematic_from_form,
         force_irrelevant_upload=force_upload_irrelevant_from_form
     )
-
-    logger.info(f"[{file_name_val}] candidate_result: {candidate_result}")
 
     if candidate_result and candidate_result.get("error"):
         logger.error(f"Error processing file {file_name_val} via orchestrator: {candidate_result['error']}")
@@ -195,18 +195,39 @@ async def _process_single_file_for_candidate_creation(
         }
 
     elif is_irrelevant and not is_ai_gen:
-        irrelevant_files = candidate_result.get("irrelevantFiles", [])
-        gemini_irrelevant = irrelevant_files[0].get("gemini_irrelevant", {}) if irrelevant_files else {}
+        # This case means candidate_result.irrelevantFiles was populated
+        # and candidate_result.aiFiles was not (or had no True flags)
+        # The irrelevance_payload should come from candidate_result.irrelevantFiles[0]
+        # or from candidate_result.analysis_data.relevance_analysis
 
-        irrelevant_reason = (
-            candidate_result.get("irrelevant_reason")
-            or gemini_irrelevant.get("reason", "")
-        )
-        relevance_score = gemini_irrelevant.get("relevance_score")
-        irrelevance_score = 100 - relevance_score if relevance_score is not None else None
+        analysis_data = candidate_result.get("analysis_data", {})  # Ensure analysis_data is available
+        relevance_analysis_from_orchestrator = analysis_data.get("relevance_analysis",
+                                                                 {})  # Check if orchestrator provided this
+
+        # Try to get gemini_irrelevant from the first item in irrelevantFiles if it exists
+        gemini_irrelevant_from_file_list = {}
+        if irrelevant_files and isinstance(irrelevant_files, list) and len(irrelevant_files) > 0:
+            gemini_irrelevant_from_file_list = irrelevant_files[0].get("gemini_irrelevant", {})
+
+        # Determine the source for reason and score
+        # Prefer gemini_irrelevant if available from file list, then from orchestrator's relevance_analysis
+        final_irrelevant_reason = gemini_irrelevant_from_file_list.get("reason") or \
+                                  relevance_analysis_from_orchestrator.get("irrelevant_reason") or \
+                                  "Content deemed irrelevant to the job."
+
+        final_relevance_score = gemini_irrelevant_from_file_list.get("relevance_score")
+        if final_relevance_score is None:  # Fallback to overall_relevance_score if specific not found
+            final_relevance_score = relevance_analysis_from_orchestrator.get("overall_relevance_score")
+
+        calculated_irrelevance_score = None
+        if final_relevance_score is not None:
+            try:
+                calculated_irrelevance_score = 100.0 - float(final_relevance_score)
+            except (ValueError, TypeError):
+                logger.warning(f"Could not calculate irrelevance_score from relevance_score: {final_relevance_score}")
 
         logger.info(
-            f"[{file_name_val}] relevance_score: {relevance_score}, irrelevance_score: {irrelevance_score}"
+            f"[{file_name_val}] Irrelevant only. Relevance Score: {final_relevance_score}, Calculated Irrelevance Score: {calculated_irrelevance_score}"
         )
 
         return {
@@ -215,8 +236,10 @@ async def _process_single_file_for_candidate_creation(
             "irrelevance_payload": {
                 "filename": file_name_val,
                 "is_irrelevant": True,
-                "irrelevant_reason": irrelevant_reason,
-                "irrelevance_score": irrelevance_score,
+                "irrelevant_reason": final_irrelevant_reason,
+                "irrelevance_score": calculated_irrelevance_score,  # Use the calculated one
+                "job_type": relevance_analysis_from_orchestrator.get("job_type", "")
+                # Get job_type from orchestrator analysis
             }
         }
 
@@ -226,25 +249,18 @@ async def _process_single_file_for_candidate_creation(
         external_pred = analysis_data.get("external_ai_detection_data", {})
         auth_results_dict = analysis_data.get("authenticity_analysis_result")
         final_assessment = analysis_data.get("final_assessment_data", {})
-        relevance_analysis = analysis_data.get("relevance_analysis", {})
+
+        # Relevance data from orchestrator
+        relevance_analysis_from_orchestrator = analysis_data.get("relevance_analysis", {})
+        gemini_irrelevant_from_file_list = {}
+        if irrelevant_files and isinstance(irrelevant_files, list) and len(irrelevant_files) > 0:
+            gemini_irrelevant_from_file_list = irrelevant_files[0].get("gemini_irrelevant", {})
 
         overall_auth_score = final_assessment.get("final_overall_authenticity_score", 0.5)
         spam_score = final_assessment.get("final_spam_likelihood_score", 0.5)
         is_externally_flagged_ai = external_pred.get("predicted_class_label") == "AI-generated"
 
-        reason_parts = []
-        if is_externally_flagged_ai:
-            ext_conf = external_pred.get("confidence_scores", {}).get("ai_generated", 0.0)
-            reason_parts.append(f"External Model: AI-Generated (Conf: {ext_conf:.2f})")
-        if overall_auth_score < FINAL_AUTH_FLAG_THRESHOLD:
-            reason_parts.append(f"Internal Auth Score: {overall_auth_score:.2f} (Low)")
-        if spam_score > SPAM_FLAG_THRESHOLD:
-            reason_parts.append(f"Internal Spam Score: {spam_score:.2f} (High)")
-
-        reason_summary_for_modal = ". ".join(reason_parts) if reason_parts else "System flagged potential issues."
-        if final_assessment.get("final_xai_summary"):
-            reason_summary_for_modal = final_assessment.get("final_xai_summary")
-
+        # AI Part (same as ai_content_detected)
         payload_is_ai_generated = is_externally_flagged_ai
         payload_confidence = 0.0
         if is_externally_flagged_ai:
@@ -262,31 +278,52 @@ async def _process_single_file_for_candidate_creation(
             external_ai_pred_data=external_pred
         ).reason
 
+        ai_payload_for_combined = {
+            "filename": file_name_val,
+            "is_ai_generated": payload_is_ai_generated,
+            "confidence": payload_confidence,
+            "reason": formatted_reason_html,
+            "details": {
+                "external_ai_prediction": external_pred,
+                "authenticity_analysis": auth_results_dict,
+                "cross_referencing_analysis": analysis_data.get("cross_referencing_result"),
+                "final_overall_authenticity_score": overall_auth_score,
+                "final_spam_likelihood_score": spam_score,
+                "final_xai_summary": final_assessment.get("final_xai_summary")
+            }
+        }
+
+        # Irrelevance Part (similar to irrelevant_content)
+        final_irrelevant_reason_combined = gemini_irrelevant_from_file_list.get("reason") or \
+                                           relevance_analysis_from_orchestrator.get("irrelevant_reason") or \
+                                           "Content deemed irrelevant to the job."
+
+        final_relevance_score_combined = gemini_irrelevant_from_file_list.get("relevance_score")
+        if final_relevance_score_combined is None:
+            final_relevance_score_combined = relevance_analysis_from_orchestrator.get("overall_relevance_score")
+
+        calculated_irrelevance_score_combined = None
+        if final_relevance_score_combined is not None:
+            try:
+                calculated_irrelevance_score_combined = 100.0 - float(final_relevance_score_combined)
+            except (ValueError, TypeError):
+                logger.warning(
+                    f"Could not calculate irrelevance_score from relevance_score: {final_relevance_score_combined}")
+
+        irrelevance_payload_for_combined = {
+            "filename": file_name_val,
+            "is_irrelevant": True,
+            "irrelevant_reason": final_irrelevant_reason_combined,
+            "irrelevance_score": calculated_irrelevance_score_combined,
+            "job_type": relevance_analysis_from_orchestrator.get("job_type", "")
+        }
+
         return {
             "fileName": file_name_val,
             "status": "ai_and_irrelevant_content",
             "candidateId": None,
-            "ai_detection_payload": {
-                "filename": file_name_val,
-                "is_ai_generated": payload_is_ai_generated,
-                "confidence": payload_confidence,
-                "reason": formatted_reason_html,
-                "details": {
-                    "external_ai_prediction": external_pred,
-                    "authenticity_analysis": auth_results_dict,
-                    "cross_referencing_analysis": analysis_data.get("cross_referencing_result"),
-                    "final_overall_authenticity_score": overall_auth_score,
-                    "final_spam_likelihood_score": spam_score,
-                    "final_xai_summary": final_assessment.get("final_xai_summary")
-                }
-            },
-            "irrelevance_payload": {
-                "filename": file_name_val,
-                "is_irrelevant": True,
-                "irrelevant_reason": candidate_result.get("irrelevant_reason") or relevance_analysis.get("irrelevant_reason", ""),
-                "relevance_score": relevance_analysis.get("overall_relevance_score"),
-                "job_type": relevance_analysis.get("job_type", "")
-            }
+            "ai_detection_payload": ai_payload_for_combined,
+            "irrelevance_payload": irrelevance_payload_for_combined
         }
 
     elif candidate_result and candidate_result.get("candidateId"):
@@ -308,6 +345,7 @@ async def _process_single_file_for_candidate_creation(
             "message": "Unknown processing error post-orchestration.",
             "candidateId": None
         }
+
 
 async def generate_and_save_profile(candidate_info: Dict[str, Any], gemini_srv: GeminiService) -> bool:
     # ... (implementation unchanged) ...
@@ -360,7 +398,7 @@ async def upload_job_and_cvs(
         job_data_json_str: str = Form(..., alias="job_data"),
         files: List[UploadFile] = File(...),
         force_upload_ai_flagged: Optional[str] = Form(None),
-        force_upload_irrelevant: Optional[str] = Form(None),  # Added new form parameter
+        force_upload_irrelevant: Optional[str] = Form(None),
         user_time_zone: str = Form("UTC")
 ):
     try:
@@ -382,7 +420,7 @@ async def upload_job_and_cvs(
                 minimum_cgpa = float(minimum_cgpa_raw)
             except (ValueError, TypeError):
                 logger.warning(f"Invalid minimumCGPA value '{minimum_cgpa_raw}', defaulting to 0.0.")
-                
+
         job_create_payload = JobCreate(
             jobTitle=job_details.get("jobTitle"),
             jobDescription=job_details.get("jobDescription", ""),
@@ -412,8 +450,7 @@ async def upload_job_and_cvs(
 
         # Handle responses
         successful_candidates_full_data = []
-        ai_flagged_payloads_for_modal = []
-        irrelevant_payloads_for_modal = []
+        flagged_files_for_modal = []  # MODIFIED: Use a single list for all types of flags
         duplicate_payloads_for_modal = []
         error_files = []
 
@@ -422,22 +459,42 @@ async def upload_job_and_cvs(
             if res["status"] == "success":
                 successful_candidates_full_data.append(res["candidate_data"])
             elif res["status"] == "ai_content_detected":
-                ai_flagged_payloads_for_modal.append(res["ai_detection_payload"])
+                flagged_files_for_modal.append(res["ai_detection_payload"])
             elif res["status"] == "irrelevant_content":
-                irrelevant_payloads_for_modal.append(res["irrelevance_payload"])
+                flagged_files_for_modal.append(res["irrelevance_payload"])
+            elif res["status"] == "ai_and_irrelevant_content":
+                ai_payload = res.get("ai_detection_payload", {})
+                irrelevant_payload_from_res = res.get("irrelevance_payload", {})
+
+                calculated_irrelevance_score = irrelevant_payload_from_res.get(
+                    "irrelevance_score")  # Assume it's already calculated by _process
+
+                combined_payload_for_modal = {
+                    "filename": res["fileName"],
+                    "is_ai_generated": ai_payload.get("is_ai_generated", False),
+                    "confidence": ai_payload.get("confidence"),
+                    "reason": ai_payload.get("reason"),
+                    "details": ai_payload.get("details"),
+
+                    "is_irrelevant": irrelevant_payload_from_res.get("is_irrelevant", False),
+                    "irrelevant_reason": irrelevant_payload_from_res.get("irrelevant_reason"),
+                    "irrelevance_score": calculated_irrelevance_score,
+                    "job_type": irrelevant_payload_from_res.get("job_type")
+                }
+                flagged_files_for_modal.append(combined_payload_for_modal)
             elif res["status"] == "duplicate_detected":
                 duplicate_payloads_for_modal.append(res)
             elif res["status"] == "error":
                 error_files.append(res)
 
-        flagged_files_for_modal = ai_flagged_payloads_for_modal + irrelevant_payloads_for_modal
+        # No longer need to combine ai_flagged_payloads_for_modal and irrelevant_payloads_for_modal
 
         if flagged_files_for_modal and not (is_forcing_problematic_upload or is_forcing_irrelevant_upload):
             response_content = {
                 "message": "Some resumes require review due to AI or irrelevance flags.",
                 "error_type": "FLAGGED_CONTENT",
                 "flagged_files": jsonable_encoder(flagged_files_for_modal),
-                "jobId": actual_job_id if 'actual_job_id' in locals() else job_id,
+                "jobId": actual_job_id,  # Use actual_job_id here
                 "processed_ok_count": len(successful_candidates_full_data)
             }
             logger.info(f"Returning to frontend (Flagged content): {response_content}")
@@ -446,8 +503,8 @@ async def upload_job_and_cvs(
                 content=response_content
             )
 
-        # Handle duplicates (existing code remains the same)
-        if duplicate_payloads_for_modal:
+        # Handle duplicates
+        if duplicate_payloads_for_modal:  # This check should be after flagged_files check if we want to prioritize flags
             response_content = {
                 "message": "Duplicate CVs detected.",
                 "error_type": "DUPLICATE_FILES_DETECTED",
@@ -460,7 +517,6 @@ async def upload_job_and_cvs(
                 status_code=status.HTTP_409_CONFLICT,
                 content=response_content
             )
-             
 
         # Process successful candidates
         applications_created_info = []
@@ -469,7 +525,7 @@ async def upload_job_and_cvs(
                 actual_job_id, successful_candidates_full_data
             )
             profile_tasks = [
-                generate_and_save_profile(cand_info, gemini_service_global_instance) 
+                generate_and_save_profile(cand_info, gemini_service_global_instance)
                 for cand_info in successful_candidates_full_data
             ]
             await asyncio.gather(*profile_tasks)
@@ -495,17 +551,17 @@ async def upload_job_and_cvs(
 
 
 @router.post("/upload-more-cv")
-async def upload_more_cv_for_job(  # Renamed for clarity
+async def upload_more_cv_for_job(
         job_id: str = Form(...),
         files: List[UploadFile] = File(...),
         override_duplicates: Optional[str] = Form("false"),
         selected_filenames_for_overwrite_json: Optional[str] = Form(None, alias="selected_filenames"),
         force_upload_ai_flagged: Optional[str] = Form(None),
-        force_upload_irrelevant: Optional[str] = Form(None),  
+        force_upload_irrelevant: Optional[str] = Form(None),
         user_time_zone: str = Form("UTC")
 ):
     logger.info(
-        f"Uploading more CVs for job {job_id}, override_duplicates_form: {override_duplicates}, force_ai: {force_upload_ai_flagged}")
+        f"Uploading more CVs for job {job_id}, override_duplicates_form: {override_duplicates}, force_ai: {force_upload_ai_flagged}, force_irrelevant: {force_upload_irrelevant}")
     try:
         job = JobService.get_job(job_id)
         if not job:
@@ -527,19 +583,17 @@ async def upload_more_cv_for_job(  # Renamed for clarity
                 selected_filenames_to_override_list = []
 
         logger.info(
-            f"Processing {len(files)} additional CVs for job {job_id}. General Override Duplicates: {is_overriding_duplicates_general}. Force AI Upload: {is_forcing_problematic_upload}. Specific files to override if general override is true: {selected_filenames_to_override_list}")
+            f"Processing {len(files)} additional CVs for job {job_id}. General Override Duplicates: {is_overriding_duplicates_general}. Force Problematic Upload: {is_forcing_problematic_upload}. Force Irrelevant Upload: {is_forcing_irrelevant_upload}. Specific files to override: {selected_filenames_to_override_list}")
 
         # --- STAGE 1: Process all files ---
         file_processing_tasks = []
         for file_obj in files:
-            # If general override is true, this specific file is overridden if it's in the selected list OR if no list is provided (override all)
-            # If general override is false, this specific file is not overridden.
             override_this_specific_file_flag = False
             if is_overriding_duplicates_general:
-                if selected_filenames_to_override_list:  # If a list is provided, only override those
+                if selected_filenames_to_override_list:
                     if file_obj.filename in selected_filenames_to_override_list:
                         override_this_specific_file_flag = True
-                else:  # No specific list, so general override applies to all files in this batch
+                else:
                     override_this_specific_file_flag = True
 
             file_processing_tasks.append(
@@ -555,33 +609,56 @@ async def upload_more_cv_for_job(  # Renamed for clarity
         processed_file_results = await asyncio.gather(*file_processing_tasks)
 
         # --- STAGE 2: Handle responses ---
-        successful_candidates_full_data = []  # All candidates created (new, or new despite similarity due to override)
-        ai_flagged_payloads_for_modal = []
-        irrelevant_payloads_for_modal = []  # Irrelevant files that were flagged
-        duplicate_payloads_for_modal = []  # Duplicates that were NOT overridden
+        successful_candidates_full_data = []
+        flagged_files_for_modal = []  # MODIFIED: Use a single list
+        duplicate_payloads_for_modal = []
         error_files = []
 
         for res in processed_file_results:
             if res["status"] == "success":
                 successful_candidates_full_data.append(res["candidate_data"])
             elif res["status"] == "ai_content_detected":
-                ai_flagged_payloads_for_modal.append(res["ai_detection_payload"])
-            elif res["status"] == "duplicate_detected":  # This means it was a duplicate AND override_this_specific_file_flag was False for it
-                duplicate_payloads_for_modal.append(res)
+                flagged_files_for_modal.append(res["ai_detection_payload"])
             elif res["status"] == "irrelevant_content":
-                irrelevant_payloads_for_modal.append(res["irrelevance_payload"])
+                flagged_files_for_modal.append(res["irrelevance_payload"])
+            elif res["status"] == "ai_and_irrelevant_content":
+                ai_payload = res.get("ai_detection_payload", {})
+                irrelevant_payload_from_res = res.get("irrelevance_payload", {})
+
+                calculated_irrelevance_score = irrelevant_payload_from_res.get(
+                    "irrelevance_score")  # Assume it's already calculated by _process
+
+                combined_payload_for_modal = {
+                    "filename": res["fileName"],
+                    "is_ai_generated": ai_payload.get("is_ai_generated", False),
+                    "confidence": ai_payload.get("confidence"),
+                    "reason": ai_payload.get("reason"),
+                    "details": ai_payload.get("details"),
+
+                    "is_irrelevant": irrelevant_payload_from_res.get("is_irrelevant", False),
+                    "irrelevant_reason": irrelevant_payload_from_res.get("irrelevant_reason"),
+                    "irrelevance_score": calculated_irrelevance_score,
+                    "job_type": irrelevant_payload_from_res.get("job_type")
+                }
+                flagged_files_for_modal.append(combined_payload_for_modal)
+            elif res["status"] == "duplicate_detected":
+                duplicate_payloads_for_modal.append(res)
             elif res["status"] == "error":
                 error_files.append(res)
 
-        flagged_files_for_modal = ai_flagged_payloads_for_modal + irrelevant_payloads_for_modal
+        # No longer need to combine ai_flagged_payloads_for_modal and irrelevant_payloads_for_modal
 
         if flagged_files_for_modal and not (is_forcing_problematic_upload or is_forcing_irrelevant_upload):
+            # Process any successful files before returning the 422 for flagged ones
             applications_created_info = []
             if successful_candidates_full_data:
-                applications_created_info = candidate_service_instance.process_applications(job_id, successful_candidates_full_data)
-                profile_tasks = [generate_and_save_profile(cand_info, gemini_service_global_instance) for cand_info in successful_candidates_full_data]
+                applications_created_info = candidate_service_instance.process_applications(job_id,
+                                                                                            successful_candidates_full_data)
+                profile_tasks = [generate_and_save_profile(cand_info, gemini_service_global_instance) for cand_info in
+                                 successful_candidates_full_data]
                 await asyncio.gather(*profile_tasks)
 
+            logger.info(f"Returning to frontend (Flagged content for 'upload-more-cv'): {flagged_files_for_modal}")
             return JSONResponse(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 content={
@@ -589,13 +666,12 @@ async def upload_more_cv_for_job(  # Renamed for clarity
                     "error_type": "FLAGGED_CONTENT",
                     "flagged_files": jsonable_encoder(flagged_files_for_modal),
                     "jobId": job_id,
-                    "processed_ok_count": len(successful_candidates_full_data),
+                    "processed_ok_count": len(successful_candidates_full_data),  # Count of files that passed all checks
                 }
             )
 
-        if duplicate_payloads_for_modal:  # These are duplicates that were NOT overridden
+        if duplicate_payloads_for_modal:
             logger.warning(f"Unresolved duplicate CVs remain for job {job_id}.")
-            # Process any successful non-duplicate files before returning 409
             applications_created_info = []
             if successful_candidates_full_data:
                 applications_created_info = candidate_service_instance.process_applications(job_id,
@@ -611,7 +687,6 @@ async def upload_more_cv_for_job(  # Renamed for clarity
                     "error_type": "DUPLICATE_FILES_DETECTED",
                     "duplicates": jsonable_encoder(duplicate_payloads_for_modal),
                     "nonDuplicateCount": len(successful_candidates_full_data),
-                    # Files that were successful and not duplicates
                     "jobId": job_id,
                 }
             )
@@ -649,13 +724,11 @@ async def upload_more_cv_for_job(  # Renamed for clarity
                 "jobId": job_id,
                 "newApplicationCount": new_apps_count,
                 "candidateIds": [c['candidateId'] for c in final_candidates_data_for_response if c.get('candidateId')],
-                # For UploadMoreCVModal.js
                 "candidatesData": final_candidates_data_for_response,
                 "totalApplicationsForJob": total_applications_for_job,
                 "errors_processing_files": error_files
             })
         )
-    # ... (exception handling unchanged) ...
     except HTTPException as http_exc:
         logger.error(f"HTTPException in /upload-more-cv for job {job_id}: {http_exc.detail}", exc_info=True)
         raise http_exc
@@ -669,15 +742,14 @@ async def upload_more_cv_for_job(  # Renamed for clarity
 
 
 @router.post("/suggest-details", response_model=JobSuggestionResponse)
-async def suggest_job_details_for_creation(context: JobSuggestionContext = Body(...)):  # Renamed for clarity
-    # ... (implementation unchanged) ...
+async def suggest_job_details_for_creation(context: JobSuggestionContext = Body(...)):
     if not context.job_title:
         raise HTTPException(status_code=400, detail="Job Title is required to generate suggestions.")
     try:
         suggestions = await gemini_service_global_instance.generate_job_details_suggestion(job_title=context.job_title,
                                                                                            context=context.model_dump(
                                                                                                exclude={
-                                                                                                   'job_title'}))  # Use model_dump
+                                                                                                   'job_title'}))
         return JobSuggestionResponse(**suggestions)
     except HTTPException as http_exc:
         raise http_exc

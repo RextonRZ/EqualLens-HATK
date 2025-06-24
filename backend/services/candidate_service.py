@@ -806,8 +806,6 @@ class CandidateService:
                 candidate_creation_result['extractedDataFromDocAI'] = document_ai_results  # Add it if missing
             asyncio.create_task(self._generate_and_save_profile_background(candidate_creation_result))
 
-        logger.info(f"[{actual_candidate_id}] Returning candidate_creation_result: {candidate_creation_result}")  # <--- Add this line
-
         return candidate_creation_result
 
     async def _generate_and_save_profile_background(self, candidate_info_dict: Dict[str, Any]):
