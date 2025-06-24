@@ -35,15 +35,6 @@ class AIDetectionService:
                 external_model_confidence = conf_scores.get("ai_generated", 0.0)
                 external_pred_html_parts.append(
                     f"<p class='warning'><strong>Prediction: AI-Generated</strong> (Confidence: {external_model_confidence:.2f})</p>")
-            elif pred_label == "Human-written":
-                is_ai_generated_by_external_model = False
-                # For "Human-written", confidence is how sure it is human, not a "concern" level.
-                # The frontend might show this differently. For AIDetectionResult.confidence, we can use this.
-                external_model_confidence = conf_scores.get("human_written", 0.0)
-                external_pred_html_parts.append(
-                    f"<p class='success'><strong>Prediction: Human-Written</strong> (Confidence: {external_model_confidence:.2f})</p>")
-            else:  # Could be "Error" or "Unknown" from our wrapper
-                external_pred_html_parts.append(f"<p>Prediction: {html.escape(pred_label)}</p>")
 
             if conf_scores:
                 ai_score_str = f"{conf_scores.get('ai_generated', 'N/A'):.2f}" if isinstance(

@@ -994,6 +994,10 @@ class GeminiService:
                     if isinstance(items, list) and items and isinstance(items[0], dict) and "relevance" in items[0]:
                         # Sort by relevance descending, keep top 3
                         relevance_data[cat] = sorted(items, key=lambda x: x.get("relevance", 0), reverse=True)[:3]
+                        # Add per-item relevance_score for star logic
+                        for item in relevance_data[cat]:
+                            if isinstance(item, dict) and "relevance" in item:
+                                item["relevance_score"] = item.get("relevance", 0)
 
                 # --- Step 3: Calculate overall relevance score based on job type ---
                 if job_type == "technical":
@@ -1111,7 +1115,7 @@ class GeminiService:
         inference_prompt = f"""
         You are an expert HR skills analyzer. Based on the following resume information, 
         infer skills that are IMPLIED but NOT EXPLICITLY MENTIONED in the 'Already identified skills' list. 
-        Only include skills that are strongly suggested by the work experience, projects, and other details.
+        Only include skills that are strongly suggested by the work experience, project responsibilities, and other details.
 
         Resume Information (this is the primary text to analyze):
         ---
@@ -1259,7 +1263,6 @@ class GeminiService:
                 # but try to preserve "Branding and Identity" or similar phrases
                 # A simple heuristic: if " and " is present and words on both sides are capitalized or common skill terms.
                 # This is complex to get right with simple string ops.
-                # For now, let's just trim and add. The LLM should ideally separate these better in the first place.
                 sub_parts = [p.strip() for p in part.split(' and ') if p.strip()] # Basic split by 'and'
                 
                 # If splitting by 'and' resulted in multiple parts, and the original part was likely a list
@@ -1423,7 +1426,7 @@ class GeminiService:
                 Provide concise, point-form justifications (max 1-2 points) AND extract relevant supporting keywords/short phrases (max 3-5 words each) from the Candidate's Answer for each score.
 
                 Evaluate the Candidate's Answer objectively based ONLY on content, logic, and job alignment provided below. Ignore style/grammar/tone/demographics. 
-                Acknowledge potential transcription errors; focus on likely meaning. Provide scores (**integer 0-10**) and concise justifications (1-2 points)
+                Acknowledge potential transcription errors; focus on the likely meaning. Provide scores (**integer 0-10**) and concise justifications (1-2 points)
 
                  **Context:**
                 - Job Description: {job_description}

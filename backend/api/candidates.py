@@ -186,12 +186,10 @@ async def get_candidate_detail(candidate_id: str, job_id: str = None, force: boo
     try:
         logger.info(f"Generating detailed profile for candidate: {candidate_id}, job_id: {job_id}, force: {force}")
         
-        # Check if candidate exists
         candidate = CandidateService.get_candidate(candidate_id)
         if not candidate:
             raise HTTPException(status_code=404, detail=f"Candidate {candidate_id} not found")
         
-        # Get job info for the candidate's application - improved job finding logic
         job_description = None
         job_info = {}
         
@@ -242,45 +240,42 @@ async def get_candidate_detail(candidate_id: str, job_id: str = None, force: boo
         # Check if candidate already has a detailed profile and force is not True
         if candidate.get("detailed_profile") and not force:
             logger.info(f"Candidate {candidate_id} already has a detailed profile, returning existing data")
-            
-            # Check if existing profile has relevance analysis
-            has_relevance = "relevance_analysis" in candidate["detailed_profile"]
-            if not has_relevance and job_description:
-                logger.info("Existing profile doesn't have relevance analysis, but we have a job description. Adding relevance analysis...")
-                # Create an instance of GeminiService
+            # If missing relevance_analysis, generate and update it
+            if "relevance_analysis" not in candidate["detailed_profile"] and job_description:
+                logger.info("Existing profile doesn't have relevance analysis, generating and saving it...")
                 gemini_service = GeminiService()
-                
+                relevance_data = await gemini_service.analyze_job_relevance(candidate["detailed_profile"], job_description)
+                # Add per-item relevance_score for star logic
                 if relevance_data:
                     candidate["detailed_profile"]["relevance_analysis"] = relevance_data
-                    # Update the candidate with the enhanced profile
-                    profile_update = CandidateUpdate(**candidate)
-                    success = CandidateService.update_candidate(candidate_id, profile_update)
-                    if success:
-                        logger.info(f"Added relevance analysis to existing profile for candidate {candidate_id}")
-                    else:
-                        logger.warning(f"Failed to save profile with new relevance analysis for candidate {candidate_id}")
-            
+                    # Add per-item relevance_score for star logic
+                    for cat, items in relevance_data.items():
+                        if isinstance(items, list):
+                            for item in items:
+                                if isinstance(item, dict) and "relevance" in item:
+                                    item["relevance_score"] = item.get("relevance", 0)
+                profile_update = CandidateUpdate(detailed_profile=candidate["detailed_profile"])
+                CandidateService.update_candidate(candidate_id, profile_update)
             return {"candidate_id": candidate_id, "detailed_profile": candidate["detailed_profile"]}
-        
+
         # Create an instance of GeminiService
         gemini_service = GeminiService()
         
         # Generate the detailed profile
         detailed_profile = await gemini_service.generate_candidate_profile(candidate)
-        
-        # Check if relevance analysis was performed
-        if "relevance_analysis" in detailed_profile:
-            logger.info(f"Relevance analysis completed with {sum(len(cat) for cat in detailed_profile['relevance_analysis'].values() if isinstance(cat, list))} items analyzed")
-            relevant_count = 0
-            for category, items in detailed_profile["relevance_analysis"].items():
-                if isinstance(items, list):
-                    for item in items:
-                        if item.get("relevant") == True:
-                            relevant_count += 1
-            logger.info(f"Found {relevant_count} relevant items across all categories")
-        else:
-            logger.warning("No relevance analysis was performed - check job description availability")
-        
+
+        # Always generate and attach relevance_analysis if job_description is available
+        if job_description:
+            relevance_data = await gemini_service.analyze_job_relevance(detailed_profile, job_description)
+            if relevance_data:
+                detailed_profile["relevance_analysis"] = relevance_data
+                # Add per-item relevance_score for star logic
+                for cat, items in relevance_data.items():
+                    if isinstance(items, list):
+                        for item in items:
+                            if isinstance(item, dict) and "relevance" in item:
+                                item["relevance_score"] = item.get("relevance", 0)
+
         # Update the candidate record with the generated profile
         try:
             candidate["detailed_profile"] = detailed_profile
@@ -292,8 +287,7 @@ async def get_candidate_detail(candidate_id: str, job_id: str = None, force: boo
                 logger.warning(f"Failed to save detailed profile for candidate {candidate_id}")
         except Exception as e:
             logger.error(f"Error saving detailed profile: {e}")
-            # Continue even if saving fails - we'll still return the generated profile
-        
+
         logger.info(f"Successfully generated detailed profile for candidate {candidate_id}")
         return {"candidate_id": candidate_id, "detailed_profile": detailed_profile}
         

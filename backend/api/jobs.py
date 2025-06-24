@@ -5,6 +5,9 @@ import json
 import logging
 import asyncio
 from fastapi.encoders import jsonable_encoder
+import uuid
+from datetime import datetime
+from core.firebase import firebase_client
 
 from models.job import JobCreate, JobResponse, JobUpdate, JobSuggestionContext, JobSuggestionResponse
 from models.candidate import CandidateUpdate
@@ -410,7 +413,7 @@ async def upload_job_and_cvs(
         is_forcing_problematic_upload = (force_upload_ai_flagged and force_upload_ai_flagged.lower() == "true")
         is_forcing_irrelevant_upload = (force_upload_irrelevant and force_upload_irrelevant.lower() == "true")
 
-        # --- Create Job Entry First ---
+        # --- Prepare Job Data (but don't create yet) ---
         skills = job_details.get("skills", [])
         required_skills = job_details.get("requiredSkills", skills)
         minimum_cgpa_raw = job_details.get("minimumCGPA")
@@ -429,14 +432,15 @@ async def upload_job_and_cvs(
             requiredSkills=required_skills,
             prompt=job_details.get("prompt", "")
         )
-        actual_job_id = JobService.create_job(job_create_payload)
-        if not actual_job_id:
-            raise HTTPException(status_code=500, detail="Failed to create job entry in database.")
 
-        # Process all files for analysis and initial checks
+        # Use a temporary job id for file processing (not stored anywhere)
+        temp_job_id = f"temp-{uuid.uuid4()}"
+        logger.info(f"Using temporary job ID {temp_job_id} for initial file processing")
+
+        # Process all files for analysis and initial checks using temp job ID
         file_processing_tasks = [
             _process_single_file_for_candidate_creation(
-                job_id_for_creation=actual_job_id,
+                job_id_for_creation=temp_job_id,
                 file_obj=file_obj,
                 user_time_zone=user_time_zone,
                 override_duplicates_from_form=False,
@@ -450,11 +454,10 @@ async def upload_job_and_cvs(
 
         # Handle responses
         successful_candidates_full_data = []
-        flagged_files_for_modal = []  # MODIFIED: Use a single list for all types of flags
+        flagged_files_for_modal = []
         duplicate_payloads_for_modal = []
         error_files = []
 
-        # Categorize results
         for res in processed_file_results:
             if res["status"] == "success":
                 successful_candidates_full_data.append(res["candidate_data"])
@@ -465,17 +468,13 @@ async def upload_job_and_cvs(
             elif res["status"] == "ai_and_irrelevant_content":
                 ai_payload = res.get("ai_detection_payload", {})
                 irrelevant_payload_from_res = res.get("irrelevance_payload", {})
-
-                calculated_irrelevance_score = irrelevant_payload_from_res.get(
-                    "irrelevance_score")  # Assume it's already calculated by _process
-
+                calculated_irrelevance_score = irrelevant_payload_from_res.get("irrelevance_score")
                 combined_payload_for_modal = {
                     "filename": res["fileName"],
                     "is_ai_generated": ai_payload.get("is_ai_generated", False),
                     "confidence": ai_payload.get("confidence"),
                     "reason": ai_payload.get("reason"),
                     "details": ai_payload.get("details"),
-
                     "is_irrelevant": irrelevant_payload_from_res.get("is_irrelevant", False),
                     "irrelevant_reason": irrelevant_payload_from_res.get("irrelevant_reason"),
                     "irrelevance_score": calculated_irrelevance_score,
@@ -487,14 +486,12 @@ async def upload_job_and_cvs(
             elif res["status"] == "error":
                 error_files.append(res)
 
-        # No longer need to combine ai_flagged_payloads_for_modal and irrelevant_payloads_for_modal
-
-        if flagged_files_for_modal and not (is_forcing_problematic_upload or is_forcing_irrelevant_upload):
+        # If any flagged or duplicate files, do NOT create job/candidates/applications, just return error
+        if flagged_files_for_modal:
             response_content = {
                 "message": "Some resumes require review due to AI or irrelevance flags.",
                 "error_type": "FLAGGED_CONTENT",
                 "flagged_files": jsonable_encoder(flagged_files_for_modal),
-                "jobId": actual_job_id,  # Use actual_job_id here
                 "processed_ok_count": len(successful_candidates_full_data)
             }
             logger.info(f"Returning to frontend (Flagged content): {response_content}")
@@ -503,14 +500,12 @@ async def upload_job_and_cvs(
                 content=response_content
             )
 
-        # Handle duplicates
-        if duplicate_payloads_for_modal:  # This check should be after flagged_files check if we want to prioritize flags
+        if duplicate_payloads_for_modal:
             response_content = {
                 "message": "Duplicate CVs detected.",
                 "error_type": "DUPLICATE_FILES_DETECTED",
                 "duplicates": jsonable_encoder(duplicate_payloads_for_modal),
-                "nonDuplicateCount": len(successful_candidates_full_data),
-                "jobId": actual_job_id
+                "nonDuplicateCount": len(successful_candidates_full_data)
             }
             logger.info(f"Returning to frontend (Duplicates): {response_content}")
             return JSONResponse(
@@ -518,7 +513,21 @@ async def upload_job_and_cvs(
                 content=response_content
             )
 
-        # Process successful candidates
+        # --- CREATE ACTUAL JOB ONLY WHEN FILES ARE READY TO BE PROCESSED ---
+        actual_job_id = JobService.create_job(job_create_payload)
+        if not actual_job_id:
+            raise HTTPException(status_code=500, detail="Failed to create job entry in database.")
+
+        logger.info(f"Created actual job {actual_job_id} after confirming files are ready for processing")
+
+        # Update all successful candidate data with the actual job ID
+        for candidate_data in successful_candidates_full_data:
+            if candidate_data.get('candidateId'):
+                CandidateService.update_candidate(
+                    candidate_data['candidateId'],
+                    CandidateUpdate(job_id=actual_job_id)
+                )
+
         applications_created_info = []
         if successful_candidates_full_data:
             applications_created_info = candidate_service_instance.process_applications(
@@ -530,7 +539,6 @@ async def upload_job_and_cvs(
             ]
             await asyncio.gather(*profile_tasks)
 
-        # Return success response
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
             content=jsonable_encoder({
@@ -547,6 +555,82 @@ async def upload_job_and_cvs(
 
     except Exception as e:
         logger.error(f"Error uploading new job: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/confirm-job-creation")
+async def confirm_job_creation(
+        temp_job_id: str = Form(...),
+        files: List[UploadFile] = File(...),
+        force_upload_ai_flagged: Optional[str] = Form("false"),
+        force_upload_irrelevant: Optional[str] = Form("false"),
+        user_time_zone: str = Form("UTC")
+):
+    """Create the actual job after user confirms to proceed with flagged files."""
+    try:
+        logger.info(f"Confirming job creation for temp job {temp_job_id}")
+        temp_job_data = firebase_client.get_document('temp_jobs', temp_job_id)
+        if not temp_job_data:
+            raise HTTPException(status_code=404, detail="Temporary job data not found")
+        job_create_payload = JobCreate(**temp_job_data['job_create_payload'])
+        actual_job_id = JobService.create_job(job_create_payload)
+        if not actual_job_id:
+            raise HTTPException(status_code=500, detail="Failed to create job entry in database.")
+        logger.info(f"Created actual job {actual_job_id} from temp job {temp_job_id}")
+
+        is_forcing_problematic_upload = (force_upload_ai_flagged and force_upload_ai_flagged.lower() == "true")
+        is_forcing_irrelevant_upload = (force_upload_irrelevant and force_upload_irrelevant.lower() == "true")
+
+        file_processing_tasks = [
+            _process_single_file_for_candidate_creation(
+                job_id_for_creation=actual_job_id,
+                file_obj=file_obj,
+                user_time_zone=user_time_zone,
+                override_duplicates_from_form=False,
+                force_upload_problematic_from_form=is_forcing_problematic_upload,
+                force_upload_irrelevant_from_form=is_forcing_irrelevant_upload
+            ) for file_obj in files
+        ]
+        processed_file_results = await asyncio.gather(*file_processing_tasks)
+
+        successful_candidates_full_data = []
+        error_files = []
+
+        for res in processed_file_results:
+            if res["status"] == "success":
+                successful_candidates_full_data.append(res["candidate_data"])
+            elif res["status"] == "error":
+                error_files.append(res)
+
+        applications_created_info = []
+        if successful_candidates_full_data:
+            applications_created_info = candidate_service_instance.process_applications(
+                actual_job_id, successful_candidates_full_data
+            )
+            profile_tasks = [
+                generate_and_save_profile(cand_info, gemini_service_global_instance)
+                for cand_info in successful_candidates_full_data
+            ]
+            await asyncio.gather(*profile_tasks)
+
+        firebase_client.delete_document('temp_jobs', temp_job_id)
+
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content=jsonable_encoder({
+                "message": "Job created and CVs processed successfully.",
+                "jobId": actual_job_id,
+                "jobTitle": job_create_payload.jobTitle,
+                "applicationCount": len(applications_created_info),
+                "applications": applications_created_info,
+                "candidates": successful_candidates_full_data,
+                "candidateIds": [c['candidateId'] for c in successful_candidates_full_data if c.get('candidateId')],
+                "errors_processing_files": error_files
+            })
+        )
+
+    except Exception as e:
+        logger.error(f"Error confirming job creation: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
