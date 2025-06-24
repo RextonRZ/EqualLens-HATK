@@ -30,13 +30,12 @@ class BiasDetectionRequestService:
         Returns:
             Dictionary with bias analysis results
         """
-        try:
-            # Format the job posting details for the prompt
+        try:            # Format the job posting details for the prompt
             job_posting_details = {
                 "Job Title": request.jobTitle,
                 "Job Description": request.jobDescription or "",
                 "Requirements": request.requirements or "",  # Include requirements separately
-                "Minimum CGPA Required": str(request.minimumCGPA) if request.minimumCGPA is not None else "N/A",
+                # Exclude CGPA from bias analysis as it's a standard academic requirement
                 "Departments": ', '.join(request.departments or []),
                 "Required Skills": ', '.join(request.requiredSkills or [])
             }
@@ -87,17 +86,15 @@ class BiasDetectionRequestService:
             - Terms like "energetic," "dynamic," "strong" used in standard professional context
             - Degree requirements for technical roles where the knowledge is necessary
 
-            Provide your assessment in this JSON format ONLY with no other text:
-            {
+            Provide your assessment in this JSON format ONLY with no other text:            {
                 "hasBias": true/false, // Overall bias presence
                 "biasedFields": {
                     // IMPORTANT: ONLY include fields below that contain actual bias.
                     // If a field has no bias, OMIT it completely from this dictionary.
-                    // Use the exact field names: "jobTitle", "jobDescription", "requirements", "minimumCGPA", "requiredSkills", "departments"
+                    // Use the exact field names: "jobTitle", "jobDescription", "requirements", "requiredSkills", "departments"
                     "jobTitle": "brief explanation if biased only",
                     "jobDescription": "brief explanation if biased only",
                     "requirements": "brief explanation if biased only", // Separate explanation for requirements
-                    "minimumCGPA": "brief explanation if biased only",
                     "requiredSkills": "brief explanation if biased only",
                     "departments": "brief explanation if biased only"
                 },
@@ -164,10 +161,8 @@ class BiasDetectionRequestService:
             # Ensure top-level keys exist, default to safe values
             analysis.setdefault('hasBias', False)
             analysis.setdefault('biasedFields', {})
-            analysis.setdefault('biasedTerms', {})
-
-            # Clean biasedFields
-            valid_fields = ["jobTitle", "jobDescription", "requirements", "minimumCGPA", "requiredSkills",
+            analysis.setdefault('biasedTerms', {})            # Clean biasedFields
+            valid_fields = ["jobTitle", "jobDescription", "requirements", "requiredSkills",
                             "departments"]
             cleaned_fields = {}
             for field, explanation in analysis['biasedFields'].items():
