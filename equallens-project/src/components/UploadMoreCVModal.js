@@ -103,6 +103,12 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
     const [flaggedAIData, setFlaggedAIData] = useState([]);
     const [fileFlags, setFileFlags] = useState({});
 
+    // Add a ref to track last duplicate file names to avoid showing modal for already uploaded files
+    const lastUploadedDuplicateNamesRef = useRef([]);
+
+    // Add this near the other useState hooks at the top of the component:
+    const [pendingDuplicateModal, setPendingDuplicateModal] = useState(false);
+
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -329,7 +335,18 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                     }
                 }
                 if (response.status === 409 && errorData.duplicates && errorData.duplicates.length > 0) {
+                    // Filter out duplicates that were just uploaded in the last overwrite
                     const duplicateFileNames = errorData.duplicates.map(d => d.fileName);
+                    // Only show modal if there are new duplicates not in lastUploadedDuplicateNamesRef
+                    const newDuplicates = duplicateFileNames.filter(
+                        name => !lastUploadedDuplicateNamesRef.current.includes(name)
+                    );
+                    if (newDuplicates.length === 0) {
+                        // All duplicates were just uploaded, so do not show modal
+                        setApiStatus("idle"); setSubmitProgress(0);
+                        return;
+                    }
+                    // Otherwise, show modal for new duplicates only
                     const nonDuplicateOriginalFiles = fileState.selectedFiles.filter(file => !duplicateFileNames.includes(file.name));
                     fileDispatch({ type: 'FOUND_DUPLICATES', payload: { duplicates: errorData.duplicates, nonDuplicateFiles: nonDuplicateOriginalFiles } });
                     setApiStatus("idle"); setSubmitProgress(0);
@@ -390,6 +407,7 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                 error.data &&
                 error.data.error_type === "DUPLICATE_FILES_DETECTED") {
 
+                // Show duplicate modal and do NOT proceed to upload
                 const duplicateFileNames = error.data.duplicates.map(d => d.fileName);
                 const nonDuplicateOriginalFiles = fileState.selectedFiles.filter(file =>
                     !duplicateFileNames.includes(file.name)
@@ -403,7 +421,7 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                 });
                 setApiStatus("idle");
                 setSubmitProgress(0);
-                return;
+                return; // <-- Do not proceed to upload
             }
 
             if (error.data && error.data.message) {
@@ -456,11 +474,11 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
             if (file.is_irrelevant) consentIrrelevant = true;
         });
 
-        // Set state for future actions (like duplicate handling)
         setUserConsentedToAIUpload(consentAI);
         setUserConsentedToIrrelevantUpload(consentIrrelevant);
 
-        // Call executeUpload with the determined flags immediately
+        // Call executeUpload with the determined flags.
+        // If there are duplicates, executeUpload will show the duplicate modal and stop.
         executeUpload(fileState.selectedFiles, {
             forceAi: consentAI,
             forceIrrelevant: consentIrrelevant
@@ -471,6 +489,7 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
     // MODIFIED: These handlers now pass the current consent state.
     const handleUploadNonDuplicatesFromModal = async () => {
         fileDispatch({ type: 'CLOSE_DUPLICATES_MODAL' });
+        // Only upload non-duplicate files
         if (!fileState.nonDuplicateFiles || fileState.nonDuplicateFiles.length === 0) {
             if (onUploadComplete) onUploadComplete(0);
             fileDispatch({ type: 'RESET' });
@@ -482,6 +501,7 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
             onClose();
             return;
         }
+        // Only upload non-duplicate files, with force flags if previously set
         executeUpload(fileState.nonDuplicateFiles, {
             forceAi: userConsentedToAIUpload,
             forceIrrelevant: userConsentedToIrrelevantUpload
@@ -490,6 +510,7 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
 
     const handleProceedWithDuplicatesFromModal = async (selectedDuplicateNamesToOverwrite = []) => {
         fileDispatch({ type: 'CLOSE_DUPLICATES_MODAL' });
+        setPendingDuplicateModal(false); // <-- This will now be defined
         let filesToSubmitForOverwrite;
         let namesToSubmitForOverwrite;
         if (selectedDuplicateNamesToOverwrite && selectedDuplicateNamesToOverwrite.length > 0) {
@@ -506,6 +527,8 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
             setApiStatus("idle");
             return;
         }
+        // Track these as last uploaded duplicates to suppress modal if backend returns them again
+        lastUploadedDuplicateNamesRef.current = namesToSubmitForOverwrite;
         executeUpload(filesToSubmitForOverwrite, {
             isOverwriting: true,
             selectedFilenamesForAction: namesToSubmitForOverwrite,
@@ -514,6 +537,45 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
         });
     };
 
+    // Update: Add a handler for "Overwrite With Selected + Upload Non-Duplicates" button
+    const handleOverwriteWithSelectedAndNonDuplicates = () => {
+        // Get selected duplicate file names
+        const selectedDuplicateNames = fileState.duplicateFiles
+            .map(d => d.fileName)
+            .filter(name => fileState.selectedFiles.some(f => f.name === name));
+
+        // Get selected files for overwrite
+        const selectedFilesForOverwrite = fileState.selectedFiles.filter(f =>
+            selectedDuplicateNames.includes(f.name)
+        );
+
+        // Get non-duplicate files
+        const nonDuplicateFiles = fileState.nonDuplicateFiles || [];
+
+        // Combine both arrays (avoid duplicates)
+        const filesToUpload = [
+            ...selectedFilesForOverwrite,
+            ...nonDuplicateFiles.filter(f => !selectedDuplicateNames.includes(f.name))
+        ];
+        const namesToOverwrite = selectedDuplicateNames;
+
+        if (filesToUpload.length === 0) {
+            setErrorMessage("No files selected for upload.");
+            setShowErrorModal(true);
+            setApiStatus("idle");
+            return;
+        }
+
+        // Track these as last uploaded duplicates to suppress modal if backend returns them again
+        lastUploadedDuplicateNamesRef.current = namesToOverwrite;
+        fileDispatch({ type: 'CLOSE_DUPLICATES_MODAL' });
+        executeUpload(filesToUpload, {
+            isOverwriting: selectedFilesForOverwrite.length > 0,
+            selectedFilenamesForAction: namesToOverwrite,
+            forceAi: userConsentedToAIUpload,
+            forceIrrelevant: userConsentedToIrrelevantUpload
+        });
+    };
 
     const ErrorModal = () => (
         <div className="status-modal-overlay" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} >
@@ -612,6 +674,7 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                         onClose={(action) => handleCloseDuplicatesModal(action)}
                         onProceed={handleProceedWithDuplicatesFromModal}
                         onUploadNonDuplicates={handleUploadNonDuplicatesFromModal}
+                        onOverwriteWithSelectedAndNonDuplicates={handleOverwriteWithSelectedAndNonDuplicates}
                         nonDuplicateCount={fileState.nonDuplicateFiles ? fileState.nonDuplicateFiles.length : 0}
                     />
                 )}

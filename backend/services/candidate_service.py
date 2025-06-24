@@ -733,7 +733,8 @@ class CandidateService:
                                     (spam_score > SPAM_FLAG_THRESHOLD)
         is_globally_problematic = is_externally_flagged_ai or is_problematic_internally  # AND change to OR
 
-        if (is_globally_problematic or document_ai_results["is_irrelevant"]) and not force_problematic_upload:
+        # --- FIX: Only return early if not forced. If forced, proceed to candidate creation. ---
+        if (is_globally_problematic and not force_problematic_upload) or (document_ai_results["is_irrelevant"] and not force_irrelevant_upload):
             logger.info(
                 f"[{temp_candidate_id_for_logging}] File {file_name} is problematic or irrelevant. External AI: {is_externally_flagged_ai}, Internal Problem: {is_problematic_internally}, Gemini Irrelevant: {document_ai_results['is_irrelevant']}")
 
@@ -776,7 +777,7 @@ class CandidateService:
 
         # --- If all checks passed or were overridden/forced, create candidate ---
         logger.info(
-            f"[{temp_candidate_id_for_logging}] Proceeding to create candidate entry for {file_name}. Force Problematic: {force_problematic_upload}, Override Duplicates: {override_duplicates}")
+            f"[{temp_candidate_id_for_logging}] Proceeding to create candidate entry for {file_name}. Force Problematic: {force_problematic_upload}, Force Irrelevant: {force_irrelevant_upload}, Override Duplicates: {override_duplicates}")
         candidate_creation_result = self.create_candidate_from_data(
             job_id=job_id,
             file_content=file_content_bytes,  # Original file content needed here
