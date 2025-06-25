@@ -1,7 +1,7 @@
 import logging
 import uuid
 from typing import Dict, Any, Optional, List, Tuple
-from datetime import datetime
+import datetime 
 import asyncio  # For concurrent execution
 
 from core.firebase import firebase_client
@@ -19,7 +19,6 @@ from models.authenticity_analysis import AuthenticityAnalysisResult
 from models.cross_referencing import CrossReferencingResult, URLValidationDetail, EntityVerificationDetail
 
 from core.text_similarity import TextSimilarityProcessor, serialize_firebase_data
-from pytz import timezone, UnknownTimeZoneError
 from google.cloud import firestore
 import json
 
@@ -522,97 +521,73 @@ class CandidateService:
     # This is the sole, comprehensive create_candidate_from_data method now.
     @staticmethod
     def create_candidate_from_data(
-            job_id: str, file_content: bytes, file_name: str,
+            job_id: str,
+            file_content: bytes, # Make sure this is consistently passed and used
+            file_name: str,
             content_type: str,
             extracted_data_from_doc_ai: Dict[str, Any],
-            authenticity_analysis_result: Optional[AuthenticityAnalysisResult] = None,
-            cross_referencing_result: Optional[CrossReferencingResult] = None,
-            final_assessment_data: Optional[Dict[str, Any]] = None,
-            external_ai_detection_data: Optional[Dict[str, Any]] = None,  # ADDED this parameter
-            override_duplicates: bool = False,
-            user_time_zone: Optional[str] = "UTC"
-    ) -> Optional[Dict[str, Any]]:
-        try:
+            authenticity_analysis_result: Optional[AuthenticityAnalysisResult],
+            cross_referencing_result: Optional[CrossReferencingResult],
+            final_assessment_data: Dict[str, Any],
+            external_ai_detection_data: Optional[Dict[str, Any]],
+            user_time_zone: str,
+            candidate_id_override: Optional[str] = None # <<< ADD THIS NEW PARAMETER
+    ) -> Dict[str, Any]:
+        
+        # --- START MODIFICATION for Solution B: Use overridden ID if provided ---
+        if candidate_id_override:
+            candidate_id = candidate_id_override
+            logger.info(f"[create_candidate_from_data] Using overridden candidate ID: {candidate_id} for file {file_name}")
+        else:
             candidate_id = firebase_client.generate_counter_id("cand")
-            logger.info(
-                f"[{candidate_id}] Generating new candidate ID for file {file_name} in create_candidate_from_data (Unified)")
+            logger.info(f"[create_candidate_from_data] Generated unique candidate ID: {candidate_id} for file {file_name}")
+        # --- END MODIFICATION ---
 
-            file_id = str(uuid.uuid4())
-            file_extension = file_name.split('.')[-1] if '.' in file_name else 'pdf'
-            storage_path = f"resumes/{job_id}/{candidate_id}/{file_id}.{file_extension}"
+        # --- START ESSENTIAL MODIFICATION: File Upload to Storage ---
+        # Create a unique name for the file in storage to avoid collisions if filename is not unique
+        file_uuid_for_storage = str(uuid.uuid4())
+        storage_file_name = f"{file_uuid_for_storage}_{file_name}" # Or any other unique naming scheme
+        storage_path = f"resumes/{job_id}/{candidate_id}/{storage_file_name}"
+        
+        logger.info(f"Attempting to upload file {file_name} to storage path: {storage_path} for candidate {candidate_id}")
+        resume_url = firebase_client.upload_file(file_content, storage_path, content_type)
 
-            download_url = firebase_client.upload_file(file_content, storage_path, content_type)
-            if not download_url:
-                logger.error(f"[{candidate_id}] Failed to upload resume for candidate")
-                return {"error": "File upload to storage failed", "fileName": file_name}
+        if not resume_url:
+            error_msg = f"Failed to upload resume to Firebase Storage for candidate {candidate_id}, file {file_name}"
+            logger.error(error_msg)
+            return {"error": error_msg, "fileName": file_name, "candidateId": None}
+        logger.info(f"File {file_name} uploaded successfully to {resume_url} for candidate {candidate_id}")
+        # --- END ESSENTIAL MODIFICATION ---
 
-            entities_to_store = {}
-            full_text_to_store = ""
-            if isinstance(extracted_data_from_doc_ai, dict):
-                entities_to_store = extracted_data_from_doc_ai.get("entities", {})
-                full_text_to_store = extracted_data_from_doc_ai.get("full_text", "")
-                if "error" in extracted_data_from_doc_ai:
-                    logger.error(
-                        f"[{candidate_id}] Error in provided extracted_data_from_doc_ai for {file_name}: {extracted_data_from_doc_ai['error']}")
-                    entities_to_store["document_processing_error"] = extracted_data_from_doc_ai['error']
-            else:
-                logger.error(
-                    f"[{candidate_id}] Provided extracted_data_from_doc_ai for {file_name} is not a dict: {type(extracted_data_from_doc_ai)}. Storing empty entities.")
-                entities_to_store["document_processing_error"] = "Malformed DocumentAI data received."
+        # Ensure authenticityAnalysis and crossReferencingAnalysis are mapped correctly
+        candidate_data = {
+            "candidateId": candidate_id,
+            "jobId": job_id,
+            "originalFileName": file_name, # Use 'originalFileName' for consistency
+            "resumeUrl": resume_url,     # <<< ADDED
+            "storagePath": storage_path, # <<< ADDED
+            "createdAt": datetime.datetime.now(datetime.timezone.utc).isoformat(), # Add creation timestamp
+            "status": "NEW", # Initial status
 
-            try:
-                tz = timezone(user_time_zone if user_time_zone else "UTC")
-            except UnknownTimeZoneError:
-                logger.warning(
-                    f"[{candidate_id}] Unknown timezone '{user_time_zone}' for {file_name}, defaulting to UTC.")
-                tz = timezone("UTC")
-            current_time = datetime.now(tz).isoformat()
+            "authenticityAnalysis": authenticity_analysis_result.model_dump(exclude_none=True) if authenticity_analysis_result else None,
+            "crossReferencingAnalysis": cross_referencing_result.model_dump(exclude_none=True) if cross_referencing_result else None,
+            "finalAssessmentData": final_assessment_data,
+            "externalAIDetectionData": external_ai_detection_data,
+            "userTimeZone": user_time_zone,
+            "extractedDataFromDocAI": extracted_data_from_doc_ai
+        }
 
-            candidate_doc = {
-                'candidateId': candidate_id,
-                'jobId': job_id,
-                'originalFileName': file_name,
-                'extractedText': entities_to_store,
-                'fullTextFromDocAI': full_text_to_store,
-                'resumeUrl': download_url,
-                'storagePath': storage_path,
-                'uploadedAt': current_time,
-                'status': 'new',
-                'authenticityAnalysis': authenticity_analysis_result.dict(
-                    exclude_none=True) if authenticity_analysis_result else None,
-                'crossReferencingAnalysis': cross_referencing_result.dict(
-                    exclude_none=True) if cross_referencing_result else None,
-                'externalAIDetectionResult': external_ai_detection_data,  # ADDED storage of this data
-                'overallAuthenticityScore': final_assessment_data.get(
-                    "final_overall_authenticity_score") if final_assessment_data else None,
-                'spamLikelihoodScore': final_assessment_data.get(
-                    "final_spam_likelihood_score") if final_assessment_data else None,
-                'finalXAISummary': final_assessment_data.get("final_xai_summary") if final_assessment_data else None,
-                'rank_score': None,
-                'reasoning': None,
-                'detailed_profile': None,
-            }
-
-            success = firebase_client.create_document('candidates', candidate_id, candidate_doc)
-            if not success:
-                logger.error(f"[{candidate_id}] Failed to create candidate document in Firestore")
-                return {"error": "Firestore document creation failed", "fileName": file_name}
-
-            logger.info(f"[{candidate_id}] Successfully created candidate from data for file {file_name}")
-            return {
-                'candidateId': candidate_id,
-                'resumeUrl': download_url,
-                'extractedDataFromDocAI': extracted_data_from_doc_ai,
-                'authenticityAnalysis': candidate_doc['authenticityAnalysis'],
-                'crossReferencingAnalysis': candidate_doc['crossReferencingAnalysis'],
-                'externalAIDetectionResult': candidate_doc['externalAIDetectionResult'],  # ADDED to return payload
-                'overallAuthenticityScore': candidate_doc['overallAuthenticityScore'],
-                'spamLikelihoodScore': candidate_doc['spamLikelihoodScore'],
-                'finalXAISummary': candidate_doc['finalXAISummary'],
-            }
-        except Exception as e:
-            logger.error(f"Error creating candidate from data (Unified): {e}", exc_info=True)
-            return {"error": f"Unexpected error in create_candidate_from_data: {str(e)}", "fileName": file_name}
+        # Save candidate data to Firestore
+        # Assuming firebase_client.save_candidate is a wrapper for save_document
+        if firebase_client.save_candidate(candidate_id, candidate_data):
+            logger.info(f"[create_candidate_from_data] Successfully saved candidate data for {candidate_id}")
+            return candidate_data # Return the full data, including the ID and URLs
+        else:
+            error_msg = f"Failed to save candidate {candidate_id} to Firestore."
+            logger.error(error_msg)
+            # Potentially delete the uploaded file if DB save fails to avoid orphaned files
+            # firebase_client.delete_file(storage_path) # Requires a delete_file method in FirebaseClient
+            return {"error": error_msg, "fileName": file_name, "candidateId": candidate_id, "resumeUrl": resume_url}
 
     async def create_candidate_orchestrator(
             self,

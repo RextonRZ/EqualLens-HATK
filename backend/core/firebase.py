@@ -229,7 +229,9 @@ class FirebaseClient:
     
     def generate_counter_id(self, prefix: str) -> str:
         """Generate an ID with format {prefix}-{8_digit_number}"""
+        # Add logging to detect fallback mechanism usage
         if not self.initialized or not self.db:
+            logger.warning("Using fallback mechanism for ID generation due to missing Firestore client.")
             # Fallback to random 8-digit number when db isn't available
             import random
             formatted_number = f"{random.randint(1, 99999999):08d}"
@@ -263,6 +265,22 @@ class FirebaseClient:
             import random
             formatted_number = f"{random.randint(1, 99999999):08d}"
             return f"{prefix}-{formatted_number}"
+    
+    def save_candidate(self, candidate_id: str, candidate_data: Dict[str, Any]) -> bool:
+        """Save candidate data to Firestore."""
+        if not self.initialized or not self.db:
+            logger.error("Firebase client not initialized")
+            return False
+
+        try:
+            collection = "candidates"
+            doc_ref = self.db.collection(collection).document(candidate_id)
+            doc_ref.set(candidate_data)
+            logger.info(f"Candidate {candidate_id} saved in collection {collection}")
+            return True
+        except Exception as e:
+            logger.error(f"Error saving candidate {candidate_id}: {e}")
+            return False
 
 
 # Create a singleton instance

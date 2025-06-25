@@ -880,6 +880,7 @@
 .new-file-scores {
     display: flex;
     gap: 8px;
+    margin-top: 1rem;
     flex-wrap: wrap;
 }
 

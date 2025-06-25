@@ -129,6 +129,8 @@ const UploadCV = () => {
     const [fileFlags, setFileFlags] = useState({}); // { filename: {is_ai_generated, is_irrelevant, ...} }
     const [userConsentedToAIUpload, setUserConsentedToAIUpload] = useState(false);
     const [userConsentedToIrrelevantUpload, setUserConsentedToIrrelevantUpload] = useState(false);
+    const [pendingJobCreationPayloadJson, setPendingJobCreationPayloadJson] = useState(null);
+    const [pendingUserTimeZone, setPendingUserTimeZone] = useState("UTC"); // Default or from API
 
 
     const jobTitleOptions = useMemo(() => ["Software Engineer", "Data Scientist", "Project Manager", "Web Developer", "UI/UX Designer", "Product Manager", "DevOps Engineer", "Systems Analyst", "Frontend Developer", "Backend Developer", "Full Stack Developer", "Machine Learning Engineer", "Business Analyst", "Quality Assurance Engineer"], []);
@@ -274,19 +276,21 @@ const UploadCV = () => {
         setSubmitProgress(0);
     };
 
-    const handleAIContinueAnyways = () => {
-        setShowAIConfirmModal(false);
-        let consentAI = false;
-        let consentIrrelevant = false;
-        flaggedAIData.forEach(file => {
-            if (file.is_ai_generated) consentAI = true;
-            if (file.is_irrelevant) consentIrrelevant = true;
-        });
-        setUserConsentedToAIUpload(consentAI);
-        setUserConsentedToIrrelevantUpload(consentIrrelevant);
-        // Use a timeout to ensure state updates before re-triggering the upload
-        setTimeout(() => handleFinalSubmit(true), 0);
-    };
+    const handleAIContinueAnyways = () => { // For /upload-job
+    setShowAIConfirmModal(false);
+    let consentAI = false;
+    let consentIrrelevant = false;
+    
+    // Determine if consent is now being given for AI or Irrelevant files from the modal
+    flaggedAIData.forEach(file => {
+        if (file.is_ai_generated) consentAI = true;
+        if (file.is_irrelevant) consentIrrelevant = true;
+    });
+
+    setUserConsentedToAIUpload(consentAI);
+    setUserConsentedToIrrelevantUpload(consentIrrelevant);
+    setTimeout(() => handleFinalSubmit(true), 0); // Pass true to indicate forcing for subsequent call
+};
 
     // NEW: Handlers for Duplicate Modal
     const handleCloseDuplicatesModal = (action) => {
@@ -374,36 +378,61 @@ const UploadCV = () => {
             if (progressAnimationRef.current) cancelAnimationFrame(progressAnimationRef.current);
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ detail: "Unknown error from server." }));
+            const errorData = await response.json().catch(() => ({ detail: "Unknown error from server." }));
 
-                if (response.status === 422 && errorData.error_type === "FLAGGED_CONTENT") {
-                    const filesNeedAIConsent = errorData.flagged_files.some(f => f.is_ai_generated && !userConsentedToAIUpload);
-                    const filesNeedIrrelevantConsent = errorData.flagged_files.some(f => f.is_irrelevant && !userConsentedToIrrelevantUpload);
-                    if (filesNeedAIConsent || filesNeedIrrelevantConsent) {
-                        setFlaggedAIData(errorData.flagged_files || []);
-                        setShowAIConfirmModal(true);
-                        setApiStatus("idle");
-                        setSubmitProgress(0);
-                        return;
-                    }
-                }
+            // Check if this is the /upload-job endpoint (API_ENDPOINT)
+            const isNewJobUpload = API_ENDPOINT.endsWith('/upload-job'); // Or some other flag
 
-                if (response.status === 409 && errorData.error_type === "DUPLICATE_FILES_DETECTED") {
-                    const duplicateFileNames = errorData.duplicates.map(d => d.fileName);
-                    const nonDuplicateOriginalFiles = filesToUpload.filter(file => !duplicateFileNames.includes(file.name));
-                    fileDispatch({ type: 'FOUND_DUPLICATES', payload: { duplicates: errorData.duplicates, nonDuplicateFiles: nonDuplicateOriginalFiles } });
+            if (response.status === 422 && errorData.error_type === "FLAGGED_CONTENT_NEW_JOB" && isNewJobUpload) { // Check error_type
+                console.log("Received FLAGGED_CONTENT_NEW_JOB, showing AI modal for new job.");
+                setFlaggedAIData(errorData.flagged_files || []);
+                setPendingJobCreationPayloadJson(errorData.job_creation_payload_json); // <<< STORE THIS
+                setPendingUserTimeZone(errorData.user_time_zone);                     // <<< STORE THIS
+                setShowAIConfirmModal(true);
+                setApiStatus("idle");
+                setSubmitProgress(0);
+                return; // IMPORTANT: Stop processing for initial submission
+            } else if (response.status === 422 && errorData.error_type === "FLAGGED_CONTENT") { // This might be for /upload-more-cv
+                // ... (your existing logic for /upload-more-cv if this function is shared) ...
+                // For now, assuming API_ENDPOINT correctly distinguishes,
+                // or you have separate submit handlers.
+                // The log you showed was for /upload-job, so FLAGGE_CONTENT_NEW_JOB is key.
+                const forceAIFromForm = formData.get("force_upload_ai_flagged") === "true";
+                const forceIrrelevantFromForm = formData.get("force_upload_irrelevant") === "true";
+                const filesNeedAIConsent = errorData.flagged_files.some(f => f.is_ai_generated) && !forceAIFromForm;
+                const filesNeedIrrelevantConsent = errorData.flagged_files.some(f => f.is_irrelevant) && !forceIrrelevantFromForm;
+                
+                if (filesNeedAIConsent || filesNeedIrrelevantConsent) {
+                    setFlaggedAIData(errorData.flagged_files || []);
+                    setShowAIConfirmModal(true);
                     setApiStatus("idle");
                     setSubmitProgress(0);
-                    return;
+                    return; 
                 }
-
-                throw { name: "APIError", status: response.status, data: errorData, message: errorData.message || JSON.stringify(errorData.detail) || `HTTP error ${response.status}` };
             }
 
+                // NOTE: /upload-job does not return DUPLICATE_FILES_DETECTED (409) for a modal.
+                // Duplicates are reported in the 201 response's "duplicates_found" array.
+            throw { name: "APIError", status: response.status, data: errorData, message: errorData.message || JSON.stringify(errorData.detail) || `HTTP error ${response.status}` };
+        }
+
+        // If successful (201 CREATED)
             const responseData = await response.json();
-            if (responseData.candidateIds && responseData.candidateIds.length > 0) {
-                setSubmitProgress(92);
-                await generateAndCheckDetailedProfiles(responseData.candidateIds);
+            setPendingJobCreationPayloadJson(null); // Clear pending job data on successful submission
+            setPendingUserTimeZone("UTC"); 
+
+            // Log duplicates and errors if present in responseData
+            if (responseData.duplicates_found && responseData.duplicates_found.length > 0) {
+                console.warn("Duplicates found during job creation:", responseData.duplicates_found);
+                // You might want to display these to the user in a non-modal way, or just log.
+            }
+            if (responseData.errors && responseData.errors.length > 0) {
+                console.error("Errors during job creation file processing:", responseData.errors);
+            }
+
+            if (responseData.successfulCandidates && responseData.successfulCandidates.length > 0) {
+                setSubmitProgress(92); // Assuming successfulCandidates contains IDs
+                await generateAndCheckDetailedProfiles(responseData.successfulCandidates);
             }
             setSubmitProgress(100);
             setTimeout(() => { setApiStatus("success"); setShowSuccessModal(true); }, 1000);

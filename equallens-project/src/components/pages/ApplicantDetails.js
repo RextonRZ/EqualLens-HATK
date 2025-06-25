@@ -191,6 +191,17 @@ const sortItemsByRelevance = (items, relevanceData) => {
         .sort((a, b) => b.relevance - a.relevance);
 };
 
+const EmptyStateMessage = ({ type, icon }) => (
+    <div className="empty-state-container">
+        <div className="empty-state-content">
+            <div className="empty-state-icon">{icon}</div>
+            <h3 className="empty-state-title">No {type} Information Available</h3>
+            <p className="empty-state-description">
+                This candidate's resume doesn't contain any {type.toLowerCase()} information.
+            </p>
+        </div>
+    </div>
+);
 
 // Render Skills Tab Content with relevance indicators and debugging
 const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkillModal }) => {
@@ -217,6 +228,17 @@ const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkill
     const hasRelevantItems = softSkills.some(s => s.relevant) ||
         technicalSkills.some(s => s.relevant) ||
         languages.some(s => s.relevant);
+
+    const hasNoSkills = softSkills.length === 0 && technicalSkills.length === 0 && languages.length === 0;
+
+    if (hasNoSkills) {
+        return (
+            <EmptyStateMessage 
+                type="Skills" 
+                icon="🔧"
+            />
+        );
+    }
 
     return (
         <div className="applicant-info-container">
@@ -359,6 +381,17 @@ const EducationTabContent = ({ detail }) => {
         relevanceAnalysis.awards || []
     );
 
+    const hasNoEducation = education.length === 0 && certifications.length === 0 && awards.length === 0;
+
+    if (hasNoEducation) {
+        return (
+            <EmptyStateMessage 
+                type="Education" 
+                icon="🎓"
+            />
+        );
+    }
+
     // Check if any education items are relevant
     const hasRelevantItems = education.some(item => item.relevant) ||
         certifications.some(item => item.relevant) ||
@@ -452,6 +485,17 @@ const ExperienceTabContent = ({ detail }) => {
         detail.detailed_profile.co_curricular_activities || [],
         relevanceAnalysis.co_curricular_activities || []
     );
+
+    const hasNoExperience = workExperience.length === 0 && projects.length === 0 && coCurricular.length === 0;
+
+    if (hasNoExperience) {
+        return (
+            <EmptyStateMessage 
+                type="Experience" 
+                icon="💼"
+            />
+        );
+    }
 
     // Check if any experience items are relevant
     const hasRelevantItems = workExperience.some(item => item.relevant) ||

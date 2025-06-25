@@ -2977,3 +2977,44 @@ circle {
         padding: 1rem;
     }
 }
+
+.empty-state-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    padding: 40px 20px;
+}
+
+.empty-state-content {
+    text-align: center;
+    max-width: 400px;
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.7;
+}
+
+.empty-state-title {
+    color: #374151;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    margin-top: 0;
+}
+
+.empty-state-description {
+    color: #6B7280;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.empty-state-container .empty-state-content {
+    background: rgba(249, 250, 251, 0.5);
+    border: 1px dashed #D1D5DB;
+    border-radius: 12px;
+    padding: 32px 24px;
+}

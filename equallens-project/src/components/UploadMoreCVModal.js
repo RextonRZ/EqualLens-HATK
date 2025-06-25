@@ -469,19 +469,25 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
         setShowAIConfirmModal(false);
         let consentAI = false;
         let consentIrrelevant = false;
+
+        // Determine which consents are being given based on what was flagged
         flaggedAIData.forEach(file => {
-            if (file.is_ai_generated) consentAI = true;
-            if (file.is_irrelevant) consentIrrelevant = true;
+            if (file.is_ai_generated) consentAI = true; // If any file was flagged for AI
+            if (file.is_irrelevant) consentIrrelevant = true; // If any file was flagged for irrelevance
         });
 
+        // Update state to remember consent for subsequent calls if needed (e.g., if a duplicate modal follows)
         setUserConsentedToAIUpload(consentAI);
         setUserConsentedToIrrelevantUpload(consentIrrelevant);
 
-        // Call executeUpload with the determined flags.
-        // If there are duplicates, executeUpload will show the duplicate modal and stop.
-        executeUpload(fileState.selectedFiles, {
+        // Re-call executeUpload with the original files and new force flags
+        // The backend will now skip the AI/Irrelevance modal step for these files
+        // and proceed to the duplicate check.
+        executeUpload(fileState.selectedFiles, { // Use original selected files
             forceAi: consentAI,
-            forceIrrelevant: consentIrrelevant
+            forceIrrelevant: consentIrrelevant,
+            isOverwriting: false, // This is not an overwrite action yet
+            selectedFilenamesForAction: null
         });
     };
 
