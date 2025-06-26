@@ -165,12 +165,19 @@ class CandidateService:
             final_resume_changes = None;
             final_match_percentage = 0.0
             db = firestore.Client()
+            
+            logger.info(f"Checking {len(job_candidates)} existing candidates for job {job_id} against new candidate identifiers and content fields.")
 
             for candidate in job_candidates:
                 try:
-                    if not candidate.get('extractedText'): continue
-                    existing_candidate_data = candidate['extractedText']
-                    logger.info(f"Comparing with candidate: {candidate.get('candidateId')}")
+                    existing_candidate_id = candidate.get('candidateId', 'N/A')
+                    logger.info(f"Comparing NEW resume against EXISTING candidate: {existing_candidate_id}")
+                    
+                    existing_candidate_data = candidate.get('extractedText')
+            
+                    if not existing_candidate_data:
+                        logger.warning(f"Existing candidate {candidate.get('candidateId')} has no 'extractedText' field. Skipping.")
+                        continue
 
                     identifier_similarities = {}
                     for field in identifier_fields:
@@ -278,7 +285,7 @@ class CandidateService:
                         temp_data = {"job_id": job_id, "candidate_id": candidate.get("candidateId"),
                                      "match_percentage": round(match_percentage, 2), "duplicate_type": current_type,
                                      "confidence": round(current_confidence, 2),
-                                     "timestamp": datetime.now().isoformat()}
+                                     "timestamp": datetime.datetime.now().isoformat()}
                         db.collection("temp_match_data").document(candidate.get("candidateId")).set(temp_data)
                 except Exception as e:
                     logger.error(f"Error comparing candidate: {e}"); continue
@@ -286,7 +293,7 @@ class CandidateService:
             if final_duplicate_type:
                 overwrite_target = {"candidate_id": best_match_candidate.get("candidateId"),
                                     "extracted_data": extracted_text, "job_id": job_id,
-                                    "timestamp": datetime.now().isoformat()}
+                                    "timestamp": datetime.datetime.now().isoformat()}
                 db.collection("overwrite_targets").document(job_id).set(overwrite_target)
                 return {"is_duplicate": True, "duplicate_type": final_duplicate_type,
                         "confidence": round(highest_confidence_score, 2),
@@ -537,7 +544,7 @@ class CandidateService:
         # --- START MODIFICATION for Solution B: Use overridden ID if provided ---
         if candidate_id_override:
             candidate_id = candidate_id_override
-            logger.info(f"[create_candidate_from_data] Using overridden candidate ID: {candidate_id} for file {file_name}")
+            logger.info(f"[create_candidate_from_data] Using provided candidate ID: {candidate_id} for file {file_name}")
         else:
             candidate_id = firebase_client.generate_counter_id("cand")
             logger.info(f"[create_candidate_from_data] Generated unique candidate ID: {candidate_id} for file {file_name}")
@@ -558,6 +565,9 @@ class CandidateService:
             return {"error": error_msg, "fileName": file_name, "candidateId": None}
         logger.info(f"File {file_name} uploaded successfully to {resume_url} for candidate {candidate_id}")
         # --- END ESSENTIAL MODIFICATION ---
+        
+        entities_to_store = extracted_data_from_doc_ai.get("entities", {})
+        full_text_to_store = extracted_data_from_doc_ai.get("full_text", "")
 
         # Ensure authenticityAnalysis and crossReferencingAnalysis are mapped correctly
         candidate_data = {
@@ -574,14 +584,17 @@ class CandidateService:
             "finalAssessmentData": final_assessment_data,
             "externalAIDetectionData": external_ai_detection_data,
             "userTimeZone": user_time_zone,
-            "extractedDataFromDocAI": extracted_data_from_doc_ai
+            'extractedText': entities_to_store,
+            'fullTextFromDocAI': full_text_to_store
         }
 
         # Save candidate data to Firestore
         # Assuming firebase_client.save_candidate is a wrapper for save_document
         if firebase_client.save_candidate(candidate_id, candidate_data):
             logger.info(f"[create_candidate_from_data] Successfully saved candidate data for {candidate_id}")
-            return candidate_data # Return the full data, including the ID and URLs
+            return_data = candidate_data.copy()
+            return_data["extractedDataFromDocAI"] = extracted_data_from_doc_ai # Add the full DocAI results for profile gen
+            return return_data
         else:
             error_msg = f"Failed to save candidate {candidate_id} to Firestore."
             logger.error(error_msg)

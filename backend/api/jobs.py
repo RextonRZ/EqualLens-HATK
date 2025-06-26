@@ -7,6 +7,7 @@ import asyncio
 from fastapi.encoders import jsonable_encoder
 import uuid
 from datetime import datetime, timezone # Ensure timezone is imported from datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from core.firebase import firebase_client
 
 from models.job import JobCreate, JobResponse, JobUpdate, JobSuggestionContext, JobSuggestionResponse
@@ -400,6 +401,43 @@ async def generate_and_save_profile(candidate_info: Dict[str, Any], gemini_srv: 
     except Exception as e:
         logger.error(f"Error in generate_and_save_profile for candidate {candidate_id}: {e}", exc_info=True)
         return False
+    
+async def _generate_and_save_profile(candidate_id: str, 
+    extracted_data_from_doc_ai: Dict[str, Any], 
+    gemini_srv: GeminiService
+) -> bool:
+    # No longer need to extract from a large dict
+    entities_for_profile_gen = extracted_data_from_doc_ai.get("entities")
+    
+    if not candidate_id: # This check is still good
+        logger.warning("Missing candidateId for profile generation.")
+        return False
+    if not entities_for_profile_gen or not isinstance(entities_for_profile_gen, dict):
+        logger.warning(f"No 'entities' dictionary for candidate {candidate_id}.")
+        return False
+
+    applicant_data_for_gemini = {"candidateId": candidate_id, "extractedText": entities_for_profile_gen}
+    try:
+        logger.info(f"Generating detailed profile for candidate {candidate_id} via jobs.py helper")
+        detailed_profile = await gemini_srv.generate_candidate_profile(applicant_data_for_gemini)
+
+        if not detailed_profile or not isinstance(detailed_profile, dict) or "summary" not in detailed_profile:
+            logger.warning(f"Failed to generate valid detailed profile for {candidate_id}. Profile: {detailed_profile}")
+            return False
+
+        # Use CandidateUpdate model for type safety
+        profile_update_model = CandidateUpdate(detailed_profile=detailed_profile)
+        success = CandidateService.update_candidate(candidate_id, profile_update_model)
+
+        if success:
+            logger.info(f"Successfully generated and saved detailed profile for candidate {candidate_id}")
+            return True
+        else:
+            logger.warning(f"Failed to save detailed profile for candidate {candidate_id}")
+            return False
+    except Exception as e:
+        logger.error(f"Error in generate_and_save_profile for candidate {candidate_id}: {e}", exc_info=True)
+        return False
 
 
 @router.post("/upload-job")
@@ -457,180 +495,213 @@ async def upload_job_and_cvs(
         processed_analysis_results = await asyncio.gather(*file_analysis_tasks)
 
         # --- STAGE 2: Categorize results ---
-        files_payloads_ready_for_creation = []
-        error_files_final = []
-        duplicate_errors_final = []
-        flagged_files_for_ai_modal = []
+        files_ready_for_creation = []
+        error_files = []
+        duplicate_errors = []
+        flagged_files_for_modal = []
 
         for res in processed_analysis_results:
+            # === FIX: Renamed 'status' to 'file_status' to avoid conflict ===
             file_status = res.get("status")
             if file_status == "success_analysis":
-                files_payloads_ready_for_creation.append(res)
+                files_ready_for_creation.append(res)
             elif file_status == "error_analysis":
-                error_files_final.append(res)
+                error_files.append(res)
             elif file_status == "duplicate_detected_error":
-                duplicate_errors_final.append(res)
-            elif file_status == "ai_content_detected":
-                if res.get("ai_detection_payload"):
-                    flagged_files_for_ai_modal.append(res["ai_detection_payload"])
-                else: error_files_final.append({"fileName": res.get("fileName"), "status": "error_analysis", "message": "AI content missing payload."})
-            elif file_status == "irrelevant_content":
-                if res.get("irrelevance_payload"):
-                    flagged_files_for_ai_modal.append(res["irrelevance_payload"])
-                else: error_files_final.append({"fileName": res.get("fileName"), "status": "error_analysis", "message": "Irrelevant content missing payload."})
-            elif file_status == "ai_and_irrelevant_content":
-                combined_payload = {"filename": res["fileName"]}
-                if res.get("ai_detection_payload"): combined_payload.update(res["ai_detection_payload"])
-                if res.get("irrelevance_payload"): combined_payload.update(res["irrelevance_payload"])
-                flagged_files_for_ai_modal.append(combined_payload)
-            else: # Catch any other unexpected status
-                error_files_final.append({"fileName": res.get("fileName"), "status": "error_analysis", "message": f"Unknown file status: {file_status}"})
-
-
+                duplicate_errors.append(res)
+            elif file_status in ["ai_content_detected", "irrelevant_content", "ai_and_irrelevant_content"]:
+                flagged_files_for_modal.append(res)
+            else:
+                error_files.append({"fileName": res.get("fileName"), "status": "error_analysis", "message": f"Unknown file status: {file_status}"})
+                
         # --- STAGE 3: AI/Irrelevance Modal Check ---
-        needs_ai_consent_now = any(f.get("is_ai_generated") for f in flagged_files_for_ai_modal) and not is_forcing_problematic_upload_consent
-        needs_irrelevant_consent_now = any(f.get("is_irrelevant") for f in flagged_files_for_ai_modal) and not is_forcing_irrelevant_upload_consent
+        # If any files were flagged AND the user hasn't already consented via the form, show the modal.
+        if flagged_files_for_modal:
+            logger.info(f"/upload-job: {len(flagged_files_for_modal)} files require confirmation. Job NOT created yet.")
+            
+            # Prepare data for the modal UI
+            modal_display_data = []
+            for payload in flagged_files_for_modal:
+                combined_payload = {"filename": payload["fileName"]}
+                if payload.get("ai_detection_payload"): combined_payload.update(payload["ai_detection_payload"])
+                if payload.get("irrelevance_payload"): combined_payload.update(payload["irrelevance_payload"])
+                modal_display_data.append(combined_payload)
 
-        if flagged_files_for_ai_modal and (needs_ai_consent_now or needs_irrelevant_consent_now):
-            logger.info(f"/upload-job: {len(flagged_files_for_ai_modal)} files require AI/Irrelevance confirmation. Job NOT created yet.")
+            # SOLUTION: Return all the necessary data for the frontend to hold and resubmit.
+            # We exclude the raw bytes from the JSON response, as the file will be re-uploaded.
             return JSONResponse(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, # This will now work
                 content={
                     "message": "Some resumes require review. Job creation is pending your confirmation.",
-                    "error_type": "FLAGGED_CONTENT_NEW_JOB", # Specific for this flow
-                    "flagged_files": jsonable_encoder(flagged_files_for_ai_modal),
-                    "job_creation_payload_json": job_create_payload.model_dump_json(), # Send job data back
-                    "user_time_zone": user_time_zone, # Send back for resubmission
-                    "duplicates_found_count": len(duplicate_errors_final), # Report these
-                    "other_errors_count": len(error_files_final)      # Report these
+                    "error_type": "FLAGGED_CONTENT_NEW_JOB",
+                    "flagged_files_for_modal": jsonable_encoder(modal_display_data),
+                    "job_creation_payload_json": job_create_payload.model_dump_json(),
+                    "user_time_zone": user_time_zone,
+                    "successful_analysis_payloads": jsonable_encoder(files_ready_for_creation, custom_encoder={bytes: lambda b: None}),
+                    "flagged_analysis_payloads": jsonable_encoder(flagged_files_for_modal, custom_encoder={bytes: lambda b: None}),
                 })
 
         # --- STAGE 4: If no AI modal (or consent was given via form), CREATE JOB and then CANDIDATES ---
+        # This path is for when all files are OK, or when the user forced the upload from the start.
+        all_files_to_create = files_ready_for_creation # In this path, flagged_files_for_modal is empty.
+        if not all_files_to_create:
+             return JSONResponse(status_code=400, content={"message": "No valid CVs to process after filtering errors.", "errors": error_files, "duplicates_found": duplicate_errors})
+        
         actual_job_id = JobService.create_job(job_create_payload)
         if not actual_job_id:
-            logger.error("Failed to create job entry in database after all checks passed or were forced for /upload-job.")
             raise HTTPException(status_code=500, detail="Failed to create job entry in database.")
-        logger.info(f"Created actual job {actual_job_id} for /upload-job.")
-
-        successful_candidates_final_data = [] 
         
-        candidate_creation_tasks = []
-        if files_payloads_ready_for_creation: # Check if there are files to process
-            logger.info(f"Preparing to create candidates for {len(files_payloads_ready_for_creation)} files.")
-            
-            # --- START MODIFICATION for Solution B ---
-            # Pre-generate unique IDs sequentially to avoid race conditions with the counter
-            candidate_ids_to_use = []
-            for _ in files_payloads_ready_for_creation:
-                candidate_ids_to_use.append(firebase_client.generate_counter_id("cand"))
-            logger.info(f"Pre-generated candidate IDs: {candidate_ids_to_use}")
-            # --- END MODIFICATION for Solution B ---
-
-            for i, analysis_payload in enumerate(files_payloads_ready_for_creation):
-                pre_generated_candidate_id = candidate_ids_to_use[i]
-
-                # Get the Pydantic model objects directly from the payload
-                auth_model_object = analysis_payload.get("authenticity_analysis_result_obj")
-                cross_ref_model_object = analysis_payload.get("cross_referencing_result_obj")
-                
-                doc_ai_results_for_creation = analysis_payload.get("document_ai_results")
-
-                candidate_creation_tasks.append(
-                    asyncio.to_thread( 
-                        candidate_service_instance.create_candidate_from_data,
-                        job_id=actual_job_id,
-                        candidate_id_override=pre_generated_candidate_id, 
-                        file_content=analysis_payload["file_content_bytes"],
-                        file_name=analysis_payload["fileName"],
-                        content_type=analysis_payload["content_type"],
-                        extracted_data_from_doc_ai=doc_ai_results_for_creation,
-                        # Pass the Pydantic model objects directly
-                        authenticity_analysis_result=auth_model_object,
-                        cross_referencing_result=cross_ref_model_object,
-                        final_assessment_data=analysis_payload["final_assessment_data"],
-                        external_ai_detection_data=analysis_payload["external_ai_detection_data"],
-                        user_time_zone=analysis_payload["user_time_zone"]
-                    )
-                )
+        successful_candidates = []
+        creation_tasks = [
+            _create_candidate_task(
+                job_id=actual_job_id,
+                analysis_payload=payload,
+                user_time_zone=user_time_zone
+            ) for payload in all_files_to_create
+        ]
         
-        if candidate_creation_tasks:
-            created_candidate_results = []
-            try:
-                # Gather results, but allow for individual task failures
-                # The return_exceptions=True flag is key here
-                raw_results = await asyncio.gather(*candidate_creation_tasks, return_exceptions=True)
-                for i, result_or_exc in enumerate(raw_results):
-                    analysis_payload = files_payloads_ready_for_creation[i] # Get corresponding input
-                    if isinstance(result_or_exc, Exception):
-                        logger.error(f"Error creating candidate for file {analysis_payload.get('fileName', 'Unknown')}: {result_or_exc}", exc_info=result_or_exc)
-                        error_files_final.append({
-                            "fileName": analysis_payload.get("fileName", "Unknown"),
-                            "status": "error_creation",
-                            "message": str(result_or_exc)
-                        })
-                    elif result_or_exc and result_or_exc.get("candidateId") and not result_or_exc.get("error"):
-                        successful_candidates_final_data.append(result_or_exc)
-                    elif result_or_exc and result_or_exc.get("error"):
-                        logger.warning(f"Candidate creation returned an error for {analysis_payload.get('fileName', 'Unknown')}: {result_or_exc.get('error')}")
-                        error_files_final.append({
-                            "fileName": analysis_payload.get("fileName", "Unknown"),
-                            "status": "error_creation",
-                            "message": result_or_exc.get("error")
-                        })
-                    else:
-                        logger.error(f"Unknown result type from candidate creation for {analysis_payload.get('fileName', 'Unknown')}: {result_or_exc}")
-                        error_files_final.append({
-                            "fileName": analysis_payload.get("fileName", "Unknown"),
-                            "status": "error_creation",
-                            "message": "Unknown result from candidate creation task."
-                        })
-            except Exception as gather_exc: # Catch potential errors from gather itself if not individual task errors
-                logger.error(f"Critical error during asyncio.gather for candidate creation: {gather_exc}", exc_info=True)
-                # Potentially add a generic error for all pending files if gather itself fails badly
-                for analysis_payload in files_payloads_ready_for_creation: # If some tasks didn't even get to run/return
-                    if not any(e['fileName'] == analysis_payload.get('fileName') for e in error_files_final) and \
-                    not any(s.get('fileName') == analysis_payload.get('fileName') for s in successful_candidates_final_data):
-                        error_files_final.append({
-                            "fileName": analysis_payload.get("fileName", "Unknown"),
-                            "status": "error_creation",
-                            "message": f"Batch processing error: {gather_exc}"
-                        })
-
-        applications_created_info = []
-        if successful_candidates_final_data:
-            applications_created_info = candidate_service_instance.process_applications(
-                actual_job_id, successful_candidates_final_data
-            )
-            profile_tasks = [
-                generate_and_save_profile(cand_info, gemini_service_global_instance)
-                for cand_info in successful_candidates_final_data
-            ]
-            await asyncio.gather(*profile_tasks)
-
-        response_data = {
-            "jobId": actual_job_id,
-            "jobTitle": job_details.get("jobTitle"),
-            "applicationCount": len(applications_created_info),
-            "applications": applications_created_info,
-            "successfulCandidates": [c['candidateId'] for c in successful_candidates_final_data if c.get('candidateId')],
-            "errors": error_files_final, # Combined errors from analysis and creation
-            "duplicates_found": duplicate_errors_final, # These were errors, not from a modal
-        }
-
-        if error_files_final or duplicate_errors_final:
-            response_data["message"] = "Job created, but some CVs had processing errors or were duplicates."
-        else:
-            response_data["message"] = "Job created and CVs processed successfully."
-
-        return JSONResponse(
-            status_code=status.HTTP_201_CREATED,
-            content=jsonable_encoder(response_data)
-        )
+        created_results = await asyncio.gather(*creation_tasks, return_exceptions=True)
+        for i, res in enumerate(created_results):
+            if isinstance(res, Exception) or (isinstance(res, dict) and "error" in res):
+                error_files.append({"fileName": all_files_to_create[i]["fileName"], "message": str(res)})
+            else:
+                successful_candidates.append(res)
+        
+        applications_info = JobService.process_applications(actual_job_id, successful_candidates)
+        profile_tasks = [_generate_and_save_profile(cand, gemini_service_global_instance) for cand in successful_candidates]
+        await asyncio.gather(*profile_tasks)
+        
+        return JSONResponse(status_code=201, content=jsonable_encoder({
+            "jobId": actual_job_id, "jobTitle": job_details.get("jobTitle"),
+            "applicationCount": len(applications_info), "applications": applications_info,
+            "successfulCandidates": [c['candidateId'] for c in successful_candidates],
+            "errors": error_files, "duplicates_found": duplicate_errors
+        }))
 
     except Exception as e:
-        logger.error(f"Error uploading new job: {e}", exc_info=True)
+        logger.error(f"Error in /upload-job: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+    
+def _create_candidate_task(
+    job_id: str,
+    analysis_payload: Dict[str, Any],
+    user_time_zone: str,
+    file_content: Optional[bytes] = None, 
+    candidate_id_override: Optional[str] = None
+):
+    """Helper to create a single, isolated candidate creation task."""
+    
+    # Rehydrate Pydantic models from the payload's dictionary representation
+    auth_obj = AuthenticityAnalysisResult(**analysis_payload.get("authenticity_analysis_result_obj", {})) if analysis_payload.get("authenticity_analysis_result_obj") else None
+    cross_ref_obj = CrossReferencingResult(**analysis_payload.get("cross_referencing_result_obj", {})) if analysis_payload.get("cross_referencing_result_obj") else None
 
+    # Use passed file_content if available, otherwise get from payload (for /upload-job)
+    content_to_use = file_content if file_content is not None else analysis_payload["file_content_bytes"]
+    
+    return asyncio.to_thread(
+        candidate_service_instance.create_candidate_from_data,
+        job_id=job_id,
+        file_content=content_to_use,
+        file_name=analysis_payload["fileName"],
+        content_type=analysis_payload["content_type"],
+        extracted_data_from_doc_ai=analysis_payload["document_ai_results"],
+        authenticity_analysis_result=auth_obj,
+        cross_referencing_result=cross_ref_obj,
+        final_assessment_data=analysis_payload["final_assessment_data"],
+        external_ai_detection_data=analysis_payload["external_ai_detection_data"],
+        user_time_zone=user_time_zone,
+        candidate_id_override=candidate_id_override
+        # IMPORTANT: No candidate_id_override is passed.
+    )
+
+@router.post("/create-job-with-confirmed-cvs")
+async def create_job_with_confirmed_cvs(
+    job_creation_payload_json: str = Form(...),
+    successful_analysis_payloads_json: str = Form(...),
+    flagged_analysis_payloads_json: str = Form(...),
+    user_time_zone: str = Form("UTC"),
+    files: List[UploadFile] = File(...)
+):
+    """
+    Creates a job and candidates from pre-analyzed data after user confirmation.
+    This endpoint does NOT perform any analysis itself.
+    """
+    logger.info("Received request to create job from confirmed (pre-analyzed) CVs.")
+    try:
+        # Step 1: Deserialize all the JSON data sent from the frontend
+        job_create_payload = JobCreate.model_validate_json(job_creation_payload_json)
+        successful_payloads = json.loads(successful_analysis_payloads_json)
+        flagged_payloads = json.loads(flagged_analysis_payloads_json)
+
+        # Create a dictionary to easily find file content by filename
+        uploaded_files_content = {file.filename: await file.read() for file in files}
+
+        # Step 2: Create the job in the database
+        actual_job_id = JobService.create_job(job_create_payload)
+        if not actual_job_id:
+            raise HTTPException(status_code=500, detail="Failed to create job entry in database on confirmed submission.")
+        logger.info(f"Created actual job {actual_job_id} via confirmed upload endpoint.")
+
+        # Step 3: Combine all payloads and prepare for candidate creation
+        all_payloads_for_creation = successful_payloads + flagged_payloads
+        error_files = []
+        
+        # Step A: Sequentially generate all the IDs you need in a single thread.
+        sequentially_generated_ids = []
+        for _ in all_payloads_for_creation:
+            sequentially_generated_ids.append(firebase_client.generate_counter_id("cand"))
+        logger.info(f"Sequentially pre-generated IDs for batch creation: {sequentially_generated_ids}")
+
+        # Step B: Create concurrent tasks, passing in the unique pre-generated ID for each.
+        creation_tasks = []
+        for i, payload in enumerate(all_payloads_for_creation):
+            file_name = payload.get("fileName")
+            file_content_bytes = uploaded_files_content.get(file_name)
+            if not file_content_bytes:
+                logger.error(f"File '{file_name}' was in payload but not found in re-uploaded files.")
+                error_files.append({"fileName": file_name, "message": "File content was missing on re-submission."})
+                continue
+            
+            creation_tasks.append(
+                _create_candidate_task(
+                    job_id=actual_job_id,
+                    analysis_payload=payload,
+                    user_time_zone=user_time_zone,
+                    file_content=file_content_bytes,
+                    candidate_id_override=sequentially_generated_ids[i] # <-- Pass the unique ID
+                )
+            )
+
+        # Step 4: Execute creation and process results (same as the original endpoint's success path)
+        successful_candidates = []
+        created_results = await asyncio.gather(*creation_tasks, return_exceptions=True)
+        for i, res in enumerate(created_results):
+            if isinstance(res, Exception) or (isinstance(res, dict) and "error" in res):
+                error_files.append({"fileName": all_payloads_for_creation[i]["fileName"], "message": str(res)})
+            else:
+                successful_candidates.append(res)
+        
+        applications_info = CandidateService.process_applications(actual_job_id, successful_candidates)
+        profile_tasks = [
+            _generate_and_save_profile(
+                candidate_id=cand.get("candidateId"),
+                extracted_data_from_doc_ai=cand.get("extractedDataFromDocAI"),
+                gemini_srv=gemini_service_global_instance
+            ) for cand in successful_candidates
+        ]
+        await asyncio.gather(*profile_tasks)
+        
+        return JSONResponse(status_code=201, content=jsonable_encoder({
+            "jobId": actual_job_id, "jobTitle": job_create_payload.jobTitle,
+            "applicationCount": len(applications_info), "applications": applications_info,
+            "successfulCandidates": [c['candidateId'] for c in successful_candidates],
+            "errors": error_files,
+            "message": "Job created and all CVs processed successfully after confirmation."
+        }))
+
+    except Exception as e:
+        logger.error(f"Error in /create-job-with-confirmed-cvs: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to process confirmed submission: {str(e)}")
 
 # REPLACED upload_more_cv_for_job with the multi-stage version
 @router.post("/upload-more-cv")
@@ -813,11 +884,20 @@ async def upload_more_cv_for_job(
                     auth_analysis_obj = AuthenticityAnalysisResult(**file_to_process["authenticity_analysis_result"]) if file_to_process.get("authenticity_analysis_result") else None
                     cross_ref_obj = CrossReferencingResult(**file_to_process["cross_referencing_result"]) if file_to_process.get("cross_referencing_result") else None
                     
+                    try:
+                        # Use ZoneInfo to parse the timezone string
+                        tz = ZoneInfo(user_time_zone)
+                        overwrite_at_iso = datetime.now(tz).isoformat()
+                    except (ZoneInfoNotFoundError, TypeError):
+                        # Fallback to UTC if the user's timezone string is invalid
+                        logger.warning(f"Invalid timezone '{user_time_zone}' provided. Falling back to UTC.")
+                        overwrite_at_iso = datetime.now(timezone.utc).isoformat()
+                        
                     update_data = CandidateUpdate(
                         extractedText=file_to_process["document_ai_results"].get("entities", {}),
                         fullTextFromDocAI=file_to_process["document_ai_results"].get("full_text", ""),
                         resumeUrl=new_resume_url, storagePath=new_storage_path, originalFileName=file_to_process["fileName"],
-                        overwriteAt=datetime.now(timezone.utc).isoformat() if not user_time_zone or user_time_zone.upper() == "UTC" else datetime.now(timezone(user_time_zone)).isoformat(), # Corrected timezone
+                        overwriteAt=overwrite_at_iso,
                         authenticityAnalysis=auth_analysis_obj,
                         crossReferencingAnalysis=cross_ref_obj,
                         externalAIDetectionResult=file_to_process.get("external_ai_detection_data"),

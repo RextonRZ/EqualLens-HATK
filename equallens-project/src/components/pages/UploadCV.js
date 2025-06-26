@@ -132,6 +132,12 @@ const UploadCV = () => {
     const [pendingJobCreationPayloadJson, setPendingJobCreationPayloadJson] = useState(null);
     const [pendingUserTimeZone, setPendingUserTimeZone] = useState("UTC"); // Default or from API
 
+    const [pendingAnalysisPayloads, setPendingAnalysisPayloads] = useState({
+        successful: [],
+        flagged: []
+    });
+    const [pendingJobPayload, setPendingJobPayload] = useState(null);
+
 
     const jobTitleOptions = useMemo(() => ["Software Engineer", "Data Scientist", "Project Manager", "Web Developer", "UI/UX Designer", "Product Manager", "DevOps Engineer", "Systems Analyst", "Frontend Developer", "Backend Developer", "Full Stack Developer", "Machine Learning Engineer", "Business Analyst", "Quality Assurance Engineer"], []);
     const departmentOptions = useMemo(() => ["Engineering", "Information Technology", "Marketing", "Finance", "Human Resources", "Sales", "Operations", "Customer Support", "Research & Development", "Legal", "Administration", "Design", "Product Management", "Business Development", "Data Science"], []);
@@ -277,20 +283,77 @@ const UploadCV = () => {
     };
 
     const handleAIContinueAnyways = () => { // For /upload-job
-    setShowAIConfirmModal(false);
-    let consentAI = false;
-    let consentIrrelevant = false;
-    
-    // Determine if consent is now being given for AI or Irrelevant files from the modal
-    flaggedAIData.forEach(file => {
-        if (file.is_ai_generated) consentAI = true;
-        if (file.is_irrelevant) consentIrrelevant = true;
-    });
+        setShowAIConfirmModal(false);
+        let consentAI = false;
+        let consentIrrelevant = false;
 
-    setUserConsentedToAIUpload(consentAI);
-    setUserConsentedToIrrelevantUpload(consentIrrelevant);
-    setTimeout(() => handleFinalSubmit(true), 0); // Pass true to indicate forcing for subsequent call
-};
+        // Determine if consent is now being given for AI or Irrelevant files from the modal
+        flaggedAIData.forEach(file => {
+            if (file.is_ai_generated) consentAI = true;
+            if (file.is_irrelevant) consentIrrelevant = true;
+        });
+
+        setUserConsentedToAIUpload(consentAI);
+        setUserConsentedToIrrelevantUpload(consentIrrelevant);
+        setTimeout(() => handleFinalSubmit(true), 0); // Pass true to indicate forcing for subsequent call
+    };
+
+    const handleConfirmedUpload = async () => {
+        setShowAIConfirmModal(false);
+        setApiStatus("loading");
+        setSubmitProgress(0);
+
+        const formData = new FormData();
+
+        // Append the stored JSON payloads with the CORRECT keys
+        formData.append("job_creation_payload_json", pendingJobPayload);
+        // === FIX: Use the full key name expected by the backend ===
+        formData.append("successful_analysis_payloads_json", JSON.stringify(pendingAnalysisPayloads.successful));
+        formData.append("flagged_analysis_payloads_json", JSON.stringify(pendingAnalysisPayloads.flagged));
+        // ==========================================================
+        formData.append("user_time_zone", pendingUserTimeZone);
+
+        // Re-append the original File objects
+        const allPayloads = [...pendingAnalysisPayloads.successful, ...pendingAnalysisPayloads.flagged];
+        const filesToUpload = fileState.selectedFiles.filter(file =>
+            allPayloads.some(payload => payload.fileName === file.name)
+        );
+
+        filesToUpload.forEach(file => {
+            formData.append("files", file);
+        });
+
+        try {
+            const response = await fetch(`${API_URL}/api/jobs/create-job-with-confirmed-cvs`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                // === FIX: Improved error handling to show detailed messages ===
+                const errorData = await response.json().catch(() => ({ detail: "Confirmed upload failed with a non-JSON error." }));
+                let errorMessage = errorData.detail;
+
+                // FastAPI validation errors are often in a nested 'detail' array
+                if (Array.isArray(errorData.detail)) {
+                    errorMessage = errorData.detail.map(err => `${err.loc.join(' -> ')}: ${err.msg}`).join('; ');
+                }
+                throw new Error(errorMessage || 'An unknown error occurred during the confirmed upload.');
+                // ================================================================
+            }
+
+            const responseData = await response.json();
+            // Handle success (your existing logic is fine here)
+            setSubmitProgress(100);
+            setTimeout(() => { setApiStatus("success"); setShowSuccessModal(true); }, 1000);
+
+        } catch (error) {
+            // The improved error from the 'throw' above will now be displayed
+            setApiStatus("error");
+            setErrorMessage(error.message);
+            setShowErrorModal(true);
+        }
+    };
 
     // NEW: Handlers for Duplicate Modal
     const handleCloseDuplicatesModal = (action) => {
@@ -378,221 +441,202 @@ const UploadCV = () => {
             if (progressAnimationRef.current) cancelAnimationFrame(progressAnimationRef.current);
 
             if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ detail: "Unknown error from server." }));
+                const errorData = await response.json().catch(() => ({}));
 
-            // Check if this is the /upload-job endpoint (API_ENDPOINT)
-            const isNewJobUpload = API_ENDPOINT.endsWith('/upload-job'); // Or some other flag
+                if (response.status === 422 && errorData.error_type === "FLAGGED_CONTENT_NEW_JOB") {
+                    console.log("Flagged content detected. Preparing for user confirmation modal.");
 
-            if (response.status === 422 && errorData.error_type === "FLAGGED_CONTENT_NEW_JOB" && isNewJobUpload) { // Check error_type
-                console.log("Received FLAGGED_CONTENT_NEW_JOB, showing AI modal for new job.");
-                setFlaggedAIData(errorData.flagged_files || []);
-                setPendingJobCreationPayloadJson(errorData.job_creation_payload_json); // <<< STORE THIS
-                setPendingUserTimeZone(errorData.user_time_zone);                     // <<< STORE THIS
-                setShowAIConfirmModal(true);
-                setApiStatus("idle");
-                setSubmitProgress(0);
-                return; // IMPORTANT: Stop processing for initial submission
-            } else if (response.status === 422 && errorData.error_type === "FLAGGED_CONTENT") { // This might be for /upload-more-cv
-                // ... (your existing logic for /upload-more-cv if this function is shared) ...
-                // For now, assuming API_ENDPOINT correctly distinguishes,
-                // or you have separate submit handlers.
-                // The log you showed was for /upload-job, so FLAGGE_CONTENT_NEW_JOB is key.
-                const forceAIFromForm = formData.get("force_upload_ai_flagged") === "true";
-                const forceIrrelevantFromForm = formData.get("force_upload_irrelevant") === "true";
-                const filesNeedAIConsent = errorData.flagged_files.some(f => f.is_ai_generated) && !forceAIFromForm;
-                const filesNeedIrrelevantConsent = errorData.flagged_files.some(f => f.is_irrelevant) && !forceIrrelevantFromForm;
-                
-                if (filesNeedAIConsent || filesNeedIrrelevantConsent) {
-                    setFlaggedAIData(errorData.flagged_files || []);
+                    // Set ALL the state needed for the next step.
+                    setFlaggedAIData(errorData.flagged_files_for_modal || []);
+                    setPendingAnalysisPayloads({
+                        successful: errorData.successful_analysis_payloads || [],
+                        flagged: errorData.flagged_analysis_payloads || []
+                    });
+                    setPendingJobPayload(errorData.job_creation_payload_json);
+                    setPendingUserTimeZone(errorData.user_time_zone || "UTC");
+
+                    // Show the modal and stop everything else.
                     setShowAIConfirmModal(true);
                     setApiStatus("idle");
                     setSubmitProgress(0);
-                    return; 
-                }
-            }
 
-                // NOTE: /upload-job does not return DUPLICATE_FILES_DETECTED (409) for a modal.
-                // Duplicates are reported in the 201 response's "duplicates_found" array.
+                    // Use 'return' to exit the function gracefully. DO NOT THROW.
+                    return;
+                }
+             // For all OTHER errors, we throw so they can be caught by the catch block.
             throw { name: "APIError", status: response.status, data: errorData, message: errorData.message || JSON.stringify(errorData.detail) || `HTTP error ${response.status}` };
         }
 
-        // If successful (201 CREATED)
-            const responseData = await response.json();
-            setPendingJobCreationPayloadJson(null); // Clear pending job data on successful submission
-            setPendingUserTimeZone("UTC"); 
+        // If successful (201 Created)
+        const responseData = await response.json();
+        setPendingJobPayload(null); // Clear pending data
+        setPendingAnalysisPayloads({ successful: [], flagged: [] });
 
-            // Log duplicates and errors if present in responseData
-            if (responseData.duplicates_found && responseData.duplicates_found.length > 0) {
-                console.warn("Duplicates found during job creation:", responseData.duplicates_found);
-                // You might want to display these to the user in a non-modal way, or just log.
-            }
-            if (responseData.errors && responseData.errors.length > 0) {
-                console.error("Errors during job creation file processing:", responseData.errors);
-            }
-
-            if (responseData.successfulCandidates && responseData.successfulCandidates.length > 0) {
-                setSubmitProgress(92); // Assuming successfulCandidates contains IDs
-                await generateAndCheckDetailedProfiles(responseData.successfulCandidates);
-            }
-            setSubmitProgress(100);
-            setTimeout(() => { setApiStatus("success"); setShowSuccessModal(true); }, 1000);
-
-        } catch (error) {
-            if (progressAnimationRef.current) cancelAnimationFrame(progressAnimationRef.current);
-            console.error("Error submitting job:", error);
-            let displayErrorMessage = "An error occurred. Please try again.";
-            if (error.data?.message) displayErrorMessage = error.data.message;
-            else if (error.message && !error.message.toLowerCase().includes("http error")) displayErrorMessage = error.message;
-            else if (error.status) displayErrorMessage = `HTTP error ${error.status}`;
-            setApiStatus("error");
-            setErrorMessage(displayErrorMessage);
-            setShowErrorModal(true);
+        if (responseData.successfulCandidates && responseData.successfulCandidates.length > 0) {
+            setSubmitProgress(92);
+            await generateAndCheckDetailedProfiles(responseData.successfulCandidates);
         }
-    };
+        setSubmitProgress(100);
+        setTimeout(() => { setApiStatus("success"); setShowSuccessModal(true); }, 1000);
+
+    } catch (error) {
+        // This will now only catch REAL submission errors.
+        if (progressAnimationRef.current) cancelAnimationFrame(progressAnimationRef.current);
+        console.error("Error submitting job:", error);
+        let displayErrorMessage = "An error occurred. Please try again.";
+        if (error.data?.message) displayErrorMessage = error.data.message;
+        else if (error.message && !error.message.toLowerCase().includes("http error")) displayErrorMessage = error.message;
+        else if (error.status) displayErrorMessage = `HTTP error ${error.status}`;
+        
+        setApiStatus("error");
+        setErrorMessage(displayErrorMessage);
+        setShowErrorModal(true);
+    }
+};
 
 
-    const handleCGPAInputChange = (e) => { if (!isCgpaApplicable) return; const inputValue = e.target.value; if (inputValue === "") { setCgpaInputValue(""); setCgpaError(true); return; } if (!/^\d*\.?\d*$/.test(inputValue)) { return; } setCgpaInputValue(inputValue); const numValue = parseFloat(inputValue); if (!isNaN(numValue) && numValue >= 0 && numValue <= 4) { setMinimumCGPA(numValue); setCgpaError(false); updateSliderPercentage(numValue); } else { setCgpaError(true); } };
-    const handleCGPABlur = () => { if (cgpaError || cgpaInputValue === "") { setCgpaInputValue(minimumCGPA.toFixed(2)); setCgpaError(false); } else { setCgpaInputValue(parseFloat(cgpaInputValue).toFixed(2)); } };
-    const handleCGPASliderChange = (e) => { if (!isCgpaApplicable) return; const newValue = parseFloat(e.target.value); setMinimumCGPA(newValue); setCgpaInputValue(newValue.toFixed(2)); setCgpaError(false); updateSliderPercentage(newValue); };
-    const handleJobDescriptionChange = (e) => setJobDescription(e.target.value);
-    const handleRequirementsChange = (e) => setRequirements(e.target.value);
-    const updateSliderPercentage = (value) => { if (!isCgpaApplicable) { const sliderElement = document.getElementById('cgpa'); if (sliderElement) { sliderElement.style.setProperty('--slider-percentage', '0%'); } return; } const percentage = (value / 4) * 100; const sliderElement = document.getElementById('cgpa'); if (sliderElement) { sliderElement.style.setProperty('--slider-percentage', `${percentage}%`); } };
-    useEffect(() => { if (isCgpaApplicable) { updateSliderPercentage(minimumCGPA); } else { const sliderElement = document.getElementById('cgpa'); if (sliderElement) { sliderElement.style.setProperty('--slider-percentage', '0%'); } } }, [minimumCGPA, isCgpaApplicable]);
-    const handleJobDescriptionInput = (e) => { const target = e.target.closest('.bias-highlighting-input'); if (target) { target.style.height = "auto"; target.style.height = `${target.scrollHeight}px`; } };
-    const handleCreateMoreJob = () => { setCurrentStep("jobDetails"); setJobTitle(""); setJobDescription(""); setRequirements(""); setDepartments([]); setMinimumCGPA(2.50); setCgpaInputValue("2.50"); setIsCgpaApplicable(true); setSkills([]); setJobData(null); fileDispatch({ type: 'RESET' }); setApiStatus("idle"); setSubmitProgress(0); setShowSuccessModal(false); setFileFlags({}); setUserConsentedToAIUpload(false); setUserConsentedToIrrelevantUpload(false); };
-    const toggleCgpaApplicability = () => { if (isCgpaApplicable) { setIsCgpaApplicable(false); setCgpaInputValue("N/A"); setMinimumCGPA(null); setTimeout(() => { const sliderElement = document.getElementById('cgpa'); if (sliderElement) { sliderElement.style.setProperty('--slider-percentage', '0%'); } }, 0); } else { setIsCgpaApplicable(true); setMinimumCGPA(2.50); setCgpaInputValue("2.50"); setTimeout(() => { const sliderElement = document.getElementById('cgpa'); if (sliderElement) { const percentage = (2.50 / 4) * 100; sliderElement.style.setProperty('--slider-percentage', `${percentage}%`); } }, 0); } };
-    useEffect(() => { if (Object.keys(biasResults).length > 0 || Object.values(biasedTerms).some(terms => terms.length > 0)) { console.log("Bias detected, updating highlights..."); } else { console.log("No bias detected, clearing highlights..."); } }, [biasResults, biasedTerms]);
+const handleCGPAInputChange = (e) => { if (!isCgpaApplicable) return; const inputValue = e.target.value; if (inputValue === "") { setCgpaInputValue(""); setCgpaError(true); return; } if (!/^\d*\.?\d*$/.test(inputValue)) { return; } setCgpaInputValue(inputValue); const numValue = parseFloat(inputValue); if (!isNaN(numValue) && numValue >= 0 && numValue <= 4) { setMinimumCGPA(numValue); setCgpaError(false); updateSliderPercentage(numValue); } else { setCgpaError(true); } };
+const handleCGPABlur = () => { if (cgpaError || cgpaInputValue === "") { setCgpaInputValue(minimumCGPA.toFixed(2)); setCgpaError(false); } else { setCgpaInputValue(parseFloat(cgpaInputValue).toFixed(2)); } };
+const handleCGPASliderChange = (e) => { if (!isCgpaApplicable) return; const newValue = parseFloat(e.target.value); setMinimumCGPA(newValue); setCgpaInputValue(newValue.toFixed(2)); setCgpaError(false); updateSliderPercentage(newValue); };
+const handleJobDescriptionChange = (e) => setJobDescription(e.target.value);
+const handleRequirementsChange = (e) => setRequirements(e.target.value);
+const updateSliderPercentage = (value) => { if (!isCgpaApplicable) { const sliderElement = document.getElementById('cgpa'); if (sliderElement) { sliderElement.style.setProperty('--slider-percentage', '0%'); } return; } const percentage = (value / 4) * 100; const sliderElement = document.getElementById('cgpa'); if (sliderElement) { sliderElement.style.setProperty('--slider-percentage', `${percentage}%`); } };
+useEffect(() => { if (isCgpaApplicable) { updateSliderPercentage(minimumCGPA); } else { const sliderElement = document.getElementById('cgpa'); if (sliderElement) { sliderElement.style.setProperty('--slider-percentage', '0%'); } } }, [minimumCGPA, isCgpaApplicable]);
+const handleJobDescriptionInput = (e) => { const target = e.target.closest('.bias-highlighting-input'); if (target) { target.style.height = "auto"; target.style.height = `${target.scrollHeight}px`; } };
+const handleCreateMoreJob = () => { setCurrentStep("jobDetails"); setJobTitle(""); setJobDescription(""); setRequirements(""); setDepartments([]); setMinimumCGPA(2.50); setCgpaInputValue("2.50"); setIsCgpaApplicable(true); setSkills([]); setJobData(null); fileDispatch({ type: 'RESET' }); setApiStatus("idle"); setSubmitProgress(0); setShowSuccessModal(false); setFileFlags({}); setUserConsentedToAIUpload(false); setUserConsentedToIrrelevantUpload(false); };
+const toggleCgpaApplicability = () => { if (isCgpaApplicable) { setIsCgpaApplicable(false); setCgpaInputValue("N/A"); setMinimumCGPA(null); setTimeout(() => { const sliderElement = document.getElementById('cgpa'); if (sliderElement) { sliderElement.style.setProperty('--slider-percentage', '0%'); } }, 0); } else { setIsCgpaApplicable(true); setMinimumCGPA(2.50); setCgpaInputValue("2.50"); setTimeout(() => { const sliderElement = document.getElementById('cgpa'); if (sliderElement) { const percentage = (2.50 / 4) * 100; sliderElement.style.setProperty('--slider-percentage', `${percentage}%`); } }, 0); } };
+useEffect(() => { if (Object.keys(biasResults).length > 0 || Object.values(biasedTerms).some(terms => terms.length > 0)) { console.log("Bias detected, updating highlights..."); } else { console.log("No bias detected, clearing highlights..."); } }, [biasResults, biasedTerms]);
 
-    return (
-        <div className="app-container">
-            {getFullPageOverlay()}
+return (
+    <div className="app-container">
+        {getFullPageOverlay()}
 
-            {apiStatus === "loading" && (
-                <div className="api-loading-overlay">
-                    <div className="api-loading-content">
-                        <LoadingAnimation />
-                        <p>Submitting job and uploading files...</p>
-                        <div className="progress-bar-container">
-                            <div className="progress-bar" style={{ width: `${submitProgress}%` }}></div>
-                            <span className="progress-text">{Math.round(submitProgress)}%</span>
-                        </div>
+        {apiStatus === "loading" && (
+            <div className="api-loading-overlay">
+                <div className="api-loading-content">
+                    <LoadingAnimation />
+                    <p>Submitting job and uploading files...</p>
+                    <div className="progress-bar-container">
+                        <div className="progress-bar" style={{ width: `${submitProgress}%` }}></div>
+                        <span className="progress-text">{Math.round(submitProgress)}%</span>
                     </div>
                 </div>
-            )}
+            </div>
+        )}
 
-            {showSuccessModal && <SuccessModal />}
-            {showErrorModal && <ErrorModal />}
-            {showBiasModal && <BiasDetectionModal isOpen={showBiasModal} onClose={() => setShowBiasModal(false)} biasResults={biasResults} biasedTerms={biasedTerms} />}
-            <JobSuggestionModal isOpen={showSuggestionModal} onClose={handleCloseSuggestionModal} onSubmit={handleGenerateSuggestions} jobTitle={jobTitle} isLoading={isGeneratingSuggestions} />
+        {showSuccessModal && <SuccessModal />}
+        {showErrorModal && <ErrorModal />}
+        {showBiasModal && <BiasDetectionModal isOpen={showBiasModal} onClose={() => setShowBiasModal(false)} biasResults={biasResults} biasedTerms={biasedTerms} />}
+        <JobSuggestionModal isOpen={showSuggestionModal} onClose={handleCloseSuggestionModal} onSubmit={handleGenerateSuggestions} jobTitle={jobTitle} isLoading={isGeneratingSuggestions} />
 
-            {/* MODIFIED: Render modals conditionally */}
-            <AIConfirmationModal
-                isOpen={showAIConfirmModal}
-                onReview={handleAIReviewCVs}
-                onContinue={handleAIContinueAnyways}
-                flaggedFiles={flaggedAIData}
-                isLoading={apiStatus === "loading"}
-                onClose={() => { setShowAIConfirmModal(false); handleAIReviewCVs(); }}
-            />
-            <DuplicateFilesModal
-                isOpen={fileState.showDuplicatesModal}
-                duplicates={fileState.duplicateFiles}
-                onClose={(action) => handleCloseDuplicatesModal(action)}
-                onProceed={() => { /* "Proceed" is disabled for new job creation flow */ }}
-                onUploadNonDuplicates={handleUploadNonDuplicatesFromModal}
-                nonDuplicateCount={fileState.nonDuplicateFiles ? fileState.nonDuplicateFiles.length : 0}
-            />
+        {/* MODIFIED: Render modals conditionally */}
+        <AIConfirmationModal
+            isOpen={showAIConfirmModal}
+            onReview={handleAIReviewCVs}
+            onContinue={handleConfirmedUpload}
+            flaggedFiles={flaggedAIData}
+            isLoading={apiStatus === "loading"}
+            onClose={() => { setShowAIConfirmModal(false); handleAIReviewCVs(); }}
+        />
+        <DuplicateFilesModal
+            isOpen={fileState.showDuplicatesModal}
+            duplicates={fileState.duplicateFiles}
+            onClose={(action) => handleCloseDuplicatesModal(action)}
+            onProceed={() => { /* "Proceed" is disabled for new job creation flow */ }}
+            onUploadNonDuplicates={handleUploadNonDuplicatesFromModal}
+            nonDuplicateCount={fileState.nonDuplicateFiles ? fileState.nonDuplicateFiles.length : 0}
+        />
 
 
-            {currentStep === "jobDetails" ? (
-                <div className="job-container">
-                    <h3 className="job-title-header">Create New Job</h3>
-                    <form onSubmit={handleSubmit}>
-                        <div className="form-group">
-                            <label htmlFor="jobTitle" className="form-label">Job Title <span className="required">*</span></label>
-                            <div className="suggestion-container">
-                                <BiasHighlightingInput id="jobTitle" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="Enter job title" biasedTerms={biasedTerms.jobTitle || []} multiline={false} aria-required="true" />
-                                {showJobTitleSuggestions && (<ul className="suggestions-list">{jobTitleSuggestions.map((suggestion, index) => (<li key={index} onMouseDown={(e) => { e.preventDefault(); handleJobTitleSelect(suggestion); }}>{suggestion}</li>))}</ul>)}
-                            </div>
-                            <button type="button" onClick={handleOpenSuggestionModal} className="suggest-button" disabled={isGeneratingSuggestions} title="Generate Description & Requirements suggestions based on Job Title">
-                                {isGeneratingSuggestions ? 'Generating...' : 'Suggest Job Details (AI)'}
-                                <svg className="suggest-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v2.5h2.5a.75.75 0 010 1.5h-2.5v2.5a.75.75 0 01-1.5 0v-2.5h-2.5a.75.75 0 010-1.5h2.5v-2.5A.75.75 0 0110 3zM8.707 13.707a1 1 0 11-1.414-1.414L8.586 11H7a1 1 0 110-2h1.586l-1.293-1.293a1 1 0 111.414-1.414L11.414 10l-2.707 2.707zM10 18a8 8 0 100-16 8 8 0 000 16z" clipRule="evenodd" /></svg>
-                            </button>
+        {currentStep === "jobDetails" ? (
+            <div className="job-container">
+                <h3 className="job-title-header">Create New Job</h3>
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label htmlFor="jobTitle" className="form-label">Job Title <span className="required">*</span></label>
+                        <div className="suggestion-container">
+                            <BiasHighlightingInput id="jobTitle" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="Enter job title" biasedTerms={biasedTerms.jobTitle || []} multiline={false} aria-required="true" />
+                            {showJobTitleSuggestions && (<ul className="suggestions-list">{jobTitleSuggestions.map((suggestion, index) => (<li key={index} onMouseDown={(e) => { e.preventDefault(); handleJobTitleSelect(suggestion); }}>{suggestion}</li>))}</ul>)}
                         </div>
-                        {generatedSuggestions && (<div className={`suggestion-display ${showGeneratedSuggestions ? 'expanded' : 'collapsed'}`}><button type="button" onClick={toggleSuggestionDisplay} className="suggestion-toggle-button">{showGeneratedSuggestions ? 'Hide' : 'Show'} AI Suggestions<svg className={`toggle-icon ${showGeneratedSuggestions ? 'up' : 'down'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg></button><div className="suggestion-content"><div className="suggestion-section"><h4>Suggested Description:</h4><pre className="suggestion-text">{generatedSuggestions.description}</pre><button type="button" onClick={() => handleApplySuggestion('description')} className="apply-suggestion-button">Apply Description</button></div><div className="suggestion-section"><h4>Suggested Requirements:</h4><pre className="suggestion-text">{generatedSuggestions.requirements}</pre><button type="button" onClick={() => handleApplySuggestion('requirements')} className="apply-suggestion-button">Apply Requirements</button></div><button type="button" onClick={() => handleApplySuggestion('both')} className="apply-suggestion-button both">Apply Both</button></div></div>)}
-                        <div className="form-group"><label htmlFor="jobDescription" className="form-label">Description</label><div className="bias-highlighting-input-container"><BiasHighlightingInput id="jobDescription" value={jobDescription} onChange={handleJobDescriptionChange} onInput={handleJobDescriptionInput} placeholder="Enter job description (or use AI Suggest)" biasedTerms={biasedTerms.jobDescription || []} multiline={true} /></div></div>
-                        <div className="form-group"><label htmlFor="requirements" className="form-label">Requirements / Qualifications</label><div className="bias-highlighting-input-container"><BiasHighlightingInput id="requirements" value={requirements} onChange={handleRequirementsChange} onInput={handleRequirementsInput} placeholder="Enter job requirements and qualifications (or use AI Suggest)" biasedTerms={biasedTerms.requirements || []} multiline={true} /></div></div>
-                        <div className="form-group"><label htmlFor="department" className="form-label">Department</label><div className="suggestion-container"><div className="input-group"><input type="text" id="department" className="form-input" value={departmentInput} onChange={(e) => setDepartmentInput(e.target.value)} onKeyPress={handleDepartmentKeyPress} placeholder="Enter a department" /><button type="button" className="add-button" onClick={handleAddDepartment} disabled={!departmentInput.trim()}>Add</button></div>{showDepartmentSuggestions && (<ul className="suggestions-list">{departmentSuggestions.map((suggestion, index) => (<li key={index} onMouseDown={(e) => { e.preventDefault(); handleDepartmentSelect(suggestion); }}>{suggestion}</li>))}</ul>)}</div>{departments.length > 0 && (<div className="tags-container">{departments.map((department, index) => (<div key={index} className="tag">{department}<button type="button" className="tag-remove" onClick={() => removeDepartment(department)}>×</button></div>))}</div>)}{departments.length > 0 && (biasedTerms.departments || []).length > 0 && (<div className="bias-feedback"><p>Potentially biased terms:</p><ul>{(biasedTerms.departments || []).map((term, index) => (<li key={index}>{term}</li>))}</ul></div>)}</div>
-                        <div className="form-group"><label htmlFor="cgpa" className="form-label">Minimum CGPA</label><div className="cgpa-container"><input type="range" id="cgpa" min="0" max="4" step="0.01" value={isCgpaApplicable ? minimumCGPA : 0} onChange={handleCGPASliderChange} className={`cgpa-slider ${!isCgpaApplicable ? 'disabled' : ''}`} aria-valuemin="0" aria-valuemax="4" aria-valuenow={isCgpaApplicable ? minimumCGPA : 0} aria-labelledby="cgpa-value" disabled={!isCgpaApplicable} /><input id="cgpa-value" type="text" className={`cgpa-value ${cgpaError ? 'error' : ''} ${!isCgpaApplicable ? 'disabled' : ''}`} value={cgpaInputValue} onChange={handleCGPAInputChange} onBlur={handleCGPABlur} aria-label="CGPA value" aria-invalid={cgpaError} disabled={!isCgpaApplicable} /><button type="button" className={`na-button ${!isCgpaApplicable ? 'active' : ''}`} onClick={toggleCgpaApplicability}>Not Applicable</button></div>{cgpaError && (<p className="error-message" role="alert">Please enter a valid CGPA between 0 and 4</p>)}</div>
-                        <div className="form-group"><label htmlFor="skills" className="form-label">Required Skills <span className="required">*</span></label><div className="suggestion-container"><div className="input-group"><input type="text" id="skills" className="form-input" value={skillInput} onChange={(e) => setSkillInput(e.target.value)} onKeyPress={handleSkillKeyPress} placeholder="Enter a skill" /><button type="button" className="add-button" onClick={handleAddSkill} disabled={!skillInput.trim()}>Add</button></div>{showSkillSuggestions && (<ul className="suggestions-list">{skillSuggestions.map((suggestion, index) => (<li key={index} onClick={() => handleSkillSelect(suggestion)}>{suggestion}</li>))}</ul>)}</div>{skills.length > 0 && (<div className="tags-container">{skills.map((skill, index) => (<div key={`uploadcv-skill-${index}-${skill}`} className="tag"><SkillTagWithLogo skillName={skill} unstyled={true}><button type="button" className="tag-remove" onClick={() => removeSkill(skill)} aria-label={`Remove skill ${skill}`}>×</button></SkillTagWithLogo></div>))}</div>)}{skills.length > 0 && (biasedTerms.requiredSkills || []).length > 0 && (<div className="bias-feedback"><p>Potentially biased terms in Required Skills:</p><ul>{(biasedTerms.requiredSkills || []).map((term, index) => (<li key={index}>{term}</li>))}</ul></div>)}</div>
-                        <div className="form-actions"><button type="submit" className="submit-button" disabled={isCheckingBias}>{isCheckingBias ? 'Checking for Bias...' : 'Next'}</button></div>
-                    </form>
+                        <button type="button" onClick={handleOpenSuggestionModal} className="suggest-button" disabled={isGeneratingSuggestions} title="Generate Description & Requirements suggestions based on Job Title">
+                            {isGeneratingSuggestions ? 'Generating...' : 'Suggest Job Details (AI)'}
+                            <svg className="suggest-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v2.5h2.5a.75.75 0 010 1.5h-2.5v2.5a.75.75 0 01-1.5 0v-2.5h-2.5a.75.75 0 010-1.5h2.5v-2.5A.75.75 0 0110 3zM8.707 13.707a1 1 0 11-1.414-1.414L8.586 11H7a1 1 0 110-2h1.586l-1.293-1.293a1 1 0 111.414-1.414L11.414 10l-2.707 2.707zM10 18a8 8 0 100-16 8 8 0 000 16z" clipRule="evenodd" /></svg>
+                        </button>
+                    </div>
+                    {generatedSuggestions && (<div className={`suggestion-display ${showGeneratedSuggestions ? 'expanded' : 'collapsed'}`}><button type="button" onClick={toggleSuggestionDisplay} className="suggestion-toggle-button">{showGeneratedSuggestions ? 'Hide' : 'Show'} AI Suggestions<svg className={`toggle-icon ${showGeneratedSuggestions ? 'up' : 'down'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg></button><div className="suggestion-content"><div className="suggestion-section"><h4>Suggested Description:</h4><pre className="suggestion-text">{generatedSuggestions.description}</pre><button type="button" onClick={() => handleApplySuggestion('description')} className="apply-suggestion-button">Apply Description</button></div><div className="suggestion-section"><h4>Suggested Requirements:</h4><pre className="suggestion-text">{generatedSuggestions.requirements}</pre><button type="button" onClick={() => handleApplySuggestion('requirements')} className="apply-suggestion-button">Apply Requirements</button></div><button type="button" onClick={() => handleApplySuggestion('both')} className="apply-suggestion-button both">Apply Both</button></div></div>)}
+                    <div className="form-group"><label htmlFor="jobDescription" className="form-label">Description</label><div className="bias-highlighting-input-container"><BiasHighlightingInput id="jobDescription" value={jobDescription} onChange={handleJobDescriptionChange} onInput={handleJobDescriptionInput} placeholder="Enter job description (or use AI Suggest)" biasedTerms={biasedTerms.jobDescription || []} multiline={true} /></div></div>
+                    <div className="form-group"><label htmlFor="requirements" className="form-label">Requirements / Qualifications</label><div className="bias-highlighting-input-container"><BiasHighlightingInput id="requirements" value={requirements} onChange={handleRequirementsChange} onInput={handleRequirementsInput} placeholder="Enter job requirements and qualifications (or use AI Suggest)" biasedTerms={biasedTerms.requirements || []} multiline={true} /></div></div>
+                    <div className="form-group"><label htmlFor="department" className="form-label">Department</label><div className="suggestion-container"><div className="input-group"><input type="text" id="department" className="form-input" value={departmentInput} onChange={(e) => setDepartmentInput(e.target.value)} onKeyPress={handleDepartmentKeyPress} placeholder="Enter a department" /><button type="button" className="add-button" onClick={handleAddDepartment} disabled={!departmentInput.trim()}>Add</button></div>{showDepartmentSuggestions && (<ul className="suggestions-list">{departmentSuggestions.map((suggestion, index) => (<li key={index} onMouseDown={(e) => { e.preventDefault(); handleDepartmentSelect(suggestion); }}>{suggestion}</li>))}</ul>)}</div>{departments.length > 0 && (<div className="tags-container">{departments.map((department, index) => (<div key={index} className="tag">{department}<button type="button" className="tag-remove" onClick={() => removeDepartment(department)}>×</button></div>))}</div>)}{departments.length > 0 && (biasedTerms.departments || []).length > 0 && (<div className="bias-feedback"><p>Potentially biased terms:</p><ul>{(biasedTerms.departments || []).map((term, index) => (<li key={index}>{term}</li>))}</ul></div>)}</div>
+                    <div className="form-group"><label htmlFor="cgpa" className="form-label">Minimum CGPA</label><div className="cgpa-container"><input type="range" id="cgpa" min="0" max="4" step="0.01" value={isCgpaApplicable ? minimumCGPA : 0} onChange={handleCGPASliderChange} className={`cgpa-slider ${!isCgpaApplicable ? 'disabled' : ''}`} aria-valuemin="0" aria-valuemax="4" aria-valuenow={isCgpaApplicable ? minimumCGPA : 0} aria-labelledby="cgpa-value" disabled={!isCgpaApplicable} /><input id="cgpa-value" type="text" className={`cgpa-value ${cgpaError ? 'error' : ''} ${!isCgpaApplicable ? 'disabled' : ''}`} value={cgpaInputValue} onChange={handleCGPAInputChange} onBlur={handleCGPABlur} aria-label="CGPA value" aria-invalid={cgpaError} disabled={!isCgpaApplicable} /><button type="button" className={`na-button ${!isCgpaApplicable ? 'active' : ''}`} onClick={toggleCgpaApplicability}>Not Applicable</button></div>{cgpaError && (<p className="error-message" role="alert">Please enter a valid CGPA between 0 and 4</p>)}</div>
+                    <div className="form-group"><label htmlFor="skills" className="form-label">Required Skills <span className="required">*</span></label><div className="suggestion-container"><div className="input-group"><input type="text" id="skills" className="form-input" value={skillInput} onChange={(e) => setSkillInput(e.target.value)} onKeyPress={handleSkillKeyPress} placeholder="Enter a skill" /><button type="button" className="add-button" onClick={handleAddSkill} disabled={!skillInput.trim()}>Add</button></div>{showSkillSuggestions && (<ul className="suggestions-list">{skillSuggestions.map((suggestion, index) => (<li key={index} onClick={() => handleSkillSelect(suggestion)}>{suggestion}</li>))}</ul>)}</div>{skills.length > 0 && (<div className="tags-container">{skills.map((skill, index) => (<div key={`uploadcv-skill-${index}-${skill}`} className="tag"><SkillTagWithLogo skillName={skill} unstyled={true}><button type="button" className="tag-remove" onClick={() => removeSkill(skill)} aria-label={`Remove skill ${skill}`}>×</button></SkillTagWithLogo></div>))}</div>)}{skills.length > 0 && (biasedTerms.requiredSkills || []).length > 0 && (<div className="bias-feedback"><p>Potentially biased terms in Required Skills:</p><ul>{(biasedTerms.requiredSkills || []).map((term, index) => (<li key={index}>{term}</li>))}</ul></div>)}</div>
+                    <div className="form-actions"><button type="submit" className="submit-button" disabled={isCheckingBias}>{isCheckingBias ? 'Checking for Bias...' : 'Next'}</button></div>
+                </form>
+            </div>
+        ) : (
+            <>
+                <div className="step-header">
+                    <div className="step-nav"><button onClick={handleBackToJobDetails} className="back-button"><svg className="back-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>Back to Job Details</button></div>
+                    <h3 className="job-title-header">Upload Candidate CVs for {jobData?.jobTitle}</h3>
                 </div>
-            ) : (
-                <>
-                    <div className="step-header">
-                        <div className="step-nav"><button onClick={handleBackToJobDetails} className="back-button"><svg className="back-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>Back to Job Details</button></div>
-                        <h3 className="job-title-header">Upload Candidate CVs for {jobData?.jobTitle}</h3>
-                    </div>
-                    <div className="upload-container" ref={uploadContainerRef}>
-                        <div className="upload-card"><div className="upload-dropzone-container"><div className={`upload-dropzone ${(fileState.isLoading || fileState.processingFiles) ? 'disabled-dropzone' : ''}`} onDragOver={handleDragOver} onDrop={handleDrop} role="button" tabIndex={fileState.isLoading || fileState.processingFiles ? -1 : 0} aria-label="Upload files by dropping them here or press to select files" aria-disabled={fileState.isLoading || fileState.processingFiles} onKeyDown={handleFileInputKeyDown}><div className="upload-icon-container"><svg className="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg></div><p className="upload-text">{(fileState.isLoading || fileState.processingFiles) ? "Please wait for the current upload to complete" : "Drag and Drop files to upload"}</p><input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" multiple onChange={handleFileChange} className="hidden-input" disabled={fileState.isLoading || fileState.processingFiles} /><button className={`browse-button ${(fileState.isLoading || fileState.processingFiles) ? 'disabled-button' : ''}`} onClick={handleChooseFile} disabled={fileState.isLoading || fileState.processingFiles}>{(fileState.isLoading || fileState.processingFiles) ? "Upload in Progress..." : "Browse Files"}</button><p className="upload-subtext">Supports PDF, DOC, DOCX</p></div></div></div>
-                    </div>
-                    <div className="files-container">
-                        <h3 className="files-title" id="uploaded-files-heading">Uploaded Files</h3>
-                        {fileState.selectedFiles.length === 0 ? (<div className="no-files"><p className="no-files-text">No files uploaded yet</p></div>) : (
-                            <div className="files-list" role="list" aria-labelledby="uploaded-files-heading">
-                                {fileState.selectedFiles.map((file, index) => {
-                                    // NEW: Check file flags
-                                    const flags = fileFlags[file.name] || {};
-                                    const isAI = flags.is_ai_generated;
-                                    const isIrrelevant = flags.is_irrelevant;
-                                    const irrelevanceScore = flags.irrelevance_score;
-                                    const aiConfidence = flags.ai_confidence;
-                                    let fileItemClasses = "file-item";
-                                    if (isIrrelevant) fileItemClasses += " irrelevant-item-highlight";
-                                    else if (isAI) fileItemClasses += " ai-item-highlight";
+                <div className="upload-container" ref={uploadContainerRef}>
+                    <div className="upload-card"><div className="upload-dropzone-container"><div className={`upload-dropzone ${(fileState.isLoading || fileState.processingFiles) ? 'disabled-dropzone' : ''}`} onDragOver={handleDragOver} onDrop={handleDrop} role="button" tabIndex={fileState.isLoading || fileState.processingFiles ? -1 : 0} aria-label="Upload files by dropping them here or press to select files" aria-disabled={fileState.isLoading || fileState.processingFiles} onKeyDown={handleFileInputKeyDown}><div className="upload-icon-container"><svg className="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg></div><p className="upload-text">{(fileState.isLoading || fileState.processingFiles) ? "Please wait for the current upload to complete" : "Drag and Drop files to upload"}</p><input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" multiple onChange={handleFileChange} className="hidden-input" disabled={fileState.isLoading || fileState.processingFiles} /><button className={`browse-button ${(fileState.isLoading || fileState.processingFiles) ? 'disabled-button' : ''}`} onClick={handleChooseFile} disabled={fileState.isLoading || fileState.processingFiles}>{(fileState.isLoading || fileState.processingFiles) ? "Upload in Progress..." : "Browse Files"}</button><p className="upload-subtext">Supports PDF, DOC, DOCX</p></div></div></div>
+                </div>
+                <div className="files-container">
+                    <h3 className="files-title" id="uploaded-files-heading">Uploaded Files</h3>
+                    {fileState.selectedFiles.length === 0 ? (<div className="no-files"><p className="no-files-text">No files uploaded yet</p></div>) : (
+                        <div className="files-list" role="list" aria-labelledby="uploaded-files-heading">
+                            {fileState.selectedFiles.map((file, index) => {
+                                // NEW: Check file flags
+                                const flags = fileFlags[file.name] || {};
+                                const isAI = flags.is_ai_generated;
+                                const isIrrelevant = flags.is_irrelevant;
+                                const irrelevanceScore = flags.irrelevance_score;
+                                const aiConfidence = flags.ai_confidence;
+                                let fileItemClasses = "file-item";
+                                if (isIrrelevant) fileItemClasses += " irrelevant-item-highlight";
+                                else if (isAI) fileItemClasses += " ai-item-highlight";
 
-                                    return (
-                                        <div key={index} className={fileItemClasses} role="listitem">
-                                            <div className="file-content">
-                                                {getFileIcon(file.name)}
-                                                <div className="file-details">
-                                                    <div className="file-header">
-                                                        <p className="file-name" title={file.name}>{file.name.length > 100 ? file.name.substring(0, 100) + '...' : file.name}</p>
-                                                        {/* NEW: Badges container */}
-                                                        <div className="badges-main-list">
-                                                            {isAI && (
-                                                                <span className="badge-main-list ai-badge-main-list">
-                                                                    AI Detected {aiConfidence ? `(${(aiConfidence * 100).toFixed(0)}%)` : ''}
-                                                                </span>
-                                                            )}
-                                                            {isIrrelevant && (
-                                                                <span className="badge-main-list irrelevant-badge-main-list">
-                                                                    {irrelevanceScore !== undefined && irrelevanceScore !== null ? `${irrelevanceScore.toFixed(0)}% Irrelevant` : "Irrelevant"}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <button onClick={() => removeFile(index)} className="delete-button" aria-label={`Remove file ${file.name}`} disabled={fileState.isLoading || fileState.processingFiles}><svg className="delete-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                                return (
+                                    <div key={index} className={fileItemClasses} role="listitem">
+                                        <div className="file-content">
+                                            {getFileIcon(file.name)}
+                                            <div className="file-details">
+                                                <div className="file-header">
+                                                    <p className="file-name" title={file.name}>{file.name.length > 100 ? file.name.substring(0, 100) + '...' : file.name}</p>
+                                                    {/* NEW: Badges container */}
+                                                    <div className="badges-main-list">
+                                                        {isAI && (
+                                                            <span className="badge-main-list ai-badge-main-list">
+                                                                AI Detected {aiConfidence ? `(${(aiConfidence * 100).toFixed(0)}%)` : ''}
+                                                            </span>
+                                                        )}
+                                                        {isIrrelevant && (
+                                                            <span className="badge-main-list irrelevant-badge-main-list">
+                                                                {irrelevanceScore !== undefined && irrelevanceScore !== null ? `${irrelevanceScore.toFixed(0)}% Irrelevant` : "Irrelevant"}
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                    {(fileState.isLoading && fileState.uploadProgress[file.name] !== undefined && fileState.uploadProgress[file.name] < 100) ? (<div className="progress-bar-container"><div className="progress-bar" style={{ width: `${fileState.uploadProgress[file.name]}%` }}></div><span className="progress-text">{fileState.uploadProgress[file.name]}%</span></div>) : (fileState.processingFiles && fileState.uploadProgress[file.name] === undefined && fileState.uploadQueue && fileState.uploadQueue.some(queueFile => queueFile.name === file.name)) ? (<div className="waiting-container"><p className="waiting-text">Waiting to upload...</p></div>) : (<p className="file-size">{(file.size / 1024).toFixed(1)} KB</p>)}
+                                                    <button onClick={() => removeFile(index)} className="delete-button" aria-label={`Remove file ${file.name}`} disabled={fileState.isLoading || fileState.processingFiles}><svg className="delete-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                                                 </div>
+                                                {(fileState.isLoading && fileState.uploadProgress[file.name] !== undefined && fileState.uploadProgress[file.name] < 100) ? (<div className="progress-bar-container"><div className="progress-bar" style={{ width: `${fileState.uploadProgress[file.name]}%` }}></div><span className="progress-text">{fileState.uploadProgress[file.name]}%</span></div>) : (fileState.processingFiles && fileState.uploadProgress[file.name] === undefined && fileState.uploadQueue && fileState.uploadQueue.some(queueFile => queueFile.name === file.name)) ? (<div className="waiting-container"><p className="waiting-text">Waiting to upload...</p></div>) : (<p className="file-size">{(file.size / 1024).toFixed(1)} KB</p>)}
                                             </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                        <div className="final-submit-container">
-                            <button onClick={() => handleFinalSubmit(false)} className="submit-button final-submit" disabled={fileState.isLoading || fileState.processingFiles || apiStatus === "loading" || fileState.selectedFiles.length === 0}>
-                                {fileState.isLoading || fileState.processingFiles ? 'Uploading Files...' : apiStatus === "loading" ? 'Submitting...' : 'Submit Job Details and CV'}
-                            </button>
+                                    </div>
+                                );
+                            })}
                         </div>
+                    )}
+                    <div className="final-submit-container">
+                        <button onClick={() => handleFinalSubmit(false)} className="submit-button final-submit" disabled={fileState.isLoading || fileState.processingFiles || apiStatus === "loading" || fileState.selectedFiles.length === 0}>
+                            {fileState.isLoading || fileState.processingFiles ? 'Uploading Files...' : apiStatus === "loading" ? 'Submitting...' : 'Submit Job Details and CV'}
+                        </button>
                     </div>
-                </>
-            )}
-            <JobSuggestionModal isOpen={showSuggestionModal} onClose={handleCloseSuggestionModal} onSubmit={handleGenerateSuggestions} jobTitle={jobTitle} isLoading={isGeneratingSuggestions} />
-        </div>
-    );
+                </div>
+            </>
+        )}
+        <JobSuggestionModal isOpen={showSuggestionModal} onClose={handleCloseSuggestionModal} onSubmit={handleGenerateSuggestions} jobTitle={jobTitle} isLoading={isGeneratingSuggestions} />
+    </div>
+);
 };
 
 export default UploadCV;
