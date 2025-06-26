@@ -359,23 +359,31 @@ async def _analyze_single_file_for_upload_pipeline(
 
 async def generate_and_save_profile(candidate_info: Dict[str, Any], gemini_srv: GeminiService) -> bool:
     candidate_id = candidate_info.get('candidateId')
-    extracted_data_from_doc_ai = candidate_info.get("extractedDataFromDocAI", {}) # Newer structure uses this key
-    if not extracted_data_from_doc_ai and 'candidate_data' in candidate_info: # Fallback for older structure
-        extracted_data_from_doc_ai = candidate_info['candidate_data'].get("extractedDataFromDocAI", {})
-    
-    entities_for_profile_gen: Optional[Dict[str, Any]] = None
-
-    if isinstance(extracted_data_from_doc_ai, dict):
-        entities_for_profile_gen = extracted_data_from_doc_ai.get("entities")
-    else:
-        logger.error(f"generate_and_save_profile: extractedDataFromDocAI for candidate {candidate_id} is not a dictionary.")
-        return False
-
+    candidate_id = candidate_info.get('candidateId')
     if not candidate_id:
         logger.warning("Missing candidateId in candidate_info for profile generation.")
         return False
+
+    # --- START OF FIX ---
+    # The primary source for entities is now the 'extractedText' field in the candidate document.
+    entities_for_profile_gen: Optional[Dict[str, Any]] = candidate_info.get("extractedText")
+
+    # Fallback for older data structures or different flows if necessary
+    if not entities_for_profile_gen:
+        # This block handles cases where the data might be nested differently
+        extracted_data_from_doc_ai = candidate_info.get("extractedDataFromDocAI", {})
+        if isinstance(extracted_data_from_doc_ai, dict):
+            entities_for_profile_gen = extracted_data_from_doc_ai.get("entities")
+        else:
+            logger.error(
+                f"generate_and_save_profile: extractedDataFromDocAI for candidate {candidate_id} is not a dictionary.")
+            return False
+
+    # Final check to ensure we have a valid dictionary of entities
     if not entities_for_profile_gen or not isinstance(entities_for_profile_gen, dict):
-        logger.warning(f"No 'entities' dictionary for candidate {candidate_id}. ExtractedData: {extracted_data_from_doc_ai}")
+        logger.warning(
+            f"No valid 'entities' dictionary found for candidate {candidate_id} to generate profile. Data available: {candidate_info.keys()}"
+        )
         return False
 
     applicant_data_for_gemini = {"candidateId": candidate_id, "extractedText": entities_for_profile_gen}

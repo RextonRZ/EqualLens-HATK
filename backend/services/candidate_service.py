@@ -1,7 +1,7 @@
 import logging
 import uuid
 from typing import Dict, Any, Optional, List, Tuple
-import datetime 
+from datetime import datetime, timezone
 import asyncio  # For concurrent execution
 
 from core.firebase import firebase_client
@@ -517,12 +517,10 @@ class CandidateService:
 
         return document_ai_results, authenticity_analysis_result, cross_referencing_analysis_result, external_ai_detection_result_data
 
-    # REMOVED the first, simpler create_candidate_from_data method.
-    # This is the sole, comprehensive create_candidate_from_data method now.
     @staticmethod
     def create_candidate_from_data(
             job_id: str,
-            file_content: bytes, # Make sure this is consistently passed and used
+            file_content: bytes,
             file_name: str,
             content_type: str,
             extracted_data_from_doc_ai: Dict[str, Any],
@@ -531,63 +529,76 @@ class CandidateService:
             final_assessment_data: Dict[str, Any],
             external_ai_detection_data: Optional[Dict[str, Any]],
             user_time_zone: str,
-            candidate_id_override: Optional[str] = None # <<< ADD THIS NEW PARAMETER
+            candidate_id_override: Optional[str] = None
     ) -> Dict[str, Any]:
-        
-        # --- START MODIFICATION for Solution B: Use overridden ID if provided ---
+
         if candidate_id_override:
             candidate_id = candidate_id_override
-            logger.info(f"[create_candidate_from_data] Using overridden candidate ID: {candidate_id} for file {file_name}")
         else:
             candidate_id = firebase_client.generate_counter_id("cand")
-            logger.info(f"[create_candidate_from_data] Generated unique candidate ID: {candidate_id} for file {file_name}")
-        # --- END MODIFICATION ---
 
-        # --- START ESSENTIAL MODIFICATION: File Upload to Storage ---
-        # Create a unique name for the file in storage to avoid collisions if filename is not unique
+        logger.info(f"[create_candidate_from_data] Using candidate ID: {candidate_id} for file {file_name}")
+
         file_uuid_for_storage = str(uuid.uuid4())
-        storage_file_name = f"{file_uuid_for_storage}_{file_name}" # Or any other unique naming scheme
+        storage_file_name = f"{file_uuid_for_storage}_{file_name}"
         storage_path = f"resumes/{job_id}/{candidate_id}/{storage_file_name}"
-        
-        logger.info(f"Attempting to upload file {file_name} to storage path: {storage_path} for candidate {candidate_id}")
+
         resume_url = firebase_client.upload_file(file_content, storage_path, content_type)
 
         if not resume_url:
             error_msg = f"Failed to upload resume to Firebase Storage for candidate {candidate_id}, file {file_name}"
             logger.error(error_msg)
-            return {"error": error_msg, "fileName": file_name, "candidateId": None}
-        logger.info(f"File {file_name} uploaded successfully to {resume_url} for candidate {candidate_id}")
-        # --- END ESSENTIAL MODIFICATION ---
+            return {"error": error_msg, "fileName": file_name}
 
-        # Ensure authenticityAnalysis and crossReferencingAnalysis are mapped correctly
-        candidate_data = {
-            "candidateId": candidate_id,
-            "jobId": job_id,
-            "originalFileName": file_name, # Use 'originalFileName' for consistency
-            "resumeUrl": resume_url,     # <<< ADDED
-            "storagePath": storage_path, # <<< ADDED
-            "createdAt": datetime.datetime.now(datetime.timezone.utc).isoformat(), # Add creation timestamp
-            "status": "NEW", # Initial status
+        # --- THIS IS THE KEY FIX ---
+        # Get the structured entities and full text from the DocAI results
+        entities_to_store = extracted_data_from_doc_ai.get("entities", {})
+        full_text_to_store = extracted_data_from_doc_ai.get("full_text", "")
 
-            "authenticityAnalysis": authenticity_analysis_result.model_dump(exclude_none=True) if authenticity_analysis_result else None,
-            "crossReferencingAnalysis": cross_referencing_result.model_dump(exclude_none=True) if cross_referencing_result else None,
-            "finalAssessmentData": final_assessment_data,
-            "externalAIDetectionData": external_ai_detection_data,
-            "userTimeZone": user_time_zone,
-            "extractedDataFromDocAI": extracted_data_from_doc_ai
+        try:
+            from pytz import timezone, UnknownTimeZoneError
+            tz = timezone(user_time_zone if user_time_zone else "UTC")
+        except UnknownTimeZoneError:
+            tz = datetime.timezone.utc
+
+        current_time_iso = datetime.now(tz).isoformat()
+
+        candidate_doc = {
+            'candidateId': candidate_id,
+            'jobId': job_id,
+            'originalFileName': file_name,
+            'resumeUrl': resume_url,
+            'storagePath': storage_path,
+            'uploadedAt': current_time_iso,
+            'status': 'new',
+            'rank_score': None,
+            'reasoning': None,
+            'detailed_profile': None,
+
+            # Correctly named fields
+            'extractedText': entities_to_store,
+            'fullTextFromDocAI': full_text_to_store,
+
+            # Analysis fields
+            'authenticityAnalysis': authenticity_analysis_result.model_dump(
+                exclude_none=True) if authenticity_analysis_result else None,
+            'crossReferencingAnalysis': cross_referencing_result.model_dump(
+                exclude_none=True) if cross_referencing_result else None,
+            'finalAssessmentData': final_assessment_data,
+            'externalAIDetectionData': external_ai_detection_data,
         }
 
-        # Save candidate data to Firestore
-        # Assuming firebase_client.save_candidate is a wrapper for save_document
-        if firebase_client.save_candidate(candidate_id, candidate_data):
-            logger.info(f"[create_candidate_from_data] Successfully saved candidate data for {candidate_id}")
-            return candidate_data # Return the full data, including the ID and URLs
+        # Use a generic method to create the document
+        success = firebase_client.create_document('candidates', candidate_id, candidate_doc)
+
+        if success:
+            logger.info(f"Successfully created candidate document for {candidate_id}")
+            # Return the full document so subsequent steps have all data
+            return candidate_doc
         else:
             error_msg = f"Failed to save candidate {candidate_id} to Firestore."
             logger.error(error_msg)
-            # Potentially delete the uploaded file if DB save fails to avoid orphaned files
-            # firebase_client.delete_file(storage_path) # Requires a delete_file method in FirebaseClient
-            return {"error": error_msg, "fileName": file_name, "candidateId": candidate_id, "resumeUrl": resume_url}
+            return {"error": error_msg, "fileName": file_name}
 
     async def create_candidate_orchestrator(
             self,
@@ -706,7 +717,7 @@ class CandidateService:
             "predicted_class_label") == "AI-generated" if external_ai_detection_data else False
         is_problematic_internally = (overall_auth_score < FINAL_AUTH_FLAG_THRESHOLD) or \
                                     (spam_score > SPAM_FLAG_THRESHOLD)
-        is_globally_problematic = is_externally_flagged_ai or is_problematic_internally  # AND change to OR
+        is_globally_problematic = is_externally_flagged_ai
 
         # --- FIX: Only return early if not forced. If forced, proceed to candidate creation. ---
         if (is_globally_problematic and not force_problematic_upload) or (document_ai_results["is_irrelevant"] and not force_irrelevant_upload):
@@ -784,28 +795,68 @@ class CandidateService:
 
         return candidate_creation_result
 
-    async def _generate_and_save_profile_background(self, candidate_info_dict: Dict[str, Any]):
-        # ... (_generate_and_save_profile_background implementation remains the same) ...
-        candidate_id = candidate_info_dict.get('candidateId')
-        extracted_data = candidate_info_dict.get('extractedDataFromDocAI', {})
-        entities_for_profile = extracted_data.get("entities", {})
+    async def generate_and_save_profile(candidate_info: Dict[str, Any], gemini_srv: GeminiService) -> bool:
+        """
+        Generates and saves the detailed profile for a candidate.
+        This version correctly looks for the 'extractedText' field.
+        """
+        candidate_id = candidate_info.get('candidateId')
+        if not candidate_id:
+            logger.warning("Missing candidateId in candidate_info for profile generation.")
+            return False
 
-        if not candidate_id or not entities_for_profile:
-            logger.warning(f"Missing data for background profile generation for {candidate_id}")
-            return
-        try:
-            profile = await self.gemini_service.generate_candidate_profile(
-                {"candidateId": candidate_id, "extractedText": entities_for_profile})
-            if profile and "summary" in profile:
-                update_success = self.update_candidate(candidate_id, CandidateUpdate(detailed_profile=profile))
-                if update_success:
-                    logger.info(f"[{candidate_id}] Background detailed profile generated and saved.")
-                else:
-                    logger.warning(f"[{candidate_id}] Failed to save background generated profile.")
+        # --- FIX IS HERE ---
+        # The primary source for entities is now the 'extractedText' field in the candidate document.
+        entities_for_profile_gen: Optional[Dict[str, Any]] = candidate_info.get("extractedText")
+
+        # Fallback for older data structures or different flows if necessary
+        if not entities_for_profile_gen:
+            # This block handles cases where the data might be nested differently
+            extracted_data_from_doc_ai = candidate_info.get("extractedDataFromDocAI", {})
+            if isinstance(extracted_data_from_doc_ai, dict):
+                entities_for_profile_gen = extracted_data_from_doc_ai.get("entities")
             else:
-                logger.warning(f"[{candidate_id}] Background profile generation returned invalid data.")
+                logger.error(
+                    f"generate_and_save_profile: extractedDataFromDocAI for candidate {candidate_id} is not a dictionary.")
+                return False
+
+        # Final check to ensure we have a valid dictionary of entities
+        if not entities_for_profile_gen or not isinstance(entities_for_profile_gen, dict):
+            logger.warning(
+                f"No valid 'entities' dictionary found for candidate {candidate_id} to generate profile. Data available: {candidate_info.keys()}"
+            )
+            return False
+
+        # Prepare data for Gemini, ensuring it gets the entities it needs
+        applicant_data_for_gemini = {"candidateId": candidate_id, "extractedText": entities_for_profile_gen}
+
+        try:
+            logger.info(f"Generating detailed profile for candidate {candidate_id} via jobs.py helper")
+            detailed_profile = await gemini_srv.generate_candidate_profile(applicant_data_for_gemini)
+
+            if not detailed_profile or not isinstance(detailed_profile, dict) or "summary" not in detailed_profile:
+                logger.warning(
+                    f"Failed to generate valid detailed profile for candidate {candidate_id}. Profile: {detailed_profile}"
+                )
+                return False
+
+            # Create the update payload and model instance
+            update_payload = {"detailed_profile": detailed_profile}
+            profile_update_model = CandidateUpdate(**update_payload)
+
+            # Call the static method from CandidateService to perform the update
+            success = CandidateService.update_candidate(candidate_id, profile_update_model)
+
+            if success:
+                logger.info(f"Successfully generated and saved detailed profile for candidate {candidate_id}")
+                return True
+            else:
+                logger.warning(f"Failed to save detailed profile for candidate {candidate_id}")
+                return False
+
         except Exception as e:
-            logger.error(f"[{candidate_id}] Error in background profile generation: {e}", exc_info=True)
+            logger.error(f"Error in generate_and_save_profile for candidate {candidate_id}: {e}", exc_info=True)
+            return False
 
     @staticmethod
     def get_candidate(candidate_id: str) -> Optional[Dict[str, Any]]:

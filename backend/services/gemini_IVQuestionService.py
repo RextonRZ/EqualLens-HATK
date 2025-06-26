@@ -24,7 +24,7 @@ class GeminiIVQuestionService:
             
             # Configure the Gemini API
             genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            self.model = genai.GenerativeModel('gemini-2.0-flash')
             self.pre_generated_questions = self._generate_question_pool()
             logger.info("GeminiIVQuestionService initialized successfully")
         except Exception as e:

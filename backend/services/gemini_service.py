@@ -248,7 +248,7 @@ class GeminiService:
             temperature=0.5
         )
         self.model = genai.GenerativeModel(
-            'gemini-2.0-flash',
+            'gemini-2.5-flash',
             generation_config=self.stable_generation_config  # Apply config at model initialization
         )
         self.db = firestore.Client()
