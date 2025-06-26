@@ -727,7 +727,7 @@ class CandidateService:
             "predicted_class_label") == "AI-generated" if external_ai_detection_data else False
         is_problematic_internally = (overall_auth_score < FINAL_AUTH_FLAG_THRESHOLD) or \
                                     (spam_score > SPAM_FLAG_THRESHOLD)
-        is_globally_problematic = is_externally_flagged_ai or is_problematic_internally  # AND change to OR
+        is_globally_problematic = is_externally_flagged_ai
 
         # --- FIX: Only return early if not forced. If forced, proceed to candidate creation. ---
         if (is_globally_problematic and not force_problematic_upload) or (document_ai_results["is_irrelevant"] and not force_irrelevant_upload):
