@@ -568,6 +568,14 @@ class CandidateService:
         
         entities_to_store = extracted_data_from_doc_ai.get("entities", {})
         full_text_to_store = extracted_data_from_doc_ai.get("full_text", "")
+        
+        try:
+            from pytz import timezone, UnknownTimeZoneError
+            tz = timezone(user_time_zone if user_time_zone else "UTC")
+        except UnknownTimeZoneError:
+            tz = datetime.timezone.utc
+
+        current_time_iso = datetime.datetime.now(tz).isoformat()
 
         # Ensure authenticityAnalysis and crossReferencingAnalysis are mapped correctly
         candidate_data = {
@@ -576,7 +584,7 @@ class CandidateService:
             "originalFileName": file_name, # Use 'originalFileName' for consistency
             "resumeUrl": resume_url,     # <<< ADDED
             "storagePath": storage_path, # <<< ADDED
-            "createdAt": datetime.datetime.now(datetime.timezone.utc).isoformat(), # Add creation timestamp
+            "createdAt": current_time_iso, # Add creation timestamp
             "status": "NEW", # Initial status
 
             "authenticityAnalysis": authenticity_analysis_result.model_dump(exclude_none=True) if authenticity_analysis_result else None,
