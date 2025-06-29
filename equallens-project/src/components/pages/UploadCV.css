@@ -2273,3 +2273,233 @@
     transform: translateY(-1px);
     box-shadow: 0 5px 15px rgba(249, 100, 95, 0.25);
 }
+/* Add these new styles to the existing CSS file */
+
+/* Processing state indicators */
+.processing-indicator {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 8px;
+}
+
+.processing-indicator.pending {
+    background-color: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+}
+
+.processing-indicator.analyzing {
+    background-color: #fef3c7;
+    color: #d97706;
+    border: 1px solid #f59e0b;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.processing-indicator.cached {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    border: 1px solid #3b82f6;
+}
+
+.processing-indicator.ready {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #10b981;
+}
+
+.processing-indicator.error {
+    background-color: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #ef4444;
+}
+
+/* File metadata container */
+.file-metadata {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+    margin-left: auto;
+}
+
+.file-hash {
+    font-size: 0.7rem;
+    color: #9ca3af;
+    font-family: monospace;
+    background-color: #f9fafb;
+    padding: 1px 4px;
+    border-radius: 4px;
+    border: 1px solid #e5e7eb;
+}
+
+/* Session indicator for files title */
+.session-indicator {
+    font-size: 0.75rem;
+    color: #059669;
+    font-weight: 500;
+    margin-left: 8px;
+    background-color: #d1fae5;
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid #10b981;
+}
+
+/* Enhanced file header layout */
+.file-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    flex-wrap: wrap;
+}
+
+.file-name {
+    flex: 1;
+    margin: 0;
+    font-weight: 500;
+    color: #374151;
+    min-width: 0;
+}
+
+/* Badges container for AI/Irrelevant indicators */
+.badges-main-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+    margin-right: 8px;
+}
+
+.badge-main-list {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.ai-badge-main-list {
+    background-color: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #ef4444;
+}
+
+.irrelevant-badge-main-list {
+    background-color: #fef3c7;
+    color: #d97706;
+    border: 1px solid #f59e0b;
+}
+
+/* File item highlighting for flagged content */
+.file-item.ai-item-highlight {
+    border-left: 4px solid #F9645F;
+    background-color: #fff0f0;
+}
+
+.file-item.irrelevant-item-highlight {
+    border-left: 4px solid #f59e0b;
+    background-color: #fffbeb;
+}
+
+.file-item.cached {
+    border-left: 3px solid #3b82f6;
+    background-color: #f8fafc;
+}
+
+.file-item.processing {
+    border-left: 3px solid #f59e0b;
+    background-color: #fffbeb;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .file-metadata {
+        align-items: flex-start;
+        margin-left: 0;
+        margin-top: 8px;
+    }
+
+    .file-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .badges-main-list {
+        align-items: flex-start;
+    }
+
+    .processing-indicator,
+    .file-hash {
+        font-size: 0.7rem;
+    }
+}
+
+/* Smart processing badge in files title */
+.files-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Step header styling (if not already present) */
+.step-header {
+    background-color: #ffffff;
+    padding: 1.5rem 2rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin: 1rem auto;
+    max-width: 64rem;
+}
+
+.step-nav {
+    margin-bottom: 1rem;
+}
+
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: #f8fafc;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.back-button:hover {
+    background-color: #f1f5f9;
+    border-color: #d1d5db;
+    transform: translateX(-2px);
+}
+
+.back-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.final-submit-container {
+    margin-top: 2rem;
+    text-align: center;
+    padding: 1.5rem;
+    background-color: #f8fafc;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+}
+
+.final-submit {
+    min-width: 200px;
+    font-size: 1rem;
+    padding: 0.875rem 2rem;
+}

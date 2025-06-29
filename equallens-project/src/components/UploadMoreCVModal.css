@@ -345,3 +345,236 @@
 .irrelevant-flagged-file::after {
   content: ""; /* Remove text if you used ::after for "Irrelevant" */
 }
+
+.processing-indicator {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.processing-indicator.pending {
+    background-color: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+}
+
+.processing-indicator.analyzing {
+    background-color: #fef3c7;
+    color: #d97706;
+    border: 1px solid #f59e0b;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.processing-indicator.cached {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    border: 1px solid #3b82f6;
+}
+
+.processing-indicator.analyzed {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #10b981;
+}
+
+.processing-indicator.ready {
+    background-color: #e0e7ff;
+    color: #3730a3;
+    border: 1px solid #6366f1;
+}
+
+.processing-indicator.error {
+    background-color: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #ef4444;
+}
+
+/* File metadata container */
+.file-metadata {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+    margin-left: auto;
+}
+
+.file-hash {
+    font-size: 0.7rem;
+    color: #9ca3af;
+    font-family: monospace;
+    background-color: #f9fafb;
+    padding: 1px 4px;
+    border-radius: 4px;
+    border: 1px solid #e5e7eb;
+}
+
+/* Session indicator */
+.session-indicator {
+    font-size: 0.75rem;
+    color: #059669;
+    font-weight: 500;
+    margin-left: 8px;
+    background-color: #d1fae5;
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid #10b981;
+}
+
+/* Enhanced file header layout */
+.file-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+}
+
+.file-name {
+    flex: 1;
+    margin: 0;
+    font-weight: 500;
+    color: #374151;
+    min-width: 0; /* Allow text truncation */
+}
+
+.badges-main-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+}
+
+/* Cache statistics display (if needed) */
+.cache-stats {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 0.75rem;
+    z-index: 10000;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.cache-stats h4 {
+    margin: 0 0 8px 0;
+    font-weight: 600;
+    color: #374151;
+}
+
+.cache-stats .stat-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.cache-stats .stat-label {
+    color: #6b7280;
+}
+
+.cache-stats .stat-value {
+    font-weight: 500;
+    color: #374151;
+}
+
+/* Pulse animation for analyzing state */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Enhanced file item highlighting */
+.file-item.cached {
+    border-left: 3px solid #3b82f6;
+    background-color: #f8fafc;
+}
+
+.file-item.processing {
+    border-left: 3px solid #f59e0b;
+    background-color: #fffbeb;
+}
+
+/* Responsive adjustments for file metadata */
+@media (max-width: 768px) {
+    .file-metadata {
+        align-items: flex-start;
+        margin-left: 0;
+        margin-top: 8px;
+    }
+
+    .file-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .badges-main-list {
+        align-items: flex-start;
+    }
+
+    .processing-indicator,
+    .file-hash {
+        font-size: 0.7rem;
+    }
+}
+
+/* Smart processing badge in title */
+.files-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Loading overlay improvements */
+.api-loading-content p {
+    margin-bottom: 16px;
+    color: #6b7280;
+}
+
+/* Progress bar enhancements */
+.progress-bar-container {
+    position: relative;
+    background-color: #f3f4f6;
+    border-radius: 6px;
+    overflow: hidden;
+    height: 8px;
+    margin-top: 8px;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+    transition: width 0.3s ease-in-out;
+    border-radius: 6px;
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.file-progress .progress-bar-container {
+    margin-top: 4px;
+    height: 4px;
+}
+
+.file-progress .progress-text {
+    display: none; /* Hide percentage for file-level progress */
+}

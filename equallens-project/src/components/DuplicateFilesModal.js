@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios'; // Keep if you plan to use fetchMatchData later
+import axios from 'axios';
 import './DuplicateFilesModal.css';
 
-const DuplicateFilesModal = ({ isOpen, duplicates, onClose, onProceed, onUploadNonDuplicates }) => {
+const DuplicateFilesModal = ({ isOpen, duplicates, onClose, onProceed, onUploadNonDuplicates, nonDuplicateCount }) => {
   const [selectedDuplicates, setSelectedDuplicates] = useState({});
-  const [matchData, setMatchData] = useState({}); // Keep for future or if fetchMatchData is re-enabled
+  const [matchData, setMatchData] = useState({});
   const [expandedChanges, setExpandedChanges] = useState({});
   const [groupedDuplicates, setGroupedDuplicates] = useState([]);
   const [expandedGroups, setExpandedGroups] = useState({});
@@ -24,80 +24,65 @@ const DuplicateFilesModal = ({ isOpen, duplicates, onClose, onProceed, onUploadN
 
   useEffect(() => {
     const initialState = {};
-    const localCandidateGroups = {}; // Use a local variable to avoid confusion with state
+    const localCandidateGroups = {};
 
     if (duplicates && duplicates.length > 0) {
-        duplicates.forEach(dupe => {
-          const candidateId = dupe.existing_candidate_details?.candidateId; // Corrected: For grouping logic if needed here
-          if (!candidateId) return;
+      duplicates.forEach(dupe => {
+        // FIXED: Use correct path for candidate ID
+        const candidateId = dupe.duplicate_candidate?.candidateId;
+        if (!candidateId) return;
 
-          if (!localCandidateGroups[candidateId]) {
-              localCandidateGroups[candidateId] = [];
-          }
-          localCandidateGroups[candidateId].push(dupe);
+        if (!localCandidateGroups[candidateId]) {
+          localCandidateGroups[candidateId] = [];
+        }
+        localCandidateGroups[candidateId].push(dupe);
       });
 
       Object.values(localCandidateGroups).forEach(candidateFiles => {
-          const enhancedModifiedResumes = candidateFiles.filter(dupe =>
-              // dupe.duplicate_info?.duplicate_type === 'MODIFIED_RESUME' && // Old
-              // dupe.duplicate_info?.resume_changes?.overall_assessment === 'enhanced' // Old
-              dupe.duplicate_type === 'MODIFIED_RESUME' && // Corrected
-              dupe.resume_changes_if_modified?.overall_assessment === 'enhanced' // Corrected
-          );
+        const enhancedModifiedResumes = candidateFiles.filter(dupe =>
+          dupe.duplicate_type === 'MODIFIED_RESUME' &&
+          dupe.resume_changes?.overall_assessment === 'enhanced'
+        );
 
-          if (enhancedModifiedResumes.length > 0) {
-              enhancedModifiedResumes.sort((a, b) => {
-                  // const aEnrichedCount = a.duplicate_info?.resume_changes?.enriched_fields?.length || 0; // Old
-                  // const bEnrichedCount = b.duplicate_info?.resume_changes?.enriched_fields?.length || 0; // Old
-                  const aEnrichedCount = a.resume_changes_if_modified?.enriched_fields?.length || 0; // Corrected
-                  const bEnrichedCount = b.resume_changes_if_modified?.enriched_fields?.length || 0; // Corrected
-                  return bEnrichedCount - aEnrichedCount;
-              });
-              // if (enhancedModifiedResumes[0] && enhancedModifiedResumes[0].fileName) { // Old
-              //     initialState[enhancedModifiedResumes[0].fileName] = true; // Old
-              // }
-              if (enhancedModifiedResumes[0] && enhancedModifiedResumes[0].new_file_name) { // Corrected
-                  initialState[enhancedModifiedResumes[0].new_file_name] = true; // Corrected
-              }
+        if (enhancedModifiedResumes.length > 0) {
+          enhancedModifiedResumes.sort((a, b) => {
+            const aEnrichedCount = a.resume_changes?.enriched_fields?.length || 0;
+            const bEnrichedCount = b.resume_changes?.enriched_fields?.length || 0;
+            return bEnrichedCount - aEnrichedCount;
+          });
+
+          // FIXED: Use correct field name
+          if (enhancedModifiedResumes[0] && enhancedModifiedResumes[0].fileName) {
+            initialState[enhancedModifiedResumes[0].fileName] = true;
           }
+        }
       });
     }
     setSelectedDuplicates(initialState);
-  }, [duplicates]); // Rerun when duplicates prop changes
+  }, [duplicates]);
 
   useEffect(() => {
     const fetchMatchData = async () => {
       const newMatchData = {};
       for (const dupe of duplicates) {
-        // Corrected access to duplicate_info
-        if (dupe.existing_candidate_details && dupe.existing_candidate_details.candidateId) { // Corrected
+        // FIXED: Use correct path
+        if (dupe.duplicate_candidate && dupe.duplicate_candidate.candidateId) {
           try {
-            // const response = await axios.get(`/api/candidates/match-percentage/${dupe.duplicate_info.duplicate_candidate.candidateId}`); // Old
-            const response = await axios.get(`/api/candidates/match-percentage/${dupe.existing_candidate_details.candidateId}`); // Corrected
-            // newMatchData[dupe.fileName] = response.data; // Old
-            newMatchData[dupe.new_file_name] = response.data; // Corrected
+            const response = await axios.get(`/api/candidates/match-percentage/${dupe.duplicate_candidate.candidateId}`);
+            newMatchData[dupe.fileName] = response.data;
           } catch (error) {
-            // console.error(`Failed to fetch match data for ${dupe.fileName}:`, error); // Old
-            console.error(`Failed to fetch match data for ${dupe.new_file_name}:`, error); // Corrected
-            // newMatchData[dupe.fileName] = { // Old
-            newMatchData[dupe.new_file_name] = { // Corrected
-              // match_percentage: dupe.duplicate_info?.match_percentage || 0, // Old
-              // confidence: dupe.duplicate_info?.confidence || 0, // Old
-              // duplicate_type: dupe.duplicate_info?.duplicate_type || "UNKNOWN" // Old
-              match_percentage: dupe.match_percentage || 0, // Corrected
-              confidence: dupe.confidence || 0, // Corrected
-              duplicate_type: dupe.duplicate_type || "UNKNOWN" // Corrected
+            console.error(`Failed to fetch match data for ${dupe.fileName}:`, error);
+            newMatchData[dupe.fileName] = {
+              match_percentage: dupe.match_percentage || 0,
+              confidence: dupe.confidence || 0,
+              duplicate_type: dupe.duplicate_type || "UNKNOWN"
             };
           }
         } else {
-          // newMatchData[dupe.fileName] = { // Old
-          newMatchData[dupe.new_file_name] = { // Corrected
-            // match_percentage: dupe.duplicate_info?.match_percentage || 0, // Old
-            // confidence: dupe.duplicate_info?.confidence || 0, // Old
-            // duplicate_type: dupe.duplicate_info?.duplicate_type || "UNKNOWN" // Old
-            match_percentage: dupe.match_percentage || 0, // Corrected
-            confidence: dupe.confidence || 0, // Corrected
-            duplicate_type: dupe.duplicate_type || "UNKNOWN" // Corrected
+          newMatchData[dupe.fileName] = {
+            match_percentage: dupe.match_percentage || 0,
+            confidence: dupe.confidence || 0,
+            duplicate_type: dupe.duplicate_type || "UNKNOWN"
           };
         }
       }
@@ -116,71 +101,85 @@ const DuplicateFilesModal = ({ isOpen, duplicates, onClose, onProceed, onUploadN
     }
 
     const sortDuplicates = (items) => {
-  return items.sort((a, b) => {
-    const typeOrder = { /* ... */ };
-    // const aType = a.duplicate_info?.duplicate_type || 'UNKNOWN'; // Old
-    // const bType = b.duplicate_info?.duplicate_type || 'UNKNOWN'; // Old
-    const aType = a.duplicate_type || 'UNKNOWN'; // Corrected
-    const bType = b.duplicate_type || 'UNKNOWN'; // Corrected
+      return items.sort((a, b) => {
+        const typeOrder = {
+          'EXACT_DUPLICATE': 1,
+          'MODIFIED_RESUME': 2,
+          'COPIED_RESUME': 3,
+          'UNKNOWN': 4
+        };
 
-    if (aType !== bType) { /* ... */ }
+        const aType = a.duplicate_type || 'UNKNOWN';
+        const bType = b.duplicate_type || 'UNKNOWN';
 
-    if (aType === 'MODIFIED_RESUME') {
-      // const aAssessment = a.duplicate_info?.resume_changes?.overall_assessment; // Old
-      // const bAssessment = b.duplicate_info?.resume_changes?.overall_assessment; // Old
-      const aAssessment = a.resume_changes_if_modified?.overall_assessment; // Corrected
-      const bAssessment = b.resume_changes_if_modified?.overall_assessment; // Corrected
-      /* ... */
-    }
-    // const aMatch = a.duplicate_info?.match_percentage || 0; // Old
-    // const bMatch = b.duplicate_info?.match_percentage || 0; // Old
-    const aMatch = a.match_percentage || 0; // Corrected
-    const bMatch = b.match_percentage || 0; // Corrected
-    return bMatch - aMatch;
-  });
-};
+        if (aType !== bType) {
+          return (typeOrder[aType] || 5) - (typeOrder[bType] || 5);
+        }
 
-const groups = {};
-  duplicates.forEach(dupe => {
-    // const candidateId = dupe.duplicate_info?.duplicate_candidate?.candidateId; // Old: THIS IS THE MAIN CAUSE OF GROUPING ERROR
-    const candidateId = dupe.existing_candidate_details?.candidateId; // Corrected
-    if (!candidateId) {
+        if (aType === 'MODIFIED_RESUME') {
+          const aAssessment = a.resume_changes?.overall_assessment;
+          const bAssessment = b.resume_changes?.overall_assessment;
+
+          const assessmentOrder = { 'enhanced': 1, 'neutral': 2, 'degraded': 3 };
+          const aOrder = assessmentOrder[aAssessment] || 4;
+          const bOrder = assessmentOrder[bAssessment] || 4;
+
+          if (aOrder !== bOrder) {
+            return aOrder - bOrder;
+          }
+        }
+
+        const aMatch = a.match_percentage || 0;
+        const bMatch = b.match_percentage || 0;
+        return bMatch - aMatch;
+      });
+    };
+
+    const groups = {};
+    duplicates.forEach(dupe => {
+      const candidateId = dupe.duplicate_candidate?.candidateId;
+      if (!candidateId) {
         console.warn("DuplicateModal: Skipping dupe due to missing candidateId for grouping:", dupe);
         return;
-    }
+      }
 
-    if (!groups[candidateId]) {
-      // const candidateName = dupe.duplicate_info?.duplicate_candidate?.extractedText?.applicant_name || `Existing Candidate (${candidateId.slice(-6)})`; // Old
-      // const uploadTime = dupe.duplicate_info?.duplicate_candidate?.uploadedAt || ''; // Old
-      
-      // Corrected: Assumes your Python backend now includes these in `existing_candidate_details`
-      const candidateName = dupe.existing_candidate_details?.applicant_name || `Existing Candidate (${candidateId.slice(-6)})`; // Corrected
-      const uploadTime = dupe.existing_candidate_details?.uploadedAt || ''; // Corrected
+      if (!groups[candidateId]) {
+        const candidateDisplayName = `${candidateId}`;
+        const uploadTime = dupe.duplicate_candidate?.uploadedAt || '';
 
-      groups[candidateId] = { candidateId, candidateName, uploadTime, items: [] };
-    }
-    groups[candidateId].items.push(dupe);
-  });
+        groups[candidateId] = {
+          candidateId,
+          candidateName: candidateDisplayName, // Use anonymous display name
+          uploadTime,
+          items: []
+        };
+      }
+      groups[candidateId].items.push(dupe);
+    });
 
-  Object.values(groups).forEach(group => { group.items = sortDuplicates(group.items); });
+    Object.values(groups).forEach(group => {
+      group.items = sortDuplicates(group.items);
+    });
 
-  const sortedGroups = Object.values(groups).sort((a, b) => {
-    const aHasEnhanced = a.items.some(item =>
-      // item.duplicate_info?.resume_changes?.overall_assessment === 'enhanced'); // Old
-      item.resume_changes_if_modified?.overall_assessment === 'enhanced'); // Corrected
-    const bHasEnhanced = b.items.some(item =>
-      // item.duplicate_info?.resume_changes?.overall_assessment === 'enhanced'); // Old
-      item.resume_changes_if_modified?.overall_assessment === 'enhanced'); // Corrected
-    /* ... */
-  });
-  setGroupedDuplicates(sortedGroups);
+    const sortedGroups = Object.values(groups).sort((a, b) => {
+      const aHasEnhanced = a.items.some(item =>
+        item.resume_changes?.overall_assessment === 'enhanced');
+      const bHasEnhanced = b.items.some(item =>
+        item.resume_changes?.overall_assessment === 'enhanced');
+
+      if (aHasEnhanced && !bHasEnhanced) return -1;
+      if (!aHasEnhanced && bHasEnhanced) return 1;
+      return 0;
+    });
+
+    setGroupedDuplicates(sortedGroups);
   }, [duplicates]);
 
   useEffect(() => {
     if (groupedDuplicates.length > 0) {
       const initialExpandedState = {};
       groupedDuplicates.forEach((group, index) => {
-        initialExpandedState[group.candidateId || index] = true; // Use candidateId as key if available, else index
+        initialExpandedState[group.candidateId || index] = true;
       });
       setExpandedGroups(initialExpandedState);
     } else {
@@ -193,20 +192,17 @@ const groups = {};
       const newSelectedState = { ...prevSelected };
       const targetGroup = groupedDuplicates.find(g => (g.candidateId || groupedDuplicates.indexOf(g)) === groupKey);
 
-      // If checking the new item
       if (!prevSelected[fileNameToToggle]) {
-        // Uncheck all other items in the same group
         if (targetGroup && targetGroup.items) {
           targetGroup.items.forEach(item => {
-            if (item.new_file_name !== fileNameToToggle) { // Use new_file_name for comparison
-              newSelectedState[item.new_file_name] = false; // Use new_file_name to uncheck
+            // FIXED: Use correct field name
+            if (item.fileName !== fileNameToToggle) {
+              newSelectedState[item.fileName] = false;
             }
           });
         }
-        // Check the toggled item
         newSelectedState[fileNameToToggle] = true;
       } else {
-        // If unchecking the item, just uncheck it
         newSelectedState[fileNameToToggle] = false;
       }
       return newSelectedState;
@@ -224,7 +220,7 @@ const groups = {};
     onClose('closeAll');
   };
 
-  const toggleGroupExpansion = (groupKey, event) => { // groupKey can be candidateId or index
+  const toggleGroupExpansion = (groupKey, event) => {
     event.stopPropagation();
     setExpandedGroups(prev => ({
       ...prev,
@@ -240,7 +236,7 @@ const groups = {};
         return { text: 'Modified Version', className: 'duplicate-type-updated' };
       case 'COPIED_RESUME':
         return { text: 'Copied Content', className: 'duplicate-type-copied' };
-      case 'DUPLICATE_RESUME': // Keep if backend might send this
+      case 'DUPLICATE_RESUME':
         return { text: 'Duplicate', className: 'duplicate-type-exact' };
       default:
         return { text: 'Potential Match', className: 'duplicate-type-similar' };
@@ -265,9 +261,9 @@ const groups = {};
     if (!dateString) return 'N/A';
     try {
       const date = new Date(dateString);
-      return date.toLocaleString(); // Or any other format you prefer
+      return date.toLocaleString();
     } catch (e) {
-      return dateString; // Fallback if date is invalid
+      return dateString;
     }
   };
 
@@ -282,8 +278,7 @@ const groups = {};
       const extractedText = candidate.extractedText;
       const namePart = extractedText.applicant_name ? `${extractedText.applicant_name}` : '';
       const bioPart = extractedText.bio ? ` - ${sanitizeHTML(extractedText.bio.substring(0, 100))}${extractedText.bio.length > 100 ? '...' : ''}` : '';
-      const skillsPart = extractedText.technical_skills ? `Skills: ${Array.isArray(extractedText.technical_skills) ? extractedText.technical_skills.join(', ') : sanitizeHTML(String(extractedText.technical_skills).substring(0,80))}` : '';
-
+      const skillsPart = extractedText.technical_skills ? `Skills: ${Array.isArray(extractedText.technical_skills) ? extractedText.technical_skills.join(', ') : sanitizeHTML(String(extractedText.technical_skills).substring(0, 50))}` : '';
 
       let summary = [namePart, bioPart, skillsPart].filter(Boolean).join(' ').trim();
       return summary || 'Basic candidate information extracted.';
@@ -298,57 +293,48 @@ const groups = {};
         return 'assessment-enhanced';
       case 'degraded':
         return 'assessment-degraded';
+      case 'mixed changes':
+        return 'assessment-mixed';
       default:
         return 'assessment-neutral';
     }
   };
 
-  const toggleChangeExpansion = (changeKey) => { // Use a unique key like `${groupKey}-${itemIndex}`
+  const toggleChangeExpansion = (changeKey) => {
     setExpandedChanges(prev => ({
       ...prev,
       [changeKey]: !prev[changeKey]
     }));
   };
+
   const anySelected = Object.values(selectedDuplicates).some(value => value);
 
-  // Determine if all selected files are "Copied Content" type
   const getSelectedDuplicateTypes = () => {
     const selectedFiles = Object.keys(selectedDuplicates).filter(fileName => selectedDuplicates[fileName]);
     const selectedTypes = new Set();
-    
+
     groupedDuplicates.forEach(group => {
       group.items.forEach(item => {
-        if (selectedFiles.includes(item.new_file_name)) { // Corrected: use new_file_name
-          const duplicateType = item.duplicate_type || "UNKNOWN"; // Corrected: access duplicate_type directly
+        // FIXED: Use correct field name
+        if (selectedFiles.includes(item.fileName)) {
+          const duplicateType = item.duplicate_type || "UNKNOWN";
           selectedTypes.add(duplicateType);
         }
       });
     });
-    
+
     return selectedTypes;
   };
 
   const selectedTypes = getSelectedDuplicateTypes();
   const allSelectedAreCopied = selectedTypes.size === 1 && selectedTypes.has('COPIED_RESUME');
 
-  const calculateNonDuplicateCount = (duplicates) => {
-    console.log('Duplicates array:', duplicates); // Log the structure of duplicates
-    return duplicates.filter(dupe => {
-      const assessment = dupe.resume_changes_if_modified?.overall_assessment;
-      const duplicateType = dupe.duplicate_type;
-      console.log('Assessment for file:', dupe.new_file_name, 'is', assessment, 'and duplicate type is', duplicateType); // Log the assessment and duplicate type
-      return assessment !== 'mixed changes' && assessment !== 'enhanced' && duplicateType !== 'EXACT_DUPLICATE';
-    }).length;
-  };
-
-  const nonDuplicateCount = calculateNonDuplicateCount(duplicates);
-
   if (!isOpen) return null;
 
   return (
     <div
       className="duplicate-modal-overlay"
-      onClick={(e) => e.stopPropagation()} // Prevent modal close on overlay click if not desired
+      onClick={(e) => e.stopPropagation()}
       role="dialog"
       aria-modal="true"
       aria-labelledby="duplicate-modal-title"
@@ -360,7 +346,7 @@ const groups = {};
           </h2>
           <button
             className="duplicate-modal-close"
-            onClick={() => onClose()} // Simple close, or handleCancelUpload if confirmation needed
+            onClick={() => onClose()}
             aria-label="Close"
           >
             ×
@@ -374,7 +360,7 @@ const groups = {};
               Attention Required
             </div>
             <p className="duplicate-modal-warning-text">
-              The system has detected {duplicates.length === 1 ? "a potential duplicate / modified or spam file" : "potential duplicate / modified or spam files"}. Please review the information below and select which files you wish to upload.
+              The system has detected {duplicates.length === 1 ? "a potential duplicate / modified or spam file" : "potential duplicate / modified or spam files"}. Please review the information below and choose how to proceed.
             </p>
           </div>
 
@@ -383,6 +369,9 @@ const groups = {};
               <div className="duplicate-empty-icon">⚠️</div>
               <h3 className="duplicate-empty-title">Grouping Error</h3>
               <p className="duplicate-empty-text">Could not group duplicate files. Please check console and data structure.</p>
+              <pre style={{fontSize: '12px', textAlign: 'left', maxHeight: '200px', overflow: 'auto'}}>
+                {JSON.stringify(duplicates[0], null, 2)}
+              </pre>
             </div>
           ) : (!duplicates || duplicates.length === 0) ? (
              <div className="duplicate-empty-state">
@@ -393,11 +382,11 @@ const groups = {};
           ) : (
             <div className="duplicate-files-list">
               {groupedDuplicates.map((group, groupIndex) => {
-                const groupKey = group.candidateId || groupIndex; // Use candidateId if available for stability
+                const groupKey = group.candidateId || groupIndex;
                 const isExpanded = !!expandedGroups[groupKey];
                 const firstDupe = group.items[0];
-                // Corrected access to duplicate_info
-                const dupCandidate = firstDupe?.existing_candidate_details;
+                // FIXED: Use correct path
+                const dupCandidate = firstDupe?.duplicate_candidate;
 
                 return (
                   <div key={`group-${groupKey}`} className="duplicate-group">
@@ -411,8 +400,8 @@ const groups = {};
                     >
                       <div className="duplicate-group-header-content">
                         <span className="duplicate-group-title">
-                          Matches with {group.candidateId || `Existing Candidate ${groupKey}`}
-                          <span className="expand-icon"></span> {/* CSS will handle +/- or chevron */}
+                          Matches with {group.candidateName || `Existing Candidate ${groupKey}`}
+                          <span className="expand-icon"></span>
                         </span>
                         <div className="duplicate-group-info">
                           {group.uploadTime && (
@@ -441,23 +430,19 @@ const groups = {};
                       className={`duplicate-group-content ${isExpanded ? 'expanded' : 'collapsed'}`}
                     >
                       {isExpanded && group.items.map((dupe, itemIndex) => {
-                        // Access properties directly from the 'dupe' object
                         const backendType = dupe.duplicate_type || "UNKNOWN";
                         const typeDisplayInfo = getDuplicateTypeLabel(backendType);
-                        const newFileAnalysis = dupe.new_file_analysis; // Direct access
-                        // const newFileExternalAIPred = newFileAnalysis?.externalAIDetectionResult; // This is fine
 
-                        // Ensure matchData is keyed by new_file_name if you use fetchMatchData
-                        // For now, it correctly falls back to direct properties from 'dupe'
-                        const currentMatchInfo = matchData[dupe.new_file_name] || {
-                          confidence: dupe.confidence || 0, // Direct access
-                          match_percentage: dupe.match_percentage || 0, // Direct access
+                        // FIXED: Use correct field names
+                        const currentMatchInfo = matchData[dupe.fileName] || {
+                          confidence: dupe.confidence || 0,
+                          match_percentage: dupe.match_percentage || 0,
                           duplicate_type: backendType
                         };
 
                         const confidence = currentMatchInfo.confidence;
                         const matchPercentage = currentMatchInfo.match_percentage;
-                        const resumeChanges = dupe.resume_changes_if_modified; // Use new key and direct access
+                        const resumeChanges = dupe.resume_changes; // FIXED: Use correct field
 
                         const changeKey = `${groupKey}-${itemIndex}`;
                         const isChangeExpanded = !!expandedChanges[changeKey];
@@ -467,7 +452,7 @@ const groups = {};
 
                         return (
                           <div
-                            key={`${groupKey}-${itemIndex}-${dupe.new_file_name}`} // USE new_file_name
+                            key={`${groupKey}-${itemIndex}-${dupe.fileName}`} // FIXED: Use correct field
                             className={`duplicate-file-item ${isFirstInGroup ? 'first-in-group' : ''} ${isLastInGroup ? 'last-in-group' : ''}`}
                           >
                             <div className="duplicate-file-content">
@@ -475,7 +460,7 @@ const groups = {};
                                 <div className="duplicate-file-name-container">
                                   <span className={`duplicate-file-name ${(backendType === 'EXACT_DUPLICATE' ||
                                     (backendType === 'MODIFIED_RESUME' &&
-                                    resumeChanges?.overall_assessment === 'neutral')) ? 'no-checkbox' : ''}`} title={dupe.new_file_name} /* USE new_file_name */>
+                                    resumeChanges?.overall_assessment === 'neutral')) ? 'no-checkbox' : ''}`} title={dupe.fileName}>
                                     {(backendType !== 'EXACT_DUPLICATE' &&
                                       !(backendType === 'MODIFIED_RESUME' &&
                                         resumeChanges?.overall_assessment === 'neutral')) ? (
@@ -483,12 +468,12 @@ const groups = {};
                                         type="checkbox"
                                         className="duplicate-file-checkbox"
                                         id={`duplicate-file-${groupKey}-${itemIndex}`}
-                                        checked={!!selectedDuplicates[dupe.new_file_name]} // USE new_file_name
-                                        onChange={() => handleToggleSelection(dupe.new_file_name, groupKey)} // USE new_file_name
-                                        aria-label={`Select ${dupe.new_file_name}`} // USE new_file_name
+                                        checked={!!selectedDuplicates[dupe.fileName]} // FIXED: Use correct field
+                                        onChange={() => handleToggleSelection(dupe.fileName, groupKey)} // FIXED: Use correct field
+                                        aria-label={`Select ${dupe.fileName}`} // FIXED: Use correct field
                                       />
                                     ) : null}
-                                    {dupe.new_file_name} {/* USE new_file_name */}
+                                    {dupe.fileName} {/* FIXED: Use correct field */}
                                   </span>
                                   <span className="duplicate-confidence">
                                     {getConfidenceLabel(confidence, matchPercentage, backendType)}
@@ -554,26 +539,6 @@ const groups = {};
                                   )}
                                 </div>
                               )}
-
-                              {/* This section for new file analysis scores was already correct in your latest file,
-                                  but it depends on `newFileAnalysis` being correctly defined above. */}
-                              {newFileAnalysis?.final_assessment_data?.finalXAISummary && (
-                                  <p className="new-file-xai-summary">
-                                      <strong>Internal AI Assessment:</strong> {newFileAnalysis.final_assessment_data.finalXAISummary}
-                                  </p>
-                              )}
-                              <div className="new-file-scores">
-                                  {newFileAnalysis?.final_assessment_data?.final_overall_authenticity_score !== null && newFileAnalysis?.final_assessment_data?.final_overall_authenticity_score !== undefined && (
-                                      <span className="new-file-score-tag authenticity">
-                                          Internal Auth: {(newFileAnalysis.final_assessment_data.final_overall_authenticity_score * 100).toFixed(0)}%
-                                      </span>
-                                  )}
-                                  {newFileAnalysis?.final_assessment_data?.final_spam_likelihood_score !== null && newFileAnalysis?.final_assessment_data?.final_spam_likelihood_score !== undefined && (
-                                      <span className="new-file-score-tag spam">
-                                          Internal Spam: {(newFileAnalysis.final_assessment_data.final_spam_likelihood_score * 100).toFixed(0)}%
-                                      </span>
-                                  )}
-                              </div>
                             </div>
                           </div>
                         );
@@ -601,7 +566,9 @@ const groups = {};
             >
               Upload {nonDuplicateCount} Non-Duplicate{nonDuplicateCount !== 1 ? 's' : ''} Only
             </button>
-          )}          <button
+          )}
+
+          <button
             className="duplicate-modal-button duplicate-primary-button"
             onClick={handleOverwriteWithSelected}
             disabled={!anySelected && duplicates && duplicates.length > 0}

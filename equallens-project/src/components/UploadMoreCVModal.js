@@ -5,7 +5,7 @@ import "../components/pageloading.css"; // Ensure this path is correct
 import DuplicateFilesModal from "./DuplicateFilesModal"; // Ensure this path is correct
 import AIConfirmationModal from '../components/AIConfirmationModal.js';
 
-// File upload reducer (remains largely the same, ensure RESET clears relevant states)
+// File upload reducer
 const fileUploadReducer = (state, action) => {
     switch (action.type) {
         case 'ADD_FILES':
@@ -13,7 +13,29 @@ const fileUploadReducer = (state, action) => {
                 ...state,
                 selectedFiles: action.payload.updatedFiles,
                 uploadQueue: action.payload.newQueue,
-                processingFiles: true
+                processingFiles: true,
+                fileAnalysisResults: action.payload.fileAnalysisResults || state.fileAnalysisResults,
+                fileHashes: action.payload.fileHashes || state.fileHashes
+            };
+        case 'SET_FILE_ANALYSIS_RESULT':
+            return {
+                ...state,
+                fileAnalysisResults: {
+                    ...state.fileAnalysisResults,
+                    [action.payload.fileName]: action.payload.result
+                },
+                fileHashes: {
+                    ...state.fileHashes,
+                    [action.payload.fileName]: action.payload.fileHash
+                }
+            };
+        case 'UPDATE_FILE_PROCESSING_STATE':
+            return {
+                ...state,
+                fileProcessingStates: {
+                    ...state.fileProcessingStates,
+                    [action.payload.fileName]: action.payload.state
+                }
             };
         case 'FILE_PROGRESS':
             return {
@@ -31,11 +53,24 @@ const fileUploadReducer = (state, action) => {
             return { ...state, isLoading: false, processingFiles: false };
         case 'REMOVE_FILE':
             const fileToRemove = state.selectedFiles[action.payload.index];
+            const newFileAnalysisResults = { ...state.fileAnalysisResults };
+            const newFileHashes = { ...state.fileHashes };
+            const newFileProcessingStates = { ...state.fileProcessingStates };
+
+            if (fileToRemove) {
+                delete newFileAnalysisResults[fileToRemove.name];
+                delete newFileHashes[fileToRemove.name];
+                delete newFileProcessingStates[fileToRemove.name];
+            }
+
             return {
                 ...state,
                 selectedFiles: state.selectedFiles.filter((_, i) => i !== action.payload.index),
                 uploadQueue: fileToRemove ? state.uploadQueue.filter(queueFile => queueFile.name !== fileToRemove.name) : state.uploadQueue,
-                uploadProgress: fileToRemove ? Object.fromEntries(Object.entries(state.uploadProgress).filter(([key]) => key !== fileToRemove.name)) : state.uploadProgress
+                uploadProgress: fileToRemove ? Object.fromEntries(Object.entries(state.uploadProgress).filter(([key]) => key !== fileToRemove.name)) : state.uploadProgress,
+                fileAnalysisResults: newFileAnalysisResults,
+                fileHashes: newFileHashes,
+                fileProcessingStates: newFileProcessingStates
             };
         case 'FOUND_DUPLICATES':
             return {
@@ -49,6 +84,8 @@ const fileUploadReducer = (state, action) => {
             };
         case 'CLOSE_DUPLICATES_MODAL':
             return { ...state, showDuplicatesModal: false, isModalHidden: false };
+        case 'SET_SESSION_ID':
+            return { ...state, sessionId: action.payload.sessionId };
         case 'RESET':
             return {
                 selectedFiles: [],
@@ -58,12 +95,24 @@ const fileUploadReducer = (state, action) => {
                 processingFiles: false,
                 duplicateFiles: [],
                 showDuplicatesModal: false,
-                isModalHidden: false
-                // fileFlags will be reset outside the reducer
+                isModalHidden: false,
+                fileAnalysisResults: {},
+                fileHashes: {},
+                fileProcessingStates: {},
+                sessionId: null
             };
         default:
             return state;
     }
+};
+
+// Helper function to generate client-side file hash
+const generateClientFileHash = async (file) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return `${hashHex}-${file.name}-${file.size}`;
 };
 
 const LoadingAnimation = () => (
@@ -81,7 +130,11 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
         processingFiles: false,
         duplicateFiles: [],
         showDuplicatesModal: false,
-        isModalHidden: false
+        isModalHidden: false,
+        fileAnalysisResults: {},
+        fileHashes: {},
+        fileProcessingStates: {},
+        sessionId: null
     });
 
     const [isDragging, setIsDragging] = useState(false);
@@ -98,16 +151,20 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
     const [userConsentedToAIUpload, setUserConsentedToAIUpload] = useState(false);
     const [userConsentedToIrrelevantUpload, setUserConsentedToIrrelevantUpload] = useState(false);
 
-
     const [showAIConfirmModal, setShowAIConfirmModal] = useState(false);
     const [flaggedAIData, setFlaggedAIData] = useState([]);
     const [fileFlags, setFileFlags] = useState({});
 
-    // Add a ref to track last duplicate file names to avoid showing modal for already uploaded files
     const lastUploadedDuplicateNamesRef = useRef([]);
-
-    // Add this near the other useState hooks at the top of the component:
     const [pendingDuplicateModal, setPendingDuplicateModal] = useState(false);
+
+    // Generate session ID on component mount
+    useEffect(() => {
+        if (isOpen && !fileState.sessionId) {
+            const sessionId = `upload-more-${jobId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            fileDispatch({ type: 'SET_SESSION_ID', payload: { sessionId } });
+        }
+    }, [isOpen, jobId, fileState.sessionId]);
 
     useEffect(() => {
         if (isOpen) {
@@ -131,14 +188,18 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
         };
     }, []);
 
-    const processFiles = useCallback((files) => {
+    const processFiles = useCallback(async (files) => {
         if (fileState.isLoading || fileState.processingFiles || apiStatus !== "idle") {
             alert("Please wait for the current operation to complete before adding new files.");
             return;
         }
+
         let updatedFiles = [...fileState.selectedFiles];
         let newFiles = [];
         const newFileFlags = { ...fileFlags };
+        const newFileHashes = { ...fileState.fileHashes };
+        const newFileAnalysisResults = { ...fileState.fileAnalysisResults };
+        const newFileProcessingStates = { ...fileState.fileProcessingStates };
 
         for (const fileToProcess of files) {
             const extension = fileToProcess.name.split('.').pop().toLowerCase();
@@ -147,25 +208,55 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                 alert(`${fileToProcess.name} is not a supported file type. Please upload PDF, DOC, or DOCX files only.`);
                 continue;
             }
-            const existingIndex = updatedFiles.findIndex(file => file.name === fileToProcess.name);
-            if (existingIndex !== -1) {
-                if (window.confirm(`A file named "${fileToProcess.name}" already exists. Do you want to replace it?`)) {
+
+            // Generate file hash for tracking
+            try {
+                const fileHash = await generateClientFileHash(fileToProcess);
+
+                const existingIndex = updatedFiles.findIndex(file => file.name === fileToProcess.name);
+                if (existingIndex !== -1) {
+                    if (window.confirm(`A file named "${fileToProcess.name}" already exists. Do you want to replace it?`)) {
+                        delete newFileFlags[fileToProcess.name];
+                        delete newFileAnalysisResults[fileToProcess.name];
+                        delete newFileProcessingStates[fileToProcess.name];
+
+                        updatedFiles[existingIndex] = fileToProcess;
+                        newFiles.push(fileToProcess);
+                        newFileHashes[fileToProcess.name] = fileHash;
+                        newFileProcessingStates[fileToProcess.name] = 'pending';
+                    }
+                } else {
                     delete newFileFlags[fileToProcess.name];
-                    updatedFiles[existingIndex] = fileToProcess;
+                    delete newFileAnalysisResults[fileToProcess.name];
+                    delete newFileProcessingStates[fileToProcess.name];
+
+                    updatedFiles.push(fileToProcess);
                     newFiles.push(fileToProcess);
+                    newFileHashes[fileToProcess.name] = fileHash;
+                    newFileProcessingStates[fileToProcess.name] = 'pending';
                 }
-            } else {
-                delete newFileFlags[fileToProcess.name];
-                updatedFiles.push(fileToProcess);
-                newFiles.push(fileToProcess);
+            } catch (error) {
+                console.error(`Error generating hash for file ${fileToProcess.name}:`, error);
+                alert(`Error processing file ${fileToProcess.name}. Please try again.`);
+                continue;
             }
         }
+
         if (newFiles.length > 0) {
             setFileFlags(newFileFlags);
             const newQueue = [...fileState.uploadQueue.filter(queueFile => !newFiles.some(newFile => newFile.name === queueFile.name)), ...newFiles];
-            fileDispatch({ type: 'ADD_FILES', payload: { updatedFiles, newQueue } });
+            fileDispatch({
+                type: 'ADD_FILES',
+                payload: {
+                    updatedFiles,
+                    newQueue,
+                    fileAnalysisResults: newFileAnalysisResults,
+                    fileHashes: newFileHashes,
+                    fileProcessingStates: newFileProcessingStates
+                }
+            });
         }
-    }, [fileState.selectedFiles, fileState.isLoading, fileState.processingFiles, fileState.uploadQueue, apiStatus, fileFlags]);
+    }, [fileState.selectedFiles, fileState.isLoading, fileState.processingFiles, fileState.uploadQueue, fileState.fileHashes, fileState.fileAnalysisResults, apiStatus, fileFlags]);
 
 
     useEffect(() => {
@@ -173,8 +264,17 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
             if (fileState.processingFiles) fileDispatch({ type: 'QUEUE_COMPLETE' });
             return;
         }
+
+        // Instead of immediately marking files as processed, we'll let the submit process handle analysis
         const processAllFiles = async () => {
             for (const fileToProcess of fileState.uploadQueue) {
+                fileDispatch({
+                    type: 'UPDATE_FILE_PROCESSING_STATE',
+                    payload: {
+                        fileName: fileToProcess.name,
+                        state: 'ready'
+                    }
+                });
                 fileDispatch({ type: 'FILE_PROGRESS', payload: { fileName: fileToProcess.name, progress: 100 } });
             }
             fileState.uploadQueue.forEach(() => fileDispatch({ type: 'FILE_COMPLETE' }));
@@ -289,9 +389,14 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
             const formData = new FormData();
             formData.append("job_id", jobId);
             formData.append("user_time_zone", userTimeZone);
+
+            // Add session ID to the request
+            if (fileState.sessionId) {
+                formData.append("session_id", fileState.sessionId);
+            }
+
             filesForUpload.forEach(file => formData.append("files", file));
 
-            // MODIFIED: Use the passed parameters to set force flags.
             if (forceAi) {
                 formData.append("force_upload_ai_flagged", "true");
             }
@@ -323,7 +428,6 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ detail: "Unknown error from server." }));
                 if (response.status === 422 && errorData.error_type === "FLAGGED_CONTENT") {
-                    // MODIFIED: Check if consent is still needed. This logic is now more robust because the re-upload will have the force flags.
                     const filesNeedAIConsent = errorData.flagged_files.some(f => f.is_ai_generated);
                     const filesNeedIrrelevantConsent = errorData.flagged_files.some(f => f.is_irrelevant);
 
@@ -335,18 +439,14 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                     }
                 }
                 if (response.status === 409 && errorData.duplicates && errorData.duplicates.length > 0) {
-                    // Filter out duplicates that were just uploaded in the last overwrite
                     const duplicateFileNames = errorData.duplicates.map(d => d.fileName);
-                    // Only show modal if there are new duplicates not in lastUploadedDuplicateNamesRef
                     const newDuplicates = duplicateFileNames.filter(
                         name => !lastUploadedDuplicateNamesRef.current.includes(name)
                     );
                     if (newDuplicates.length === 0) {
-                        // All duplicates were just uploaded, so do not show modal
                         setApiStatus("idle"); setSubmitProgress(0);
                         return;
                     }
-                    // Otherwise, show modal for new duplicates only
                     const nonDuplicateOriginalFiles = fileState.selectedFiles.filter(file => !duplicateFileNames.includes(file.name));
                     fileDispatch({ type: 'FOUND_DUPLICATES', payload: { duplicates: errorData.duplicates, nonDuplicateFiles: nonDuplicateOriginalFiles } });
                     setApiStatus("idle"); setSubmitProgress(0);
@@ -356,6 +456,12 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
             }
 
             const responseData = await response.json();
+
+            // Log cache statistics if available
+            if (responseData.cache_stats) {
+                console.log("File processing cache stats:", responseData.cache_stats);
+            }
+
             if (responseData.candidateIds && responseData.candidateIds.length > 0) {
                 setSubmitProgress(92);
                 await generateAndCheckDetailedProfiles(responseData.candidateIds);
@@ -421,7 +527,7 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                 });
                 setApiStatus("idle");
                 setSubmitProgress(0);
-                return; // <-- Do not proceed to upload
+                return;
             }
 
             if (error.data && error.data.message) {
@@ -438,10 +544,12 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
         }
     };
 
-    // MODIFIED: Initial upload call passes default false flags.
+    // Initial upload call with cache awareness
     const handleInitialUpload = () => {
         if (!fileState.selectedFiles || fileState.selectedFiles.length === 0) {
-            setErrorMessage("Please upload at least one CV file"); setShowErrorModal(true); return;
+            setErrorMessage("Please upload at least one CV file");
+            setShowErrorModal(true);
+            return;
         }
         setUserConsentedToAIUpload(false);
         setUserConsentedToIrrelevantUpload(false);
@@ -480,9 +588,6 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
         setUserConsentedToAIUpload(consentAI);
         setUserConsentedToIrrelevantUpload(consentIrrelevant);
 
-        // Re-call executeUpload with the original files and new force flags
-        // The backend will now skip the AI/Irrelevance modal step for these files
-        // and proceed to the duplicate check.
         executeUpload(fileState.selectedFiles, { // Use original selected files
             forceAi: consentAI,
             forceIrrelevant: consentIrrelevant,
@@ -583,6 +688,30 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
         });
     };
 
+    // Enhanced file processing state indicator
+    const getFileProcessingIndicator = (fileName) => {
+        const processingState = fileState.fileProcessingStates[fileName];
+        const analysisResult = fileState.fileAnalysisResults[fileName];
+
+        switch (processingState) {
+            case 'pending':
+                return <span className="processing-indicator pending">📋 Ready</span>;
+            case 'analyzing':
+                return <span className="processing-indicator analyzing">🔄 Analyzing...</span>;
+            case 'cached':
+                return <span className="processing-indicator cached">⚡ Cached</span>;
+            case 'ready':
+                if (analysisResult) {
+                    return <span className="processing-indicator analyzed">✅ Analyzed</span>;
+                }
+                return <span className="processing-indicator ready">📋 Ready</span>;
+            case 'error':
+                return <span className="processing-indicator error">❌ Error</span>;
+            default:
+                return null;
+        }
+    };
+
     const ErrorModal = () => (
         <div className="status-modal-overlay" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} >
             <div className="status-modal error-modal">
@@ -646,15 +775,18 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
     if (!isOpen) return null;
 
     return (
-        <div className={`modal-overlay ${fileState.isModalHidden ? "modal-overlay-hidden" : ""}`} onClick={handleOverlayClick} role="dialog" aria-labelledby="modal-title" aria-modal="true" >
-            <div className="modal-content" onClick={e => e.stopPropagation()} >
+        <div className={`modal-overlay ${fileState.isModalHidden ? "modal-overlay-hidden" : ""}`} onClick={handleOverlayClick} role="dialog" aria-labelledby="modal-title" aria-modal="true">
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
                 {getFullPageOverlay()}
                 {(apiStatus === "uploading" || apiStatus === "overwriting" || apiStatus === "reranking" || apiStatus === "completed") && (
                     <div className="api-loading-overlay">
                         <div className="api-loading-content">
                             <LoadingAnimation />
                             <p>{apiStatus === "overwriting" ? "Processing overwrite..." : apiStatus === "reranking" ? "Reranking..." : apiStatus === "completed" ? "Finalizing..." : "Uploading files..."}</p>
-                            <div className="progress-bar-container"><div className="progress-bar" style={{ width: `${submitProgress}%` }}></div><span className="progress-text">{Math.round(submitProgress)}%</span></div>
+                            <div className="progress-bar-container">
+                                <div className="progress-bar" style={{ width: `${submitProgress}%` }}></div>
+                                <span className="progress-text">{Math.round(submitProgress)}%</span>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -695,19 +827,36 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                             <div className="upload-container" ref={uploadContainerRef}>
                                 <div className="upload-card">
                                     <div className="upload-dropzone-container">
-                                        <div className={`upload-dropzone ${(fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle') ? 'disabled-dropzone' : ''}`} onDragOver={handleDragOver} onDrop={handleDrop} role="button" tabIndex={(fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle') ? -1 : 0} aria-label="Upload files" aria-disabled={fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle'} onKeyDown={handleFileInputKeyDown}>
-                                            <div className="upload-icon-container"><svg className="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg></div>
+                                        <div className={`upload-dropzone ${(fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle') ? 'disabled-dropzone' : ''}`} onDragOver={handleDragOver} onDrop={handleDrop}>
+                                            <div className="upload-icon-container">
+                                                <svg className="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                                </svg>
+                                            </div>
                                             <p className="upload-text">{(fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle') ? "Processing..." : "Drag and Drop files to upload"}</p>
-                                            <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" multiple onChange={handleFileChange} className="hidden-input" disabled={fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle'} />
-                                            <button className={`browse-button ${(fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle') ? 'disabled-button' : ''}`} onClick={handleChooseFile} disabled={fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle'}>{(fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle') ? "Processing..." : "Browse Files"}</button>
+                                            <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" multiple onChange={handleFileChange} className="hidden-input" disabled={fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle'} tabIndex={-1} />
+                                            <button className={`browse-button ${(fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle') ? 'disabled-button' : ''}`} onClick={handleChooseFile} disabled={fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle'} onKeyDown={handleFileInputKeyDown}>
+                                                Choose Files
+                                            </button>
                                             <p className="upload-subtext">Supports PDF, DOC, DOCX</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div className="files-container">
-                                <h3 className="files-title" id="uploaded-files-heading">Selected Files</h3>
-                                {fileState.selectedFiles.length === 0 ? (<div className="no-files"><p className="no-files-text">No files selected yet</p></div>) : (
+                                <h3 className="files-title" id="uploaded-files-heading">
+                                    Selected Files
+                                    {fileState.sessionId && (
+                                        <span className="session-indicator" title={`Session: ${fileState.sessionId}`}>
+                                            🔄 Smart Processing
+                                        </span>
+                                    )}
+                                </h3>
+                                {fileState.selectedFiles.length === 0 ? (
+                                    <div className="no-files">
+                                        <p className="no-files-text">No files selected yet</p>
+                                    </div>
+                                ) : (
                                     <div className="files-list" role="list" aria-labelledby="uploaded-files-heading">
                                         {fileState.selectedFiles.map((file, index) => {
                                             const flags = fileFlags[file.name] || {};
@@ -715,6 +864,8 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                                             const isIrrelevant = flags.is_irrelevant;
                                             const irrelevanceScore = flags.irrelevance_score;
                                             const aiConfidence = flags.ai_confidence;
+                                            const fileHash = fileState.fileHashes[file.name];
+                                            const processingState = fileState.fileProcessingStates[file.name];
 
                                             let fileItemClasses = "file-item";
                                             if (isIrrelevant) fileItemClasses += " irrelevant-item-highlight";
@@ -729,6 +880,14 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                                                                 <p className="file-name" title={file.name}>
                                                                     {file.name.length > 60 ? file.name.substring(0, 60) + '...' : file.name}
                                                                 </p>
+                                                                <div className="file-metadata">
+                                                                    {getFileProcessingIndicator(file.name)}
+                                                                    {fileHash && (
+                                                                        <span className="file-hash" title={`File ID: ${fileHash.substring(0, 16)}...`}>
+                                                                            🔗 ID: {fileHash.substring(0, 8)}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                                 <div className="badges-main-list">
                                                                     {isAI && (
                                                                         <span className="badge-main-list ai-badge-main-list">
@@ -744,10 +903,17 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                                                                     )}
                                                                 </div>
                                                                 <button onClick={() => removeFile(index)} className="delete-button" aria-label={`Remove file ${file.name}`} disabled={fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle'}>
-                                                                    <svg className="delete-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                                    <svg className="delete-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                    </svg>
                                                                 </button>
                                                             </div>
-                                                            {(fileState.isLoading && fileState.uploadProgress[file.name] !== undefined && fileState.uploadProgress[file.name] < 100) ? (<div className="progress-bar-container"><div className="progress-bar" style={{ width: `${fileState.uploadProgress[file.name]}%` }}></div><span className="progress-text">{fileState.uploadProgress[file.name]}%</span></div>) : (fileState.processingFiles && fileState.uploadProgress[file.name] === undefined && fileState.uploadQueue && fileState.uploadQueue.some(queueFile => queueFile.name === file.name)) ? (<div className="waiting-container"><p className="waiting-text">Waiting to upload...</p></div>) : (<p className="file-size">{(file.size / 1024).toFixed(1)} KB</p>)}
+                                                            {(fileState.isLoading && fileState.uploadProgress[file.name] !== undefined && fileState.uploadProgress[file.name] < 100) ? (
+                                                                <div className="progress-bar-container file-progress">
+                                                                    <div className="progress-bar" style={{ width: `${fileState.uploadProgress[file.name]}%` }}></div>
+                                                                    <span className="progress-text">{Math.round(fileState.uploadProgress[file.name])}%</span>
+                                                                </div>
+                                                            ) : null}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -759,7 +925,9 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                         </div>
                         <div className="modal-footer">
                             <button className="modal-button secondary-button" onClick={handleCancelClick} disabled={fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle'}>Cancel</button>
-                            <button className="modal-button primary-button" onClick={handleInitialUpload} disabled={fileState.selectedFiles.length === 0 || fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle'}>Upload CV{fileState.selectedFiles.length !== 1 ? 's' : ''}</button>
+                            <button className="modal-button primary-button" onClick={handleInitialUpload} disabled={fileState.selectedFiles.length === 0 || fileState.isLoading || fileState.processingFiles || apiStatus !== 'idle'}>
+                                Upload CVs ({fileState.selectedFiles.length})
+                            </button>
                         </div>
                     </>
                 )}

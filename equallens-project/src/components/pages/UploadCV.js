@@ -10,7 +10,7 @@ import BiasHighlightingInput from '../BiasHighlightingInput';
 import JobSuggestionModal from '../JobSuggestionModal';
 import SkillTagWithLogo from '../SkillTagWithLogo';
 
-// MODIFIED: Expanded reducer to handle duplicates and AI flags
+// ENHANCED: Expanded reducer to handle duplicates, AI flags, and caching
 const fileUploadReducer = (state, action) => {
     switch (action.type) {
         case 'ADD_FILES':
@@ -18,7 +18,30 @@ const fileUploadReducer = (state, action) => {
                 ...state,
                 selectedFiles: action.payload.updatedFiles,
                 uploadQueue: action.payload.newQueue,
-                processingFiles: true
+                processingFiles: true,
+                fileAnalysisResults: action.payload.fileAnalysisResults || state.fileAnalysisResults,
+                fileHashes: action.payload.fileHashes || state.fileHashes,
+                fileProcessingStates: action.payload.fileProcessingStates || state.fileProcessingStates
+            };
+        case 'SET_FILE_ANALYSIS_RESULT':
+            return {
+                ...state,
+                fileAnalysisResults: {
+                    ...state.fileAnalysisResults,
+                    [action.payload.fileName]: action.payload.result
+                },
+                fileHashes: {
+                    ...state.fileHashes,
+                    [action.payload.fileName]: action.payload.fileHash
+                }
+            };
+        case 'UPDATE_FILE_PROCESSING_STATE':
+            return {
+                ...state,
+                fileProcessingStates: {
+                    ...state.fileProcessingStates,
+                    [action.payload.fileName]: action.payload.state
+                }
             };
         case 'FILE_PROGRESS':
             return {
@@ -36,11 +59,24 @@ const fileUploadReducer = (state, action) => {
             return { ...state, isLoading: false, processingFiles: false };
         case 'REMOVE_FILE':
             const fileToRemove = state.selectedFiles[action.payload.index];
+            const newFileAnalysisResults = { ...state.fileAnalysisResults };
+            const newFileHashes = { ...state.fileHashes };
+            const newFileProcessingStates = { ...state.fileProcessingStates };
+
+            if (fileToRemove) {
+                delete newFileAnalysisResults[fileToRemove.name];
+                delete newFileHashes[fileToRemove.name];
+                delete newFileProcessingStates[fileToRemove.name];
+            }
+
             return {
                 ...state,
                 selectedFiles: state.selectedFiles.filter((_, i) => i !== action.payload.index),
                 uploadQueue: fileToRemove ? state.uploadQueue.filter(queueFile => queueFile.name !== fileToRemove.name) : state.uploadQueue,
-                uploadProgress: fileToRemove ? Object.fromEntries(Object.entries(state.uploadProgress).filter(([key]) => key !== fileToRemove.name)) : state.uploadProgress
+                uploadProgress: fileToRemove ? Object.fromEntries(Object.entries(state.uploadProgress).filter(([key]) => key !== fileToRemove.name)) : state.uploadProgress,
+                fileAnalysisResults: newFileAnalysisResults,
+                fileHashes: newFileHashes,
+                fileProcessingStates: newFileProcessingStates
             };
         case 'FOUND_DUPLICATES': // NEW
             return {
@@ -54,6 +90,8 @@ const fileUploadReducer = (state, action) => {
             };
         case 'CLOSE_DUPLICATES_MODAL': // NEW
             return { ...state, showDuplicatesModal: false, isModalHidden: false };
+        case 'SET_SESSION_ID':
+            return { ...state, sessionId: action.payload.sessionId };
         case 'RESET':
             return {
                 selectedFiles: [],
@@ -64,15 +102,33 @@ const fileUploadReducer = (state, action) => {
                 duplicateFiles: [],
                 nonDuplicateFiles: [],
                 showDuplicatesModal: false,
-                isModalHidden: false
+                isModalHidden: false,
+                fileAnalysisResults: {},
+                fileHashes: {},
+                fileProcessingStates: {},
+                sessionId: null
             };
         default:
             return state;
     }
 };
 
+// Helper function to generate client-side file hash (simple version without external service)
+const generateClientFileHash = async (file) => {
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return `${hashHex.substring(0, 16)}-${file.name}-${file.size}`;
+    } catch (error) {
+        console.error('Error generating file hash:', error);
+        return `${file.name}-${file.size}-${file.lastModified}`;
+    }
+};
+
 const UploadCV = () => {
-    // MODIFIED: Expanded reducer state
+    // ENHANCED: Expanded reducer state with caching
     const [fileState, fileDispatch] = useReducer(fileUploadReducer, {
         selectedFiles: [],
         isLoading: false,
@@ -82,7 +138,11 @@ const UploadCV = () => {
         duplicateFiles: [],
         nonDuplicateFiles: [],
         showDuplicatesModal: false,
-        isModalHidden: false
+        isModalHidden: false,
+        fileAnalysisResults: {},
+        fileHashes: {},
+        fileProcessingStates: {},
+        sessionId: null
     });
 
     const [currentStep, setCurrentStep] = useState("jobDetails");
@@ -138,6 +198,13 @@ const UploadCV = () => {
     });
     const [pendingJobPayload, setPendingJobPayload] = useState(null);
 
+    // Generate session ID on step change to uploadCV
+    useEffect(() => {
+        if (currentStep === "uploadCV" && !fileState.sessionId) {
+            const sessionId = `upload-job-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            fileDispatch({ type: 'SET_SESSION_ID', payload: { sessionId } });
+        }
+    }, [currentStep, fileState.sessionId]);
 
     const jobTitleOptions = useMemo(() => ["Software Engineer", "Data Scientist", "Project Manager", "Web Developer", "UI/UX Designer", "Product Manager", "DevOps Engineer", "Systems Analyst", "Frontend Developer", "Backend Developer", "Full Stack Developer", "Machine Learning Engineer", "Business Analyst", "Quality Assurance Engineer"], []);
     const departmentOptions = useMemo(() => ["Engineering", "Information Technology", "Marketing", "Finance", "Human Resources", "Sales", "Operations", "Customer Support", "Research & Development", "Legal", "Administration", "Design", "Product Management", "Business Development", "Data Science"], []);
@@ -206,36 +273,94 @@ const UploadCV = () => {
     const handleSkillSelect = (selected) => { if (!skills.includes(selected)) { setSkills([...skills, selected]); } setSkillInput(""); setShowSkillSuggestions(false); };
     useEffect(() => { const handleClickOutside = (event) => { if (!event.target.closest('.suggestion-container')) { setShowJobTitleSuggestions(false); setShowSkillSuggestions(false); setShowDepartmentSuggestions(false); } }; document.addEventListener('mousedown', handleClickOutside); return () => document.removeEventListener('mousedown', handleClickOutside); }, []);
 
-    const processFiles = useCallback((files) => {
-        if (fileState.isLoading || fileState.processingFiles) { alert("Please wait for the current file to complete uploading before adding new files."); return; }
+    // ENHANCED: processFiles with caching support (simplified version without external service)
+    const processFiles = useCallback(async (files) => {
+        if (fileState.isLoading || fileState.processingFiles) {
+            alert("Please wait for the current file to complete uploading before adding new files.");
+            return;
+        }
+
         let updatedFiles = [...fileState.selectedFiles];
         let newFiles = [];
         const newFileFlags = { ...fileFlags };
+        const newFileHashes = { ...fileState.fileHashes };
+        const newFileProcessingStates = { ...fileState.fileProcessingStates };
+
         for (const fileToProcess of files) {
             const extension = fileToProcess.name.split('.').pop().toLowerCase();
             const validExtensions = ['pdf', 'doc', 'docx'];
-            if (!validExtensions.includes(extension)) { alert(`${fileToProcess.name} is not a supported file type. Please upload PDF, DOC, or DOCX files only.`); continue; }
-            const existingIndex = updatedFiles.findIndex(file => file.name === fileToProcess.name);
-            if (existingIndex !== -1) {
-                if (window.confirm(`A file named "${fileToProcess.name}" already exists. Do you want to replace it?`)) {
+            if (!validExtensions.includes(extension)) {
+                alert(`${fileToProcess.name} is not a supported file type. Please upload PDF, DOC, or DOCX files only.`);
+                continue;
+            }
+
+            // Generate file hash for tracking
+            try {
+                const fileHash = await generateClientFileHash(fileToProcess);
+
+                const existingIndex = updatedFiles.findIndex(file => file.name === fileToProcess.name);
+                if (existingIndex !== -1) {
+                    if (window.confirm(`A file named "${fileToProcess.name}" already exists. Do you want to replace it?`)) {
+                        delete newFileFlags[fileToProcess.name];
+                        updatedFiles[existingIndex] = fileToProcess;
+                        newFiles.push(fileToProcess);
+                        newFileHashes[fileToProcess.name] = fileHash;
+                        newFileProcessingStates[fileToProcess.name] = 'pending';
+                    }
+                } else {
                     delete newFileFlags[fileToProcess.name];
-                    updatedFiles[existingIndex] = fileToProcess;
+                    updatedFiles.push(fileToProcess);
                     newFiles.push(fileToProcess);
+                    newFileHashes[fileToProcess.name] = fileHash;
+                    newFileProcessingStates[fileToProcess.name] = 'pending';
                 }
-            } else {
-                delete newFileFlags[fileToProcess.name];
-                updatedFiles.push(fileToProcess);
-                newFiles.push(fileToProcess);
+            } catch (error) {
+                console.error(`Error processing file ${fileToProcess.name}:`, error);
+                alert(`Error processing file ${fileToProcess.name}. Please try again.`);
+                continue;
             }
         }
+
         if (newFiles.length > 0) {
             setFileFlags(newFileFlags);
             const newQueue = [...fileState.uploadQueue.filter(queueFile => !newFiles.some(newFile => newFile.name === queueFile.name)), ...newFiles];
-            fileDispatch({ type: 'ADD_FILES', payload: { updatedFiles, newQueue } });
+            fileDispatch({
+                type: 'ADD_FILES',
+                payload: {
+                    updatedFiles,
+                    newQueue,
+                    fileHashes: newFileHashes,
+                    fileProcessingStates: newFileProcessingStates
+                }
+            });
         }
-    }, [fileState.selectedFiles, fileState.isLoading, fileState.processingFiles, fileState.uploadQueue, fileFlags]);
+    }, [fileState.selectedFiles, fileState.isLoading, fileState.processingFiles, fileState.uploadQueue, fileState.fileHashes, fileFlags]);
 
-    useEffect(() => { if (fileState.uploadQueue.length === 0) { if (fileState.processingFiles) { fileDispatch({ type: 'QUEUE_COMPLETE' }); } return; } const processAllFiles = async () => { for (const fileToProcess of fileState.uploadQueue) { fileDispatch({ type: 'FILE_PROGRESS', payload: { fileName: fileToProcess.name, progress: 100 } }); } fileState.uploadQueue.forEach(() => fileDispatch({ type: 'FILE_COMPLETE' })); }; processAllFiles(); }, [fileState.uploadQueue, fileState.processingFiles]);
+    useEffect(() => {
+        if (fileState.uploadQueue.length === 0) {
+            if (fileState.processingFiles) {
+                fileDispatch({ type: 'QUEUE_COMPLETE' });
+            }
+            return;
+        }
+
+        const processAllFiles = async () => {
+            for (const fileToProcess of fileState.uploadQueue) {
+                // Update processing state to ready
+                fileDispatch({
+                    type: 'UPDATE_FILE_PROCESSING_STATE',
+                    payload: {
+                        fileName: fileToProcess.name,
+                        state: 'ready'
+                    }
+                });
+                fileDispatch({ type: 'FILE_PROGRESS', payload: { fileName: fileToProcess.name, progress: 100 } });
+            }
+            fileState.uploadQueue.forEach(() => fileDispatch({ type: 'FILE_COMPLETE' }));
+        };
+        processAllFiles();
+    }, [fileState.uploadQueue, fileState.processingFiles]);
+
     useEffect(() => { const uploadContainer = uploadContainerRef.current; if (uploadContainer) { const handleLocalDragOver = (event) => { event.preventDefault(); uploadContainer.classList.add('dragover'); }; const handleLocalDragLeave = () => uploadContainer.classList.remove('dragover'); const handleLocalDrop = () => uploadContainer.classList.remove('dragover'); uploadContainer.addEventListener('dragover', handleLocalDragOver); uploadContainer.addEventListener('dragleave', handleLocalDragLeave); uploadContainer.addEventListener('drop', handleLocalDrop); return () => { uploadContainer.removeEventListener('dragover', handleLocalDragOver); uploadContainer.removeEventListener('dragleave', handleLocalDragLeave); uploadContainer.removeEventListener('drop', handleLocalDrop); }; } }, []);
     useEffect(() => { if (currentStep !== "uploadCV") return; const handleDocumentDragOver = (event) => { event.preventDefault(); if (!isDragging && !fileState.isLoading && !fileState.processingFiles) { setIsDragging(true); } }; const handleDocumentDragLeave = (event) => { event.preventDefault(); if (event.clientX <= 0 || event.clientY <= 0 || event.clientX >= window.innerWidth || event.clientY >= window.innerHeight) { setIsDragging(false); } }; const handleDocumentDrop = (event) => { event.preventDefault(); setIsDragging(false); if (fileState.isLoading || fileState.processingFiles) { alert("Please wait for the current file to complete uploading before adding new files."); return; } const files = Array.from(event.dataTransfer.files); if (files.length > 0) { processFiles(files); } }; document.addEventListener('dragover', handleDocumentDragOver); document.addEventListener('dragleave', handleDocumentDragLeave); document.addEventListener('drop', handleDocumentDrop); return () => { document.removeEventListener('dragover', handleDocumentDragOver); document.removeEventListener('dragleave', handleDocumentDragLeave); document.removeEventListener('drop', handleDocumentDrop); }; }, [isDragging, processFiles, fileState.isLoading, fileState.processingFiles, currentStep]);
     const handleFileChange = (event) => { const files = Array.from(event.target.files); if (files.length > 0) { processFiles(files); event.target.value = ''; } };
@@ -246,6 +371,27 @@ const UploadCV = () => {
     const handleChooseFile = () => fileInputRef.current.click();
     const getFileIcon = (fileName) => { const ext = fileName.split('.').pop().toLowerCase(); if (ext === 'pdf') return <div className="file-icon pdf-icon">PDF</div>; if (['doc', 'docx'].includes(ext)) return <div className="file-icon doc-icon">DOC</div>; return <div className="file-icon default-icon">FILE</div>; };
     const getFullPageOverlay = () => { if (!isDragging) return null; return (<div className="fullpage-drop-overlay"><div className="drop-content"><div className="file-preview"><div className="file-icon-large pdf-icon-large">FILE</div>{fileState.selectedFiles.length > 0 && <div className="copy-badge">Copy</div>}</div><h2 className="drop-title">Drop files anywhere</h2><p className="drop-subtitle">Drop file(s) to upload it</p></div></div>); };
+
+    // Enhanced file processing state indicator
+    const getFileProcessingIndicator = (fileName) => {
+        const processingState = fileState.fileProcessingStates[fileName];
+
+        switch (processingState) {
+            case 'pending':
+                return <span className="processing-indicator pending">📋 Ready</span>;
+            case 'analyzing':
+                return <span className="processing-indicator analyzing">🔄 Analyzing...</span>;
+            case 'cached':
+                return <span className="processing-indicator cached">⚡ Cached</span>;
+            case 'ready':
+                return <span className="processing-indicator ready">✅ Ready</span>;
+            case 'error':
+                return <span className="processing-indicator error">❌ Error</span>;
+            default:
+                return null;
+        }
+    };
+
     const handleAddSkill = () => { if (skillInput.trim() && !skills.includes(skillInput.trim())) { setSkills([...skills, skillInput.trim()]); setSkillInput(""); } };
     const removeSkill = (skill) => setSkills(skills.filter(s => s !== skill));
     const handleSkillKeyPress = (e) => { if (e.key === 'Enter' && skillInput.trim()) { e.preventDefault(); handleAddSkill(); } };
@@ -312,6 +458,11 @@ const UploadCV = () => {
         formData.append("flagged_analysis_payloads_json", JSON.stringify(pendingAnalysisPayloads.flagged));
         // ==========================================================
         formData.append("user_time_zone", pendingUserTimeZone);
+
+        // Add session ID if available
+        if (fileState.sessionId) {
+            formData.append("session_id", fileState.sessionId);
+        }
 
         // Re-append the original File objects
         const allPayloads = [...pendingAnalysisPayloads.successful, ...pendingAnalysisPayloads.flagged];
@@ -396,7 +547,7 @@ const UploadCV = () => {
         return { processedCount, failedCount };
     };
 
-    // MODIFIED: Main submission logic to handle exceptions
+    // ENHANCED: Main submission logic to handle exceptions and caching
     const handleFinalSubmit = async (forceUpload = false, filesToUpload = fileState.selectedFiles) => {
         if (!filesToUpload || filesToUpload.length === 0) {
             setErrorMessage("Please upload at least one CV file");
@@ -418,6 +569,12 @@ const UploadCV = () => {
             const submissionData = { ...jobData, skills: jobData.skills || [], requiredSkills: jobData.requiredSkills || jobData.skills || [] };
             formData.append("job_data", JSON.stringify(submissionData));
             formData.append("user_time_zone", userTimeZone);
+
+            // Add session ID to track file processing
+            if (fileState.sessionId) {
+                formData.append("session_id", fileState.sessionId);
+            }
+
             filesToUpload.forEach(file => formData.append("files", file));
 
             if (forceUpload) {
@@ -472,6 +629,11 @@ const UploadCV = () => {
         setPendingJobPayload(null); // Clear pending data
         setPendingAnalysisPayloads({ successful: [], flagged: [] });
 
+        // Log cache statistics if available
+        if (responseData.cache_stats) {
+            console.log("File processing cache stats:", responseData.cache_stats);
+        }
+
         if (responseData.successfulCandidates && responseData.successfulCandidates.length > 0) {
             setSubmitProgress(92);
             await generateAndCheckDetailedProfiles(responseData.successfulCandidates);
@@ -487,7 +649,7 @@ const UploadCV = () => {
         if (error.data?.message) displayErrorMessage = error.data.message;
         else if (error.message && !error.message.toLowerCase().includes("http error")) displayErrorMessage = error.message;
         else if (error.status) displayErrorMessage = `HTTP error ${error.status}`;
-        
+
         setApiStatus("error");
         setErrorMessage(displayErrorMessage);
         setShowErrorModal(true);
@@ -563,6 +725,7 @@ return (
                             <svg className="suggest-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v2.5h2.5a.75.75 0 010 1.5h-2.5v2.5a.75.75 0 01-1.5 0v-2.5h-2.5a.75.75 0 010-1.5h2.5v-2.5A.75.75 0 0110 3zM8.707 13.707a1 1 0 11-1.414-1.414L8.586 11H7a1 1 0 110-2h1.586l-1.293-1.293a1 1 0 111.414-1.414L11.414 10l-2.707 2.707zM10 18a8 8 0 100-16 8 8 0 000 16z" clipRule="evenodd" /></svg>
                         </button>
                     </div>
+                    {/* PRESERVED: Your original suggestion display UI */}
                     {generatedSuggestions && (<div className={`suggestion-display ${showGeneratedSuggestions ? 'expanded' : 'collapsed'}`}><button type="button" onClick={toggleSuggestionDisplay} className="suggestion-toggle-button">{showGeneratedSuggestions ? 'Hide' : 'Show'} AI Suggestions<svg className={`toggle-icon ${showGeneratedSuggestions ? 'up' : 'down'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg></button><div className="suggestion-content"><div className="suggestion-section"><h4>Suggested Description:</h4><pre className="suggestion-text">{generatedSuggestions.description}</pre><button type="button" onClick={() => handleApplySuggestion('description')} className="apply-suggestion-button">Apply Description</button></div><div className="suggestion-section"><h4>Suggested Requirements:</h4><pre className="suggestion-text">{generatedSuggestions.requirements}</pre><button type="button" onClick={() => handleApplySuggestion('requirements')} className="apply-suggestion-button">Apply Requirements</button></div><button type="button" onClick={() => handleApplySuggestion('both')} className="apply-suggestion-button both">Apply Both</button></div></div>)}
                     <div className="form-group"><label htmlFor="jobDescription" className="form-label">Description</label><div className="bias-highlighting-input-container"><BiasHighlightingInput id="jobDescription" value={jobDescription} onChange={handleJobDescriptionChange} onInput={handleJobDescriptionInput} placeholder="Enter job description (or use AI Suggest)" biasedTerms={biasedTerms.jobDescription || []} multiline={true} /></div></div>
                     <div className="form-group"><label htmlFor="requirements" className="form-label">Requirements / Qualifications</label><div className="bias-highlighting-input-container"><BiasHighlightingInput id="requirements" value={requirements} onChange={handleRequirementsChange} onInput={handleRequirementsInput} placeholder="Enter job requirements and qualifications (or use AI Suggest)" biasedTerms={biasedTerms.requirements || []} multiline={true} /></div></div>
@@ -578,23 +741,35 @@ return (
                     <div className="step-nav"><button onClick={handleBackToJobDetails} className="back-button"><svg className="back-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>Back to Job Details</button></div>
                     <h3 className="job-title-header">Upload Candidate CVs for {jobData?.jobTitle}</h3>
                 </div>
-                <div className="upload-container" ref={uploadContainerRef}>
+                                <div className="upload-container" ref={uploadContainerRef}>
                     <div className="upload-card"><div className="upload-dropzone-container"><div className={`upload-dropzone ${(fileState.isLoading || fileState.processingFiles) ? 'disabled-dropzone' : ''}`} onDragOver={handleDragOver} onDrop={handleDrop} role="button" tabIndex={fileState.isLoading || fileState.processingFiles ? -1 : 0} aria-label="Upload files by dropping them here or press to select files" aria-disabled={fileState.isLoading || fileState.processingFiles} onKeyDown={handleFileInputKeyDown}><div className="upload-icon-container"><svg className="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg></div><p className="upload-text">{(fileState.isLoading || fileState.processingFiles) ? "Please wait for the current upload to complete" : "Drag and Drop files to upload"}</p><input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" multiple onChange={handleFileChange} className="hidden-input" disabled={fileState.isLoading || fileState.processingFiles} /><button className={`browse-button ${(fileState.isLoading || fileState.processingFiles) ? 'disabled-button' : ''}`} onClick={handleChooseFile} disabled={fileState.isLoading || fileState.processingFiles}>{(fileState.isLoading || fileState.processingFiles) ? "Upload in Progress..." : "Browse Files"}</button><p className="upload-subtext">Supports PDF, DOC, DOCX</p></div></div></div>
                 </div>
                 <div className="files-container">
-                    <h3 className="files-title" id="uploaded-files-heading">Uploaded Files</h3>
+                    <h3 className="files-title" id="uploaded-files-heading">
+                        Uploaded Files
+                        {fileState.sessionId && (
+                            <span className="session-indicator" title={`Session: ${fileState.sessionId}`}>
+                                🔄 Smart Processing
+                            </span>
+                        )}
+                    </h3>
                     {fileState.selectedFiles.length === 0 ? (<div className="no-files"><p className="no-files-text">No files uploaded yet</p></div>) : (
                         <div className="files-list" role="list" aria-labelledby="uploaded-files-heading">
                             {fileState.selectedFiles.map((file, index) => {
-                                // NEW: Check file flags
+                                // ENHANCED: Check file flags and processing states
                                 const flags = fileFlags[file.name] || {};
                                 const isAI = flags.is_ai_generated;
                                 const isIrrelevant = flags.is_irrelevant;
                                 const irrelevanceScore = flags.irrelevance_score;
                                 const aiConfidence = flags.ai_confidence;
+                                const fileHash = fileState.fileHashes[file.name];
+                                const processingState = fileState.fileProcessingStates[file.name];
+
                                 let fileItemClasses = "file-item";
                                 if (isIrrelevant) fileItemClasses += " irrelevant-item-highlight";
                                 else if (isAI) fileItemClasses += " ai-item-highlight";
+                                if (processingState === 'cached') fileItemClasses += " cached";
+                                if (processingState === 'analyzing') fileItemClasses += " processing";
 
                                 return (
                                     <div key={index} className={fileItemClasses} role="listitem">
@@ -603,7 +778,15 @@ return (
                                             <div className="file-details">
                                                 <div className="file-header">
                                                     <p className="file-name" title={file.name}>{file.name.length > 100 ? file.name.substring(0, 100) + '...' : file.name}</p>
-                                                    {/* NEW: Badges container */}
+                                                    <div className="file-metadata">
+                                                        {getFileProcessingIndicator(file.name)}
+                                                        {fileHash && (
+                                                            <span className="file-hash" title={`File ID: ${fileHash.substring(0, 16)}...`}>
+                                                                🔗 ID: {fileHash.substring(0, 8)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {/* ENHANCED: Badges container */}
                                                     <div className="badges-main-list">
                                                         {isAI && (
                                                             <span className="badge-main-list ai-badge-main-list">
