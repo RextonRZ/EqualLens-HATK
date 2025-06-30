@@ -109,7 +109,7 @@ const RankApplicantsModal = ({ isOpen, onClose, jobId, jobTitle, onSubmit, curre
     return (
         <div
             className="modal-overlay"
-            onClick={() => setShowConfirmModal(true)}
+            onClick={onClose}
             role="dialog"
             aria-labelledby="modal-title"
             aria-modal="true"
