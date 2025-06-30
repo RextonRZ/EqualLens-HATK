@@ -747,11 +747,6 @@ return (
                 <div className="files-container">
                     <h3 className="files-title" id="uploaded-files-heading">
                         Uploaded Files
-                        {fileState.sessionId && (
-                            <span className="session-indicator" title={`Session: ${fileState.sessionId}`}>
-                                🔄 Smart Processing
-                            </span>
-                        )}
                     </h3>
                     {fileState.selectedFiles.length === 0 ? (<div className="no-files"><p className="no-files-text">No files uploaded yet</p></div>) : (
                         <div className="files-list" role="list" aria-labelledby="uploaded-files-heading">
@@ -778,28 +773,25 @@ return (
                                             <div className="file-details">
                                                 <div className="file-header">
                                                     <p className="file-name" title={file.name}>{file.name.length > 100 ? file.name.substring(0, 100) + '...' : file.name}</p>
-                                                    <div className="file-metadata">
-                                                        {getFileProcessingIndicator(file.name)}
-                                                        {fileHash && (
-                                                            <span className="file-hash" title={`File ID: ${fileHash.substring(0, 16)}...`}>
-                                                                🔗 ID: {fileHash.substring(0, 8)}
-                                                            </span>
-                                                        )}
+
+                                                    {/* NEW: Wrapper for all right-side actions */}
+                                                    <div className="file-actions">
+                                                        <div className="badges-container">
+                                                            {isAI && (
+                                                                <span className="upload-file-badge upload-ai-detection-badge">
+                                                                    AI Detected {aiConfidence ? `(${(aiConfidence * 100).toFixed(0)}%)` : ''}
+                                                                </span>
+                                                            )}
+                                                            {isIrrelevant && (
+                                                                <span className="upload-file-badge upload-irrelevant-detection-badge">
+                                                                    {irrelevanceScore !== undefined && irrelevanceScore !== null ? `${irrelevanceScore.toFixed(0)}% Irrelevant` : "Irrelevant"}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <button onClick={() => removeFile(index)} className="delete-button" aria-label={`Remove file ${file.name}`} disabled={fileState.isLoading || fileState.processingFiles}>
+                                                            <svg className="delete-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                        </button>
                                                     </div>
-                                                    {/* ENHANCED: Badges container */}
-                                                    <div className="badges-main-list">
-                                                        {isAI && (
-                                                            <span className="badge-main-list ai-badge-main-list">
-                                                                AI Detected {aiConfidence ? `(${(aiConfidence * 100).toFixed(0)}%)` : ''}
-                                                            </span>
-                                                        )}
-                                                        {isIrrelevant && (
-                                                            <span className="badge-main-list irrelevant-badge-main-list">
-                                                                {irrelevanceScore !== undefined && irrelevanceScore !== null ? `${irrelevanceScore.toFixed(0)}% Irrelevant` : "Irrelevant"}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <button onClick={() => removeFile(index)} className="delete-button" aria-label={`Remove file ${file.name}`} disabled={fileState.isLoading || fileState.processingFiles}><svg className="delete-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                                                 </div>
                                                 {(fileState.isLoading && fileState.uploadProgress[file.name] !== undefined && fileState.uploadProgress[file.name] < 100) ? (<div className="progress-bar-container"><div className="progress-bar" style={{ width: `${fileState.uploadProgress[file.name]}%` }}></div><span className="progress-text">{fileState.uploadProgress[file.name]}%</span></div>) : (fileState.processingFiles && fileState.uploadProgress[file.name] === undefined && fileState.uploadQueue && fileState.uploadQueue.some(queueFile => queueFile.name === file.name)) ? (<div className="waiting-container"><p className="waiting-text">Waiting to upload...</p></div>) : (<p className="file-size">{(file.size / 1024).toFixed(1)} KB</p>)}
                                             </div>

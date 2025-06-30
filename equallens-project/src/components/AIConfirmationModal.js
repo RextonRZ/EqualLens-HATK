@@ -189,9 +189,9 @@ const AIConfirmationModal = ({
                                                                         {file.confidence && (
                                                                             <div className="confidence-bar">
                                                                                 <div className="confidence-label">Confidence Level</div>
-                                                                                <div className="progress-bar">
+                                                                                <div className="ai-confidence-progress-container">
                                                                                     <div
-                                                                                        className={`progress-fill ${confidenceClass}`}
+                                                                                        className={`ai-confidence-progress-fill ${confidenceClass}`}
                                                                                         style={{ width: `${file.confidence * 100}%` }}
                                                                                     ></div>
                                                                                 </div>

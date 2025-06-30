@@ -78,6 +78,7 @@
   padding-left: 1rem; 
   align-items: flex-start; 
   flex-shrink: 0; 
+  margin-top:-3.5rem;
 }
 
 .rank-modal-footer {
@@ -231,6 +232,7 @@
     transition: all 0.3s ease;
     border-radius: 8px;
     border: 1px solid transparent;
+    margin-top:-4rem;
 }
 
 .criteria-container.expanded {

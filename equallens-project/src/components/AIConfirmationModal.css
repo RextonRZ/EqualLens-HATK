@@ -284,30 +284,36 @@
     font-weight: 500;
 }
 
-.progress-bar {
+.ai-confidence-progress-container {
     width: 100%;
     height: 8px;
     background: #e5e7eb;
     border-radius: 4px;
     overflow: hidden;
     margin-bottom: 8px;
+    position: relative;
+    display: block;
 }
 
-.progress-fill {
+.ai-confidence-progress-fill {
     height: 100%;
     border-radius: 4px;
     transition: width 0.3s ease;
+    position: absolute;
+    top: 0;
+    left: 0;
+    min-width: 0;
 }
 
-.progress-fill.confidence-ai {
+.ai-confidence-progress-fill.confidence-ai {
     background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
 }
 
-.progress-fill.confidence-human {
+.ai-confidence-progress-fill.confidence-human {
     background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
 }
 
-.progress-fill.confidence-unknown {
+.ai-confidence-progress-fill.confidence-unknown {
     background: linear-gradient(135deg, #6b7280 0%, #9ca3af 100%);
 }
 
