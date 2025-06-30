@@ -255,17 +255,20 @@ async def _process_single_file_for_candidate_creation(
     is_externally_flagged_ai = external_ai_detection_data.get(
         "predicted_class_label") == "AI-generated" if external_ai_detection_data else False
     is_problematic_internally = (overall_auth_score < FINAL_AUTH_FLAG_THRESHOLD) or (spam_score > SPAM_FLAG_THRESHOLD)
-    is_globally_problematic_ai_wise = is_externally_flagged_ai or is_problematic_internally
     ai_detection_payload_for_modal = None
-    if is_globally_problematic_ai_wise:
-        payload_is_ai_generated_for_modal = is_externally_flagged_ai
-        payload_confidence_for_modal = max(1.0 - overall_auth_score,
-                                           spam_score) if is_problematic_internally else external_ai_detection_data.get(
+    # FIX: Change the condition to only check the external flag.
+    if is_externally_flagged_ai:
+        # The payload flag is true because the external model detected it.
+        payload_is_ai_generated_for_modal = True
+
+        payload_confidence_for_modal = external_ai_detection_data.get(
             "confidence_scores", {}).get("ai_generated", 0.0)
+
         formatted_reason_html_res = ai_detection_formatter_instance.format_analysis_for_frontend(
             filename=file_name_val, auth_results=authenticity_analysis,
             cross_ref_results=cross_referencing_analysis, external_ai_pred_data=external_ai_detection_data)
         formatted_reason_html = formatted_reason_html_res.reason if formatted_reason_html_res else "Detailed analysis available."
+
         ai_detection_payload_for_modal = {
             "filename": file_name_val, "is_ai_generated": payload_is_ai_generated_for_modal,
             "confidence": payload_confidence_for_modal, "reason": formatted_reason_html,
@@ -280,8 +283,9 @@ async def _process_single_file_for_candidate_creation(
         }
 
     current_status = "success_analysis"
-    if is_globally_problematic_ai_wise and not force_upload_problematic_from_form:
+    if is_externally_flagged_ai and not force_upload_problematic_from_form:
         current_status = "ai_content_detected"
+
     if is_irrelevant_flag and not force_upload_irrelevant_from_form:
         current_status = "irrelevant_content" if current_status != "ai_content_detected" else "ai_and_irrelevant_content"
 
@@ -623,7 +627,9 @@ async def upload_more_cv_for_job(
                 if res["fileName"] in selected_filenames_to_override_list or is_overriding_duplicates_general:
                     files_to_overwrite.append(res)
                 else:
-                    unresolved_duplicates.append(res["duplicate_info_raw"])
+                    duplicate_info = res["duplicate_info_raw"]
+                    duplicate_info['fileName'] = res.get('fileName')
+                    unresolved_duplicates.append(duplicate_info)
             elif file_status in ["ai_content_detected", "irrelevant_content", "ai_and_irrelevant_content"]:
                 modal_payload = {"filename": res["fileName"]}
                 if res.get("ai_detection_payload"): modal_payload.update(res["ai_detection_payload"])

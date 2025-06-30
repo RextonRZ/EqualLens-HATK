@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './DuplicateFilesModal.css';
 
-const DuplicateFilesModal = ({ isOpen, duplicates, onClose, onProceed, onUploadNonDuplicates, nonDuplicateCount }) => {
+const DuplicateFilesModal = ({ isOpen, duplicates, onClose, onProceed, onUploadNonDuplicates, nonDuplicateCount, onOverwriteWithSelectedAndNonDuplicates }) => {
   const [selectedDuplicates, setSelectedDuplicates] = useState({});
   const [matchData, setMatchData] = useState({});
   const [expandedChanges, setExpandedChanges] = useState({});
@@ -213,7 +213,13 @@ const DuplicateFilesModal = ({ isOpen, duplicates, onClose, onProceed, onUploadN
     const selectedFiles = Object.keys(selectedDuplicates).filter(
       fileName => selectedDuplicates[fileName]
     );
-    onProceed(selectedFiles);
+
+    // FIX: Call the correct handler based on whether there are also non-duplicates to upload.
+    if (nonDuplicateCount > 0 && onOverwriteWithSelectedAndNonDuplicates) {
+        onOverwriteWithSelectedAndNonDuplicates(selectedFiles);
+    } else {
+      onProceed(selectedFiles);
+    }
   };
 
   const handleCancelUpload = () => {

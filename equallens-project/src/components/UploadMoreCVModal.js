@@ -649,12 +649,8 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
     };
 
     // Update: Add a handler for "Overwrite With Selected + Upload Non-Duplicates" button
-    const handleOverwriteWithSelectedAndNonDuplicates = () => {
-        // Get selected duplicate file names
-        const selectedDuplicateNames = fileState.duplicateFiles
-            .map(d => d.fileName)
-            .filter(name => fileState.selectedFiles.some(f => f.name === name));
-
+    const handleOverwriteWithSelectedAndNonDuplicates = (selectedDuplicateNames = []) => {
+        fileDispatch({ type: 'CLOSE_DUPLICATES_MODAL' });
         // Get selected files for overwrite
         const selectedFilesForOverwrite = fileState.selectedFiles.filter(f =>
             selectedDuplicateNames.includes(f.name)
@@ -679,7 +675,6 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
 
         // Track these as last uploaded duplicates to suppress modal if backend returns them again
         lastUploadedDuplicateNamesRef.current = namesToOverwrite;
-        fileDispatch({ type: 'CLOSE_DUPLICATES_MODAL' });
         executeUpload(filesToUpload, {
             isOverwriting: selectedFilesForOverwrite.length > 0,
             selectedFilenamesForAction: namesToOverwrite,

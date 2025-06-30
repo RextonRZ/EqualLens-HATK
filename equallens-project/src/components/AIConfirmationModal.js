@@ -176,6 +176,7 @@ const AIConfirmationModal = ({
                                                                     Machine Learning Model Prediction
                                                                 </h3>
                                                             </div>
+                                                            <div className="prediction-result">
                                                                 { externalAIPred.error ? (
                                                                     <div className="error-message">
                                                                         Analysis temporarily unavailable
@@ -199,6 +200,7 @@ const AIConfirmationModal = ({
                                                                         )}
                                                                     </div>
                                                                 )}
+                                                            </div>
                                                         </div>
                                                     )}
 
