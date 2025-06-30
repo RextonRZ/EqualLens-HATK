@@ -2054,7 +2054,7 @@ export default function ApplicantDetails() {
                                 </div>
                                 <div className="assessment-breakdown">
                                     <div className="assessment-breakdown-header">
-                                        <p className="info-label">Score Breakdown:</p>
+                                        <p className="info-label">Job Fit Score Breakdown:</p>
                                         <div className="scoring-info-panel" onClick={() => setShowScoringStandardModal(true)} >
                                             <div className="scoring-info-left">
                                                 <div className="scoring-icon">
