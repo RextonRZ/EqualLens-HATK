@@ -143,11 +143,10 @@ class DocumentService:
     
     @staticmethod
     def process_document(file_content: bytes, mime_type: str, file_name: str) -> Dict[str, Any]:
-        """Processes a document using an existing Document AI processor and extracts structured data."""
+        """Processes a document using Document AI OCR processor and extracts raw text data."""
         project_id = os.getenv("DOCUMENTAI_PROJECT_ID", "default_project_id")
         location = os.getenv("DOCUMENTAI_LOCATION", "us")  # "us" or "eu"
         processor_id = os.getenv("DOCUMENTAI_PROCESSOR_ID", "default_processor_id")
-        processor_version = os.getenv("DOCUMENTAI_PROCESSOR_VERSION", "default_processor_version")
         
         # Get file extension
         file_extension = os.path.splitext(file_name)[1].lower()
@@ -163,43 +162,90 @@ class DocumentService:
         opts = ClientOptions(api_endpoint=f"{location}-documentai.googleapis.com")
 
         # Log Document AI request details
-        logger.info(f"Sending document to Document AI - Processor ID: {processor_id}, MIME type: {mime_type}")
+        logger.info(f"Sending document to Document AI OCR - Processor ID: {processor_id}, MIME type: {mime_type}")
         
         try:
             # Initialize the Document AI client
             client = documentai.DocumentProcessorServiceClient(client_options=opts)
 
-            # Construct processor resource name with version
-            processor_name = f"projects/{project_id}/locations/{location}/processors/{processor_id}/processorVersions/{processor_version}"
+            # Construct processor resource name (OCR processor doesn't need version)
+            processor_name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
 
             # Create a raw document request
             raw_document = documentai.RawDocument(content=file_content, mime_type=mime_type)
 
-            # Create a request using the existing processor
+            # Create a request using the OCR processor
             request = documentai.ProcessRequest(name=processor_name, raw_document=raw_document)
 
             # Process the document
             result = client.process_document(request=request)
 
-            # Extract structured data from the document
+            # Extract the full document response as JSON
             document = result.document
-            structured_data = {}
-
+            
+            # Convert the document to a dictionary format for storage
+            document_dict = {
+                "text": document.text,
+                "pages": [],
+                "entities": [],
+                "paragraphs": [],
+                "form_fields": []
+            }
+            
+            # Extract pages information
+            for page in document.pages:
+                page_info = {
+                    "page_number": page.page_number if hasattr(page, 'page_number') else 0,
+                    "width": page.dimension.width if page.dimension else 0,
+                    "height": page.dimension.height if page.dimension else 0,
+                    "blocks": []
+                }
+                
+                # Extract blocks from the page
+                for block in page.blocks:
+                    block_text = ""
+                    if block.layout and block.layout.text_anchor:
+                        start_idx = block.layout.text_anchor.text_segments[0].start_index if block.layout.text_anchor.text_segments else 0
+                        end_idx = block.layout.text_anchor.text_segments[0].end_index if block.layout.text_anchor.text_segments else 0
+                        block_text = document.text[start_idx:end_idx] if document.text else ""
+                    
+                    page_info["blocks"].append({
+                        "text": block_text,
+                        "confidence": block.layout.confidence if block.layout else 0.0
+                    })
+                
+                document_dict["pages"].append(page_info)
+            
+            # Extract entities if any
             for entity in document.entities:
-                field_name = entity.type_  # Field name as defined in the processor
-                field_value = entity.mention_text  # Extracted value for the field
-                structured_data[field_name] = field_value
+                document_dict["entities"].append({
+                    "type": entity.type_,
+                    "mention_text": entity.mention_text,
+                    "confidence": entity.confidence
+                })
+            
+            # Extract paragraphs
+            for paragraph in document.pages[0].paragraphs if document.pages else []:
+                if paragraph.layout and paragraph.layout.text_anchor:
+                    start_idx = paragraph.layout.text_anchor.text_segments[0].start_index if paragraph.layout.text_anchor.text_segments else 0
+                    end_idx = paragraph.layout.text_anchor.text_segments[0].end_index if paragraph.layout.text_anchor.text_segments else 0
+                    paragraph_text = document.text[start_idx:end_idx] if document.text else ""
+                    
+                    document_dict["paragraphs"].append({
+                        "text": paragraph_text,
+                        "confidence": paragraph.layout.confidence if paragraph.layout else 0.0
+                    })
             
             full_text_content = document.text
                 
-            logger.info(f"Document AI processing successful. Extracted {len(structured_data)} fields.")
+            logger.info(f"Document AI OCR processing successful. Extracted text length: {len(full_text_content)}")
             return {
-                "entities": structured_data,
+                "raw_ocr_response": document_dict,
                 "full_text": full_text_content,
             }
             
         except Exception as e:
-            logger.error(f"Document AI processing failed: {str(e)}")
+            logger.error(f"Document AI OCR processing failed: {str(e)}")
             # If Document AI fails but we have extracted text from DOCX, provide it as fallback
             if file_extension in ['.doc', '.docx'] and file_content:
                 logger.info("Using text extraction as fallback for Document AI")

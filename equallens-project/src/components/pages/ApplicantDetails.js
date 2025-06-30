@@ -1384,9 +1384,8 @@ export default function ApplicantDetails() {
         setProcessingAction(true);
 
         try {
-            const applicantEmail = applicant?.extractedText?.entities?.applicant_mail ||
-                applicant?.extractedText?.applicant_mail ||
-                detail?.detailed_profile?.extractedText?.entities?.applicant_mail ||
+            const applicantEmail = applicant?.extractedText?.applicant_mail ||
+                detail?.detailed_profile?.extractedText?.applicant_mail ||
                 null;
 
             if (confirmAction === 'accept') {

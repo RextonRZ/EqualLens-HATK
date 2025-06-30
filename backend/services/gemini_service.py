@@ -932,24 +932,30 @@ class GeminiService:
         logger.info(f"[analyze_job_relevance] candidate_profile received: {candidate_profile}")
 
         tech_skills = candidate_profile.get("technical_skills", [])
-        if isinstance(tech_skills, str):
+        if tech_skills is None:
+            tech_skills = []
+        elif isinstance(tech_skills, str):
             tech_skills = [tech_skills]
 
         soft_skills = candidate_profile.get("soft_skills", [])
-        if isinstance(soft_skills, str):
+        if soft_skills is None:
+            soft_skills = []
+        elif isinstance(soft_skills, str):
             soft_skills = [soft_skills]
 
         languages = candidate_profile.get("languages", [])
-        if isinstance(languages, str):
+        if languages is None:
+            languages = []
+        elif isinstance(languages, str):
             languages = [languages]
 
         profile_data = {            
             "technical_skills": tech_skills + 
-                               candidate_profile.get("inferred_technical_skills", []),
+                               (candidate_profile.get("inferred_technical_skills", []) or []),
             "soft_skills": soft_skills + 
-                          candidate_profile.get("inferred_soft_skills", []),
+                          (candidate_profile.get("inferred_soft_skills", []) or []),
             "languages": languages + 
-                        candidate_profile.get("inferred_languages", []),
+                        (candidate_profile.get("inferred_languages", []) or []),
             "education": candidate_profile.get("education", []),
             "certifications": candidate_profile.get("certifications", []),
             "awards": candidate_profile.get("awards", []),

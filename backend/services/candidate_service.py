@@ -15,6 +15,7 @@ from services.scoring_aggregation_service import ScoringAggregationService
 from services.gemini_service import GeminiService
 from services.external_ai_detection_service import external_ai_service
 from services.ai_detection_service import AIDetectionService, FINAL_AUTH_FLAG_THRESHOLD, SPAM_FLAG_THRESHOLD
+from services.ocr_text_processor import OCRTextProcessor
 
 from models.candidate import CandidateCreate, CandidateResponse, CandidateUpdate
 from models.authenticity_analysis import AuthenticityAnalysisResult
@@ -142,10 +143,10 @@ class CandidateService:
             content_fields = ["bio", "certifications_paragraph", "education_paragraph", "languages",
                               "projects_paragraph", "technical_skills", "work_experience_paragraph", "awards_paragraph",
                               "co-curricular_activities_paragraph", "soft_skills"]
-            new_candidate_entities = extracted_text.get("entities", {})
+            new_candidate_entities = extracted_text.get("extractedText", {})
             if not new_candidate_entities:
                 logger.error(
-                    "NEW candidate 'entities' field is missing or empty in extracted_text. Cannot perform comparison.")
+                    "NEW candidate 'extractedText' field is missing or empty in extracted_text. Cannot perform comparison.")
                 return {"is_duplicate": False, "duplicate_type": None, "confidence": 0.0, "match_percentage": 0.0,
                         "duplicate_candidate": None, "resume_changes": None}
 
@@ -301,6 +302,7 @@ class CandidateService:
         self.scoring_aggregation_service = ScoringAggregationService(self.gemini_service)
         self.document_service = DocumentService()
         self.external_ai_service = external_ai_service
+        self.ocr_text_processor = OCRTextProcessor(self.gemini_service)
 
     async def _run_full_analysis_pipeline(
             self,
@@ -321,6 +323,7 @@ class CandidateService:
             raw_text_extraction_error_msg = f"Raw text/URL extraction failed: {str(e_raw_extract)}"
             logger.error(f"[{candidate_id_for_logging}] {raw_text_extraction_error_msg}", exc_info=True)
 
+        # Step 1: Process document with OCR and store raw response in Firebase
         loop = asyncio.get_running_loop()
         doc_ai_processing_awaitable = loop.run_in_executor(
             None, self.document_service.process_document, file_content_bytes, content_type, file_name
@@ -328,30 +331,49 @@ class CandidateService:
 
         document_ai_results: Dict[str, Any]
         full_text_from_doc_ai: Optional[str] = None
+        raw_ocr_response: Dict[str, Any] = {}
 
         try:
             doc_ai_results_raw = await doc_ai_processing_awaitable
             if not doc_ai_results_raw or not isinstance(doc_ai_results_raw, dict) or doc_ai_results_raw.get("error"):
                 err_msg = doc_ai_results_raw.get("error", "Unknown DocumentAI error") if isinstance(doc_ai_results_raw,
-                                                                                                    dict) else "DocumentAI processing failed"
+                                                                                                    dict) else "DocumentAI OCR processing failed"
                 raise Exception(err_msg)
 
-            document_ai_results = doc_ai_results_raw
-            full_text_from_doc_ai = document_ai_results.get("full_text", "")
-            doc_ai_entities = document_ai_results.get("entities", {})
-            candidate_name_from_doc_ai = doc_ai_entities.get("applicant_name")
-            work_experience_text = doc_ai_entities.get("work_experience_paragraph")
-            education_text = doc_ai_entities.get("education_paragraph")
-            projects_text_from_doc_ai = doc_ai_entities.get("projects_paragraph")
+            # Store raw OCR response
+            raw_ocr_response = doc_ai_results_raw.get("raw_ocr_response", {})
+            full_text_from_doc_ai = doc_ai_results_raw.get("full_text", "")
+            
+            # Step 2: Process OCR text with Gemini to extract resume sections
+            logger.info(f"[{candidate_id_for_logging}] Processing OCR text with Gemini for resume section extraction")
+            ocr_processed_result = await self.ocr_text_processor.process_ocr_document(raw_ocr_response, full_text_from_doc_ai)
+            
+            # Extract the structured data
+            extracted_text_from_gemini = ocr_processed_result.get("extractedText", {})
+            
+            # Step 3: Prepare the document AI results structure for compatibility
+            document_ai_results = {
+                "raw_ocr_response": raw_ocr_response,
+                "extractedText": extracted_text_from_gemini,
+                "full_text": full_text_from_doc_ai
+            }
+            
+            # Get candidate information for further processing
+            candidate_name_from_extraction = extracted_text_from_gemini.get("applicant_name")
+            work_experience_text = extracted_text_from_gemini.get("work_experience_paragraph")
+            education_text = extracted_text_from_gemini.get("education_paragraph")
+            projects_text_from_doc_ai = extracted_text_from_gemini.get("projects_paragraph")
+
+            logger.info(f"[{candidate_id_for_logging}] OCR processing completed. Extracted {len(extracted_text_from_gemini)} resume sections")
 
         except Exception as e:
-            logger.error(f"[{candidate_id_for_logging}] Critical error during DocumentAI task for {file_name}: {e}",
+            logger.error(f"[{candidate_id_for_logging}] Critical error during DocumentAI OCR task for {file_name}: {e}",
                          exc_info=True)
-            document_ai_results = {"error": f"DocumentAI task exception: {str(e)}", "entities": {}, "full_text": ""}
-            auth_error = AuthenticityAnalysisResult(content_module_error_message=f"DocumentAI task exception: {str(e)}")
+            document_ai_results = {"error": f"DocumentAI OCR task exception: {str(e)}", "extractedText": {}, "full_text": "", "raw_ocr_response": {}}
+            auth_error = AuthenticityAnalysisResult(content_module_error_message=f"DocumentAI OCR task exception: {str(e)}")
             cross_ref_error = CrossReferencingResult(
-                cross_ref_module_error_message=f"DocumentAI task exception: {str(e)}")
-            return document_ai_results, auth_error, cross_ref_error, {"error": "DocAI task exception",
+                cross_ref_module_error_message=f"DocumentAI OCR task exception: {str(e)}")
+            return document_ai_results, auth_error, cross_ref_error, {"error": "DocAI OCR task exception",
                                                                       "predicted_class_label": "Error",
                                                                       "confidence_scores": {}}
 
@@ -360,11 +382,11 @@ class CandidateService:
         ) if full_text_from_doc_ai else {"error": "No text for AI detection.", "predicted_class_label": "Unknown",
                                          "confidence_scores": {}}
 
-        authenticity_analysis_task = self.resume_authenticity_service.analyze_resume_content(doc_ai_entities,
-                                                                                             candidate_name_from_doc_ai)
+        authenticity_analysis_task = self.resume_authenticity_service.analyze_resume_content(extracted_text_from_gemini,
+                                                                                             candidate_name_from_extraction)
         cross_referencing_task = self.cross_referencing_service.run_all_checks(
             urls=extracted_urls_from_file,
-            candidate_name_on_resume=candidate_name_from_doc_ai,
+            candidate_name_on_resume=candidate_name_from_extraction,
             work_experience_paragraph=work_experience_text,
             education_paragraph=education_text,
             resume_projects_paragraph=projects_text_from_doc_ai
@@ -424,8 +446,9 @@ class CandidateService:
 
             logger.info(f"File {file_name} uploaded successfully to {resume_url} for candidate {candidate_id}")
 
-            entities_to_store = extracted_data_from_doc_ai.get("entities", {})
+            entities_to_store = extracted_data_from_doc_ai.get("extractedText", {})
             full_text_to_store = extracted_data_from_doc_ai.get("full_text", "")
+            raw_ocr_response_to_store = extracted_data_from_doc_ai.get("raw_ocr_response", {})
 
             from pytz import timezone as pytz_timezone, UnknownTimeZoneError
             try:
@@ -451,7 +474,9 @@ class CandidateService:
                 "externalAIDetectionData": external_ai_detection_data,
                 "userTimeZone": user_time_zone,
                 'extractedText': entities_to_store,
-                'fullTextFromDocAI': full_text_to_store
+                'fullTextFromDocAI': full_text_to_store,
+                'rawOCRResponse': raw_ocr_response_to_store,
+                'rawOCRResponse': raw_ocr_response_to_store
             }
 
             success = firebase_client.create_document('candidates', candidate_id, candidate_doc)
@@ -512,7 +537,7 @@ class CandidateService:
             job_details = JobService.get_job(job_id)
             if document_ai_results.get("full_text") and job_details and job_details.get('jobDescription'):
                 relevant_info = await self.gemini_service.analyze_job_relevance(
-                    candidate_profile=document_ai_results.get('entities', {}),
+                    candidate_profile=document_ai_results.get('extractedText', {}),
                     job_description=job_details.get('jobDescription')
                 )
                 if relevant_info and relevant_info.get("relevance_label") == "Irrelevant":
@@ -605,14 +630,14 @@ class CandidateService:
         if not entities_for_profile_gen:
             extracted_data_from_doc_ai = candidate_info.get("extractedDataFromDocAI", {})
             if isinstance(extracted_data_from_doc_ai, dict):
-                entities_for_profile_gen = extracted_data_from_doc_ai.get("entities")
+                entities_for_profile_gen = extracted_data_from_doc_ai.get("extractedText")
             else:
                 logger.error(
                     f"generate_and_save_profile: extractedDataFromDocAI for candidate {candidate_id} is not a dictionary.")
                 return False
 
         if not entities_for_profile_gen or not isinstance(entities_for_profile_gen, dict):
-            logger.warning(f"No valid 'entities' dictionary found for candidate {candidate_id} to generate profile.")
+            logger.warning(f"No valid 'extractedText' dictionary found for candidate {candidate_id} to generate profile.")
             return False
 
         applicant_data_for_gemini = {"candidateId": candidate_id, "extractedText": entities_for_profile_gen}

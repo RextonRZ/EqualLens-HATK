@@ -181,7 +181,7 @@ async def _process_single_file_for_candidate_creation(
         is_irrelevant_flag = False
         irrelevance_payload_for_modal = None
         try:
-            candidate_profile_for_relevance = document_ai_results.get('entities', {})
+            candidate_profile_for_relevance = document_ai_results.get('extractedText', {})
             if candidate_profile_for_relevance and job_description_text_for_relevance:
                 logger.info(f"Running fresh job relevance analysis for {file_name_val} (job: {job_id_for_analysis})")
                 relevant_info = await temp_candidate_service.gemini_service.analyze_job_relevance(
@@ -203,6 +203,9 @@ async def _process_single_file_for_candidate_creation(
                         "irrelevance_score": calculated_irrelevance_score, 
                         "job_type": relevant_info.get("job_type", "")
                     }
+                    logger.info(f"Set is_irrelevant_flag=True for {file_name_val} with payload: {irrelevance_payload_for_modal}")
+                else:
+                    logger.info(f"Relevance check passed for {file_name_val}: label={relevant_info.get('relevance_label') if relevant_info else 'None'}")
                 
                 # Cache the relevance analysis result for this job-file combination
                 file_cache_service.cache_relevance_result(
@@ -282,10 +285,12 @@ async def _process_single_file_for_candidate_creation(
 
     # Determine final status - prioritize AI/irrelevance over duplicates
     current_status = "success_analysis"
+    logger.info(f"[{file_name_val}] Status determination: is_externally_flagged_ai={is_externally_flagged_ai}, is_irrelevant_flag={is_irrelevant_flag}, force_upload_irrelevant_from_form={force_upload_irrelevant_from_form}")
     if is_externally_flagged_ai and not force_upload_problematic_from_form:
         current_status = "ai_content_detected"
     if is_irrelevant_flag and not force_upload_irrelevant_from_form:
         current_status = "irrelevant_content" if current_status != "ai_content_detected" else "ai_and_irrelevant_content"
+        logger.info(f"[{file_name_val}] Set status to {current_status} due to irrelevance")
     
     # If no AI/irrelevance issues but duplicate found, set duplicate status
     if current_status == "success_analysis" and is_duplicate_flag:
@@ -338,6 +343,7 @@ async def _process_single_file_for_candidate_creation(
     }
 
     logger.info(f"Final result for {file_name_val}: status={current_status}, is_irrelevant={is_irrelevant_flag}, is_duplicate={is_duplicate_flag}, cached={from_cache}")
+    logger.info(f"Final irrelevance_payload_for_modal for {file_name_val}: {irrelevance_payload_for_modal}")
     
     return result
 
@@ -352,7 +358,7 @@ async def generate_and_save_profile(candidate_info: Dict[str, Any], gemini_srv: 
     if not entities_for_profile_gen:
         extracted_data_from_doc_ai = candidate_info.get("extractedDataFromDocAI", {})
         if isinstance(extracted_data_from_doc_ai, dict):
-            entities_for_profile_gen = extracted_data_from_doc_ai.get("entities")
+            entities_for_profile_gen = extracted_data_from_doc_ai.get("extractedText")
         else:
             return False
 
@@ -820,7 +826,7 @@ async def upload_more_cv_for_job(
                 overwrite_at_iso = datetime.now(timezone.utc).isoformat()
 
             update_data = CandidateUpdate(
-                extractedText=payload["document_ai_results"].get("entities", {}),
+                extractedText=payload["document_ai_results"].get("extractedText", {}),
                 fullTextFromDocAI=payload["document_ai_results"].get("full_text", ""),
                 resumeUrl=new_resume_url, storagePath=new_storage_path, originalFileName=payload["fileName"],
                 overwriteAt=overwrite_at_iso,
