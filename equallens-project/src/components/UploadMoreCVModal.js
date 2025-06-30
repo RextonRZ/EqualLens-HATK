@@ -870,7 +870,23 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
                                                                 <p className="file-name" title={file.name}>
                                                                     {file.name.length > 60 ? file.name.substring(0, 60) + '...' : file.name}
                                                                 </p>
-                                                                <button onClick={() => removeFile(index)} className="delete-button" aria-label={`Remove file ${file.name}`} disabled={fileState.isLoading || fileState.processingFiles}><svg className="delete-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                                                                <div className="file-actions">
+                                                                    <div className="badges-container">
+                                                                        {isAI && (
+                                                                            <span className="upload-file-badge upload-ai-detection-badge">
+                                                                                AI Detected {aiConfidence ? `(${(aiConfidence * 100).toFixed(0)}%)` : ''}
+                                                                            </span>
+                                                                        )}
+                                                                        {isIrrelevant && (
+                                                                            <span className="upload-file-badge upload-irrelevant-detection-badge">
+                                                                                Irrelevant {irrelevanceScore !== undefined && irrelevanceScore !== null ? `(${irrelevanceScore.toFixed(0)}%)` : ''}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <button onClick={() => removeFile(index)} className="delete-button" aria-label={`Remove file ${file.name}`} disabled={fileState.isLoading || fileState.processingFiles}>
+                                                                        <svg className="delete-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                             {(fileState.isLoading && fileState.uploadProgress[file.name] !== undefined && fileState.uploadProgress[file.name] < 100) ? (<div className="progress-bar-container"><div className="progress-bar" style={{ width: `${fileState.uploadProgress[file.name]}%` }}></div><span className="progress-text">{fileState.uploadProgress[file.name]}%</span></div>) : (fileState.processingFiles && fileState.uploadProgress[file.name] === undefined && fileState.uploadQueue && fileState.uploadQueue.some(queueFile => queueFile.name === file.name)) ? (<div className="waiting-container"><p className="waiting-text">Waiting to upload...</p></div>) : (<p className="file-size">{(file.size / 1024).toFixed(1)} KB</p>)}
                                                         </div>

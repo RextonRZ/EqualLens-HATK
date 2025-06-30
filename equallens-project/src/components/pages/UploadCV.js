@@ -793,7 +793,18 @@ return (
                                                         </button>
                                                     </div>
                                                 </div>
-                                                {(fileState.isLoading && fileState.uploadProgress[file.name] !== undefined && fileState.uploadProgress[file.name] < 100) ? (<div className="progress-bar-container"><div className="progress-bar" style={{ width: `${fileState.uploadProgress[file.name]}%` }}></div><span className="progress-text">{fileState.uploadProgress[file.name]}%</span></div>) : (fileState.processingFiles && fileState.uploadProgress[file.name] === undefined && fileState.uploadQueue && fileState.uploadQueue.some(queueFile => queueFile.name === file.name)) ? (<div className="waiting-container"><p className="waiting-text">Waiting to upload...</p></div>) : (<p className="file-size">{(file.size / 1024).toFixed(1)} KB</p>)}
+                                                {(fileState.isLoading && fileState.uploadProgress[file.name] !== undefined && fileState.uploadProgress[file.name] < 100) ? (
+                                                    <div className="progress-bar-container">
+                                                        <div className="progress-bar" style={{ width: `${fileState.uploadProgress[file.name]}%` }}></div>
+                                                        <span className="progress-text">{fileState.uploadProgress[file.name]}%</span>
+                                                    </div>
+                                                ) : (fileState.processingFiles && fileState.uploadProgress[file.name] === undefined && fileState.uploadQueue && fileState.uploadQueue.some(queueFile => queueFile.name === file.name)) ? (
+                                                    <div className="waiting-container">
+                                                        <p className="waiting-text">Waiting to upload...</p>
+                                                    </div>
+                                                ) : (
+                                                    <p className="file-size">{(file.size / 1024).toFixed(1)} KB</p>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

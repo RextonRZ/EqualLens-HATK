@@ -4,6 +4,7 @@ from typing import List, Optional, Dict, Any, Tuple
 import json
 import logging
 import asyncio
+import copy
 from fastapi.encoders import jsonable_encoder
 import uuid
 from datetime import datetime, timezone
@@ -21,7 +22,7 @@ from services.job_service import JobService
 from services.candidate_service import CandidateService
 from services.gemini_service import GeminiService
 from services.ai_detection_service import AIDetectionService, FINAL_AUTH_FLAG_THRESHOLD, SPAM_FLAG_THRESHOLD
-from services.file_processing_cache_service import file_cache_service, ProcessedFileResult
+from services.file_processing_cache_service import file_cache_service, ProcessedFileResult, RelevanceAnalysisResult
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -100,117 +101,210 @@ async def _process_single_file_for_candidate_creation(
     # Generate file hash for caching
     file_hash = file_cache_service.generate_file_hash(file_content_bytes, file_name_val, file_size)
 
-    # Check cache first
+    # Check global cache for job-independent analysis (AI detection, document processing, etc.)
     cached_result = file_cache_service.get_cached_result(file_hash)
+    
+    # Check job-specific relevance cache
+    cached_relevance = file_cache_service.get_cached_relevance_result(job_id_for_analysis, file_hash)
+    
     if cached_result:
         logger.info(f"Using cached analysis for file: {file_name_val}")
 
-        # IMPORTANT FIX: Apply force flags to cached results
-        cached_status = cached_result.status
+        # Extract cached job-independent data
+        document_ai_results = cached_result.document_ai_results
+        authenticity_analysis_dict = cached_result.authenticity_analysis_result
+        cross_referencing_analysis_dict = cached_result.cross_referencing_result
+        external_ai_detection_data = cached_result.external_ai_detection_data
+        final_assessment_data = cached_result.final_assessment_data
+        
+        # Convert cached dictionaries back to model objects
+        authenticity_analysis = AuthenticityAnalysisResult(**authenticity_analysis_dict) if authenticity_analysis_dict else None
+        cross_referencing_analysis = CrossReferencingResult(**cross_referencing_analysis_dict) if cross_referencing_analysis_dict else None
+        
+        # Check if we have cached relevance for this job-file combination
+        if cached_relevance:
+            logger.info(f"Using cached relevance analysis for job {job_id_for_analysis}, file: {file_name_val}")
+            is_irrelevant_flag = cached_relevance.is_irrelevant
+            irrelevance_payload_for_modal = cached_relevance.irrelevance_payload
+        else:
+            logger.info(f"Running fresh relevance analysis for cached file: {file_name_val} (job: {job_id_for_analysis})")
+            # Will run relevance analysis below in common section
+            is_irrelevant_flag = None  # Will be set in relevance analysis section
+            irrelevance_payload_for_modal = None
+    else:
+        # If not in cache, proceed with full analysis
+        logger.info(f"Running full analysis for file: {file_name_val}")
+        
+        # Reset relevance variables - will be set in relevance analysis section
+        is_irrelevant_flag = None
+        irrelevance_payload_for_modal = None
 
-        # Override the cached status based on force flags
-        if cached_status in ["ai_content_detected", "irrelevant_content", "ai_and_irrelevant_content"]:
-            # Check if user has consented to upload this type of flagged content
-            has_ai_flag = cached_result.ai_detection_payload is not None
-            has_irrelevant_flag = cached_result.irrelevance_payload is not None
+        temp_candidate_service = CandidateService(gemini_service_instance=gemini_service_global_instance)
+        document_ai_results, authenticity_analysis, cross_referencing_analysis, external_ai_detection_data = \
+            await temp_candidate_service._run_full_analysis_pipeline(
+                candidate_id_for_logging=f"temp-uploadjob-analyze-{uuid.uuid4()}",
+                file_content_bytes=file_content_bytes,
+                file_name=file_name_val,
+                content_type=content_type_val
+            )
 
-            should_allow_ai = not has_ai_flag or force_upload_problematic_from_form
-            should_allow_irrelevant = not has_irrelevant_flag or force_upload_irrelevant_from_form
+        if not document_ai_results or document_ai_results.get("error"):
+            error_result = {
+                "fileName": file_name_val, "status": "error_analysis",
+                "message": "DocAI processing failed",
+                "file_content_bytes": file_content_bytes, "content_type": content_type_val,
+                "document_ai_results": document_ai_results,
+                "file_hash": file_hash,
+                "from_cache": False
+            }
+            return error_result
 
-            if should_allow_ai and should_allow_irrelevant:
-                # User has consented to all flagged content, mark as success
-                cached_status = "success_analysis"
-                logger.info(
-                    f"Force flags applied to cached result for {file_name_val}, changing status from {cached_result.status} to success_analysis")
-
-        # Convert cached result back to the expected format
-        result = {
-            "fileName": file_name_val,
-            "status": cached_status,
-            "ai_detection_payload": cached_result.ai_detection_payload,
-            "irrelevance_payload": cached_result.irrelevance_payload,
-            "duplicate_info_raw": cached_result.duplicate_info_raw,
-            "file_content_bytes": file_content_bytes,
-            "content_type": content_type_val,
-            "document_ai_results": cached_result.document_ai_results,
-            "authenticity_analysis_result": cached_result.authenticity_analysis_result,
-            "cross_referencing_result": cached_result.cross_referencing_result,
-            "external_ai_detection_data": cached_result.external_ai_detection_data,
-            "final_assessment_data": cached_result.final_assessment_data,
-            "user_time_zone": user_time_zone,
-            "file_hash": file_hash,
-            "from_cache": True
-        }
-
-        # Re-check duplicates for this specific job (duplicates are job-specific)
-        if not override_duplicates_from_form and cached_result.document_ai_results:
-            duplicate_check_result = CandidateService.check_duplicate_candidate(job_id_for_analysis,
-                                                                                cached_result.document_ai_results)
-            if duplicate_check_result.get("is_duplicate"):
-                result["status"] = "duplicate_detected"
-                result["duplicate_info_raw"] = duplicate_check_result
-
-        # Add to session if provided
-        if session_id:
-            file_cache_service.add_to_session(session_id, file_hash, cached_result)
-
-        return result
-
-    # If not in cache, proceed with full analysis
-    logger.info(f"Running full analysis for file: {file_name_val}")
-
-    temp_candidate_service = CandidateService(gemini_service_instance=gemini_service_global_instance)
-    document_ai_results, authenticity_analysis, cross_referencing_analysis, external_ai_detection_data = \
-        await temp_candidate_service._run_full_analysis_pipeline(
-            candidate_id_for_logging=f"temp-uploadjob-analyze-{uuid.uuid4()}",
-            file_content_bytes=file_content_bytes,
-            file_name=file_name_val,
-            content_type=content_type_val
+        final_assessment_data = await temp_candidate_service.scoring_aggregation_service.calculate_final_assessment(
+            authenticity_analysis, cross_referencing_analysis
         )
 
-    if not document_ai_results or document_ai_results.get("error"):
-        error_result = {
-            "fileName": file_name_val, "status": "error_analysis",
-            "message": "DocAI processing failed",
-            "file_content_bytes": file_content_bytes, "content_type": content_type_val,
-            "document_ai_results": document_ai_results,
-            "file_hash": file_hash,
-            "from_cache": False
-        }
-        return error_result
+    # Common section: Run relevance analysis if not cached
+    # This analysis is job-specific and should be cached per job-file combination
+    
+    # Determine if we have cached data or need to use fresh analysis results
+    from_cache = cached_result is not None
 
-    final_assessment_data = await temp_candidate_service.scoring_aggregation_service.calculate_final_assessment(
-        authenticity_analysis, cross_referencing_analysis
-    )
+    # Update authenticity analysis with final assessment scores
     if authenticity_analysis:
-        authenticity_analysis.final_overall_authenticity_score = final_assessment_data.get(
-            "final_overall_authenticity_score")
+        authenticity_analysis.final_overall_authenticity_score = final_assessment_data.get("final_overall_authenticity_score")
         authenticity_analysis.final_spam_likelihood_score = final_assessment_data.get("final_spam_likelihood_score")
         authenticity_analysis.final_xai_summary = final_assessment_data.get("final_xai_summary")
 
-    duplicate_check_result = CandidateService.check_duplicate_candidate(job_id_for_analysis, document_ai_results)
-    if not override_duplicates_from_form and duplicate_check_result.get("is_duplicate"):
-        duplicate_result = {
-            "fileName": file_name_val, "status": "duplicate_detected_error",
-            "message": f"Duplicate of existing candidate: {duplicate_check_result.get('duplicate_candidate', {}).get('candidateId', 'Unknown')}",
-            "duplicate_info_raw": duplicate_check_result,
-            "file_content_bytes": file_content_bytes, "content_type": content_type_val,
-            "authenticity_analysis_result": authenticity_analysis.model_dump(exclude_none=True),
-            "cross_referencing_result": cross_referencing_analysis.model_dump(exclude_none=True),
-            "external_ai_detection_data": external_ai_detection_data,
-            "final_assessment_data": final_assessment_data,
-            "file_hash": file_hash,
-            "from_cache": False
+    # Run relevance analysis only if not cached for this job-file combination
+    if is_irrelevant_flag is None:  # Not cached relevance
+        temp_candidate_service = CandidateService(gemini_service_instance=gemini_service_global_instance)
+        is_irrelevant_flag = False
+        irrelevance_payload_for_modal = None
+        try:
+            candidate_profile_for_relevance = document_ai_results.get('entities', {})
+            if candidate_profile_for_relevance and job_description_text_for_relevance:
+                logger.info(f"Running fresh job relevance analysis for {file_name_val} (job: {job_id_for_analysis})")
+                relevant_info = await temp_candidate_service.gemini_service.analyze_job_relevance(
+                    candidate_profile=candidate_profile_for_relevance,
+                    job_description=job_description_text_for_relevance
+                )
+                logger.info(f"Relevance analysis result for {file_name_val}: {relevant_info}")
+                if relevant_info and relevant_info.get("relevance_label") == "Irrelevant":
+                    is_irrelevant_flag = True
+                    reason = relevant_info.get("irrelevant_reason")
+                    if isinstance(reason, list): 
+                        reason = ", ".join(str(r) for r in reason)
+                    relevance_score_val = relevant_info.get("overall_relevance_score")
+                    calculated_irrelevance_score = 100.0 - float(relevance_score_val) if relevance_score_val is not None else None
+                    irrelevance_payload_for_modal = {
+                        "filename": file_name_val, 
+                        "is_irrelevant": True, 
+                        "irrelevant_reason": reason,
+                        "irrelevance_score": calculated_irrelevance_score, 
+                        "job_type": relevant_info.get("job_type", "")
+                    }
+                
+                # Cache the relevance analysis result for this job-file combination
+                file_cache_service.cache_relevance_result(
+                    job_id=job_id_for_analysis,
+                    file_hash=file_hash,
+                    file_name=file_name_val,
+                    is_irrelevant=is_irrelevant_flag,
+                    irrelevance_payload=irrelevance_payload_for_modal,
+                    relevance_data=relevant_info
+                )
+        except Exception as e_irr:
+            logger.error(f"Exception during irrelevance check for {file_name_val}: {e_irr}", exc_info=True)
+    else:
+        # Using cached relevance result
+        logger.info(f"Using cached relevance result for {file_name_val} (job: {job_id_for_analysis}): irrelevant={is_irrelevant_flag}")
+
+    # AI detection logic - use cached results if available
+    overall_auth_score = final_assessment_data.get("final_overall_authenticity_score", 0.5)
+    spam_score = final_assessment_data.get("final_spam_likelihood_score", 0.5)
+    is_externally_flagged_ai = external_ai_detection_data.get("predicted_class_label") == "AI-generated" if external_ai_detection_data else False
+    is_problematic_internally = (overall_auth_score < FINAL_AUTH_FLAG_THRESHOLD) or (spam_score > SPAM_FLAG_THRESHOLD)
+    
+    ai_detection_payload_for_modal = None
+    if from_cache and cached_result.ai_detection_payload:
+        # Use cached AI detection results - make a defensive copy and filter out any irrelevance data
+        cached_payload = copy.deepcopy(cached_result.ai_detection_payload)
+        
+        # Filter to only include AI detection fields, exclude any irrelevance contamination
+        ai_detection_payload_for_modal = {
+            "filename": cached_payload.get("filename", file_name_val),
+            "is_ai_generated": cached_payload.get("is_ai_generated", False),
+            "confidence": cached_payload.get("confidence", 0.0),
+            "reason": cached_payload.get("reason", ""),
+            "details": cached_payload.get("details", {})
+        }
+        # Explicitly remove any irrelevance fields that might have contaminated the cache
+        ai_detection_payload_for_modal.pop("is_irrelevant", None)
+        ai_detection_payload_for_modal.pop("irrelevant_reason", None)
+        ai_detection_payload_for_modal.pop("irrelevance_score", None)
+        ai_detection_payload_for_modal.pop("job_type", None)
+        
+        logger.info(f"Using cached AI detection for {file_name_val}")
+        logger.info(f"Cleaned AI detection payload keys: {list(ai_detection_payload_for_modal.keys())}")
+    elif is_externally_flagged_ai:
+        # Generate fresh AI detection payload
+        payload_is_ai_generated_for_modal = True
+        payload_confidence_for_modal = external_ai_detection_data.get("confidence_scores", {}).get("ai_generated", 0.0)
+
+        formatted_reason_html_res = ai_detection_formatter_instance.format_analysis_for_frontend(
+            filename=file_name_val, auth_results=authenticity_analysis,
+            cross_ref_results=cross_referencing_analysis, external_ai_pred_data=external_ai_detection_data)
+        formatted_reason_html = formatted_reason_html_res.reason if formatted_reason_html_res else "Detailed analysis available."
+
+        ai_detection_payload_for_modal = {
+            "filename": file_name_val, 
+            "is_ai_generated": payload_is_ai_generated_for_modal,
+            "confidence": payload_confidence_for_modal, 
+            "reason": formatted_reason_html,
+            "details": {
+                "external_ai_prediction": external_ai_detection_data,
+                "authenticity_analysis": authenticity_analysis.model_dump(exclude_none=True),
+                "cross_referencing_analysis": cross_referencing_analysis.model_dump(exclude_none=True),
+                "final_overall_authenticity_score": overall_auth_score,
+                "final_spam_likelihood_score": spam_score,
+                "final_xai_summary": final_assessment_data.get("final_xai_summary")
+            }
         }
 
-        # Cache this result for future use
+    # Check for duplicates (job-specific, runs after AI/irrelevance detection)
+    duplicate_check_result = None
+    is_duplicate_flag = False
+    if not override_duplicates_from_form and document_ai_results:
+        duplicate_check_result = CandidateService.check_duplicate_candidate(job_id_for_analysis, document_ai_results)
+        if duplicate_check_result.get("is_duplicate"):
+            is_duplicate_flag = True
+            logger.info(f"Duplicate detected for {file_name_val}: {duplicate_check_result.get('duplicate_candidate', {}).get('candidateId', 'Unknown')}")
+
+    # Determine final status - prioritize AI/irrelevance over duplicates
+    current_status = "success_analysis"
+    if is_externally_flagged_ai and not force_upload_problematic_from_form:
+        current_status = "ai_content_detected"
+    if is_irrelevant_flag and not force_upload_irrelevant_from_form:
+        current_status = "irrelevant_content" if current_status != "ai_content_detected" else "ai_and_irrelevant_content"
+    
+    # If no AI/irrelevance issues but duplicate found, set duplicate status
+    if current_status == "success_analysis" and is_duplicate_flag:
+        current_status = "duplicate_detected_error"
+
+    # Cache job-independent analysis results only (exclude relevance analysis)
+    if not from_cache:
+        # For AI detection payload, we only cache if there actually is AI detection
+        ai_payload_to_cache = ai_detection_payload_for_modal if (is_externally_flagged_ai or is_problematic_internally) else None
+        
         cached_file_result = ProcessedFileResult(
             file_hash=file_hash,
             file_name=file_name_val,
             file_size=file_size,
-            processed_at=time.time(),  # Now this will work with the import
-            status="duplicate_detected_error",
-            duplicate_info_raw=duplicate_check_result,
+            processed_at=time.time(),
+            status="cached_job_independent",  # Special status to indicate partial cache
+            ai_detection_payload=ai_payload_to_cache,  # Cache AI detection for reuse across jobs
+            irrelevance_payload=None,  # NEVER cache relevance analysis (job-specific)
+            duplicate_info_raw=None,  # NEVER cache duplicate info (job-specific)
             document_ai_results=document_ai_results,
             authenticity_analysis_result=authenticity_analysis.model_dump(exclude_none=True),
             cross_referencing_result=cross_referencing_analysis.model_dump(exclude_none=True),
@@ -224,103 +318,15 @@ async def _process_single_file_for_candidate_creation(
         if session_id:
             file_cache_service.add_to_session(session_id, file_hash, cached_file_result)
 
-        return duplicate_result
-
-    # Continue with relevancy and AI detection analysis...
-    is_irrelevant_flag = False
-    irrelevance_payload_for_modal = None
-    try:
-        candidate_profile_for_relevance = document_ai_results.get('entities', {})
-        if candidate_profile_for_relevance and job_description_text_for_relevance:
-            relevant_info = await temp_candidate_service.gemini_service.analyze_job_relevance(
-                candidate_profile=candidate_profile_for_relevance,
-                job_description=job_description_text_for_relevance
-            )
-            if relevant_info and relevant_info.get("relevance_label") == "Irrelevant":
-                is_irrelevant_flag = True
-                reason = relevant_info.get("irrelevant_reason")
-                if isinstance(reason, list): reason = ", ".join(str(r) for r in reason)
-                relevance_score_val = relevant_info.get("overall_relevance_score")
-                calculated_irrelevance_score = 100.0 - float(
-                    relevance_score_val) if relevance_score_val is not None else None
-                irrelevance_payload_for_modal = {
-                    "filename": file_name_val, "is_irrelevant": True, "irrelevant_reason": reason,
-                    "irrelevance_score": calculated_irrelevance_score, "job_type": relevant_info.get("job_type", "")
-                }
-    except Exception as e_irr:
-        logger.error(f"Exception during irrelevance check for {file_name_val}: {e_irr}", exc_info=True)
-
-    overall_auth_score = final_assessment_data.get("final_overall_authenticity_score", 0.5)
-    spam_score = final_assessment_data.get("final_spam_likelihood_score", 0.5)
-    is_externally_flagged_ai = external_ai_detection_data.get(
-        "predicted_class_label") == "AI-generated" if external_ai_detection_data else False
-    is_problematic_internally = (overall_auth_score < FINAL_AUTH_FLAG_THRESHOLD) or (spam_score > SPAM_FLAG_THRESHOLD)
-    ai_detection_payload_for_modal = None
-    # FIX: Change the condition to only check the external flag.
-    if is_externally_flagged_ai:
-        # The payload flag is true because the external model detected it.
-        payload_is_ai_generated_for_modal = True
-
-        payload_confidence_for_modal = external_ai_detection_data.get(
-            "confidence_scores", {}).get("ai_generated", 0.0)
-
-        formatted_reason_html_res = ai_detection_formatter_instance.format_analysis_for_frontend(
-            filename=file_name_val, auth_results=authenticity_analysis,
-            cross_ref_results=cross_referencing_analysis, external_ai_pred_data=external_ai_detection_data)
-        formatted_reason_html = formatted_reason_html_res.reason if formatted_reason_html_res else "Detailed analysis available."
-
-        ai_detection_payload_for_modal = {
-            "filename": file_name_val, "is_ai_generated": payload_is_ai_generated_for_modal,
-            "confidence": payload_confidence_for_modal, "reason": formatted_reason_html,
-            "details": {
-                "external_ai_prediction": external_ai_detection_data,
-                "authenticity_analysis": authenticity_analysis.model_dump(exclude_none=True),
-                "cross_referencing_analysis": cross_referencing_analysis.model_dump(exclude_none=True),
-                "final_overall_authenticity_score": overall_auth_score,
-                "final_spam_likelihood_score": spam_score,
-                "final_xai_summary": final_assessment_data.get("final_xai_summary")
-            }
-        }
-
-    current_status = "success_analysis"
-    if is_externally_flagged_ai and not force_upload_problematic_from_form:
-        current_status = "ai_content_detected"
-
-    if is_irrelevant_flag and not force_upload_irrelevant_from_form:
-        current_status = "irrelevant_content" if current_status != "ai_content_detected" else "ai_and_irrelevant_content"
-
-    if duplicate_check_result.get("is_duplicate"):
-        current_status = "duplicate_detected"
-
-    # Cache the analysis results
-    cached_file_result = ProcessedFileResult(
-        file_hash=file_hash,
-        file_name=file_name_val,
-        file_size=file_size,
-        processed_at=time.time(),  # Now this will work with the import
-        status=current_status,
-        ai_detection_payload=ai_detection_payload_for_modal,
-        irrelevance_payload=irrelevance_payload_for_modal,
-        duplicate_info_raw=duplicate_check_result,
-        document_ai_results=document_ai_results,
-        authenticity_analysis_result=authenticity_analysis.model_dump(exclude_none=True),
-        cross_referencing_result=cross_referencing_analysis.model_dump(exclude_none=True),
-        external_ai_detection_data=external_ai_detection_data,
-        final_assessment_data=final_assessment_data,
-        content_type=content_type_val,
-        user_time_zone=user_time_zone
-    )
-    file_cache_service.cache_result(file_hash, cached_file_result)
-
-    if session_id:
-        file_cache_service.add_to_session(session_id, file_hash, cached_file_result)
-
+    # Return final result
     result = {
-        "fileName": file_name_val, "status": current_status,
+        "fileName": file_name_val, 
+        "status": current_status,
         "ai_detection_payload": ai_detection_payload_for_modal,
         "irrelevance_payload": irrelevance_payload_for_modal,
-        "duplicate_info_raw": duplicate_check_result,
-        "file_content_bytes": file_content_bytes, "content_type": content_type_val,
+        "duplicate_info_raw": duplicate_check_result,  # Include duplicate info for all files
+        "file_content_bytes": file_content_bytes, 
+        "content_type": content_type_val,
         "document_ai_results": document_ai_results,
         "authenticity_analysis_result": authenticity_analysis.model_dump(exclude_none=True),
         "cross_referencing_result": cross_referencing_analysis.model_dump(exclude_none=True),
@@ -328,9 +334,11 @@ async def _process_single_file_for_candidate_creation(
         "final_assessment_data": final_assessment_data,
         "user_time_zone": user_time_zone,
         "file_hash": file_hash,
-        "from_cache": False
+        "from_cache": from_cache
     }
 
+    logger.info(f"Final result for {file_name_val}: status={current_status}, is_irrelevant={is_irrelevant_flag}, is_duplicate={is_duplicate_flag}, cached={from_cache}")
+    
     return result
 
 
@@ -425,6 +433,22 @@ async def upload_job_and_cvs(
                 error_files.append({"fileName": res.get("fileName"), "message": f"Unknown status: {file_status}"})
 
         if flagged_files_for_modal:
+            # Only include actually flagged files in flagged_analysis_payloads
+            flagged_analysis_results = []
+            for res in processed_analysis_results:
+                file_status = res.get("status")
+                if file_status in ["ai_content_detected", "irrelevant_content", "ai_and_irrelevant_content"]:
+                    flagged_analysis_results.append(res)
+            
+            # Check for duplicates in successful files - these will be shown after AI confirmation
+            duplicate_check_results = []
+            for res in processed_analysis_results:
+                file_status = res.get("status")
+                if file_status == "success_analysis" and res.get("duplicate_info_raw") and res["duplicate_info_raw"].get("is_duplicate"):
+                    duplicate_info = res["duplicate_info_raw"]
+                    duplicate_info['fileName'] = res.get('fileName')
+                    duplicate_check_results.append(duplicate_info)
+            
             return JSONResponse(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 content={
@@ -433,9 +457,35 @@ async def upload_job_and_cvs(
                     "job_creation_payload_json": job_create_payload.model_dump_json(), "user_time_zone": user_time_zone,
                     "successful_analysis_payloads": jsonable_encoder(files_ready_for_creation,
                                                                      custom_encoder={bytes: lambda b: None}),
-                    "flagged_analysis_payloads": jsonable_encoder(processed_analysis_results,
+                    "flagged_analysis_payloads": jsonable_encoder(flagged_analysis_results,
                                                                   custom_encoder={bytes: lambda b: None}),
+                    "pending_duplicate_checks": jsonable_encoder(duplicate_check_results),  # Add duplicate info
                     "session_id": session_id,  # Include session_id in response
+                    "cache_stats": file_cache_service.get_cache_stats()
+                })
+
+        # Check for duplicates only in files that don't have AI/irrelevance issues
+        duplicate_files_needing_confirmation = []
+        for res in processed_analysis_results:
+            file_status = res.get("status")
+            if file_status == "duplicate_detected_error":
+                duplicate_info = res["duplicate_info_raw"]
+                duplicate_info['fileName'] = res.get('fileName')
+                duplicate_files_needing_confirmation.append(duplicate_info)
+        
+        # If there are duplicate files (and no AI flagged files), show duplicate modal
+        if duplicate_files_needing_confirmation and not flagged_files_for_modal:
+            return JSONResponse(
+                status_code=status.HTTP_409_CONFLICT,
+                content={
+                    "message": "Duplicate CVs detected.", 
+                    "error_type": "DUPLICATE_FILES_DETECTED",
+                    "duplicates": jsonable_encoder(duplicate_files_needing_confirmation), 
+                    "job_creation_payload_json": job_create_payload.model_dump_json(),
+                    "user_time_zone": user_time_zone,
+                    "successful_analysis_payloads": jsonable_encoder(files_ready_for_creation,
+                                                                     custom_encoder={bytes: lambda b: None}),
+                    "session_id": session_id,
                     "cache_stats": file_cache_service.get_cache_stats()
                 })
 
@@ -450,6 +500,11 @@ async def upload_job_and_cvs(
         if not actual_job_id:
             file_cache_service.clear_session(session_id)
             raise HTTPException(status_code=500, detail="Failed to create job entry.")
+
+        # Clear any existing relevance cache entries that might conflict with new job analysis
+        # This ensures fresh relevance analysis for the new job
+        logger.info(f"Clearing relevance cache for new job creation: {actual_job_id}")
+        file_cache_service.clear_relevance_cache_for_job(actual_job_id)
 
         # Rest of candidate creation logic remains the same...
         successful_candidates = []
@@ -503,18 +558,51 @@ async def create_job_with_confirmed_cvs(
         successful_analysis_payloads_json: str = Form(...),
         flagged_analysis_payloads_json: str = Form(...),
         user_time_zone: str = Form("UTC"),
-        files: List[UploadFile] = File(...)
+        files: List[UploadFile] = File(...),
+        override_duplicates: Optional[str] = Form("false")  # Add duplicate override option
 ):
     try:
         job_create_payload = JobCreate.model_validate_json(job_creation_payload_json)
         successful_payloads = json.loads(successful_analysis_payloads_json)
         flagged_payloads = json.loads(flagged_analysis_payloads_json)
         uploaded_files_content = {file.filename: await file.read() for file in files}
+        
+        is_overriding_duplicates = (override_duplicates and override_duplicates.lower() == "true")
+        
+        # First create the job to get a proper job ID for duplicate checking
         actual_job_id = JobService.create_job(job_create_payload)
         if not actual_job_id:
             raise HTTPException(status_code=500, detail="Failed to create job entry.")
 
         all_payloads_for_creation = successful_payloads + flagged_payloads
+        
+        # Check for duplicates unless override is enabled
+        if not is_overriding_duplicates:
+            duplicates_found = []
+            for payload in all_payloads_for_creation:
+                document_ai_results = payload.get("document_ai_results")
+                if document_ai_results:
+                    duplicate_check_result = CandidateService.check_duplicate_candidate(actual_job_id, document_ai_results)
+                    if duplicate_check_result.get("is_duplicate"):
+                        duplicate_info = duplicate_check_result
+                        duplicate_info['fileName'] = payload.get('fileName')
+                        duplicates_found.append(duplicate_info)
+            
+            # If duplicates found, return duplicate modal response
+            if duplicates_found:
+                return JSONResponse(
+                    status_code=status.HTTP_409_CONFLICT,
+                    content={
+                        "message": "Duplicate CVs detected after AI confirmation.", 
+                        "error_type": "DUPLICATE_FILES_DETECTED_AFTER_AI_CONFIRMATION",
+                        "duplicates": jsonable_encoder(duplicates_found),
+                        "jobId": actual_job_id,
+                        "job_creation_payload_json": job_creation_payload_json,
+                        "successful_analysis_payloads_json": successful_analysis_payloads_json,
+                        "flagged_analysis_payloads_json": flagged_analysis_payloads_json,
+                        "user_time_zone": user_time_zone
+                    })
+
         error_files = []
         sequentially_generated_ids = [firebase_client.generate_counter_id("cand") for _ in all_payloads_for_creation]
 
@@ -616,14 +704,14 @@ async def upload_more_cv_for_job(
         ]
         analysis_results = await asyncio.gather(*analysis_tasks)
 
-        # Rest of the function logic remains the same...
+        # Rest of the function logic - prioritize AI/irrelevance detection over duplicates
         files_to_create, files_to_overwrite, unresolved_duplicates, flagged_files, error_files = [], [], [], [], []
 
         for res in analysis_results:
             file_status = res.get("status")
             if file_status == "error_analysis":
                 error_files.append(res)
-            elif file_status == "duplicate_detected":
+            elif file_status == "duplicate_detected_error":
                 if res["fileName"] in selected_filenames_to_override_list or is_overriding_duplicates_general:
                     files_to_overwrite.append(res)
                 else:
@@ -636,26 +724,48 @@ async def upload_more_cv_for_job(
                 if res.get("irrelevance_payload"): modal_payload.update(res["irrelevance_payload"])
                 flagged_files.append(modal_payload)
             elif file_status == "success_analysis":
-                files_to_create.append(res)
+                # Check for duplicates in success files too (they may have duplicates but not be flagged if override_duplicates is false)
+                if res.get("duplicate_info_raw") and res["duplicate_info_raw"].get("is_duplicate"):
+                    if res["fileName"] in selected_filenames_to_override_list or is_overriding_duplicates_general:
+                        files_to_overwrite.append(res)
+                    else:
+                        duplicate_info = res["duplicate_info_raw"]
+                        duplicate_info['fileName'] = res.get('fileName')
+                        unresolved_duplicates.append(duplicate_info)
+                else:
+                    files_to_create.append(res)
 
-        if unresolved_duplicates:
-            return JSONResponse(status_code=status.HTTP_409_CONFLICT,
-                                content={"message": "Duplicate CVs detected.", "error_type": "DUPLICATE_FILES_DETECTED",
-                                         "duplicates": jsonable_encoder(unresolved_duplicates), "jobId": job_id,
-                                         "session_id": session_id, "cache_stats": file_cache_service.get_cache_stats()})
-
+        # Show AI/irrelevance flagged files first (higher priority)
         if flagged_files:
+            # Check for duplicates in files that would be processed after AI confirmation
+            pending_duplicates = []
+            for res in analysis_results:
+                file_status = res.get("status")
+                if file_status == "success_analysis" and res.get("duplicate_info_raw") and res["duplicate_info_raw"].get("is_duplicate"):
+                    if res["fileName"] not in selected_filenames_to_override_list and not is_overriding_duplicates_general:
+                        duplicate_info = res["duplicate_info_raw"]
+                        duplicate_info['fileName'] = res.get('fileName')
+                        pending_duplicates.append(duplicate_info)
+            
             return JSONResponse(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 content={
                     "message": "Some resumes require review.",
                     "error_type": "FLAGGED_CONTENT",
                     "flagged_files": jsonable_encoder(flagged_files, custom_encoder={bytes: lambda b: None}),
+                    "pending_duplicate_checks": jsonable_encoder(pending_duplicates),  # Include duplicates that will be checked after AI confirmation
                     "jobId": job_id,
                     "session_id": session_id,
                     "cache_stats": file_cache_service.get_cache_stats()
                 }
             )
+
+        # Show duplicate modal only if no AI/irrelevance issues
+        if unresolved_duplicates:
+            return JSONResponse(status_code=status.HTTP_409_CONFLICT,
+                                content={"message": "Duplicate CVs detected.", "error_type": "DUPLICATE_FILES_DETECTED",
+                                         "duplicates": jsonable_encoder(unresolved_duplicates), "jobId": job_id,
+                                         "session_id": session_id, "cache_stats": file_cache_service.get_cache_stats()})
 
         # Continue with candidate creation/overwrite logic...
         successful_candidates_app_data = []
@@ -787,3 +897,90 @@ async def clear_cache():
     """Clear all file processing cache."""
     file_cache_service.clear_all_cache()
     return {"message": "Cache cleared successfully"}
+
+@router.post("/create-job-with-all-confirmations")
+async def create_job_with_all_confirmations(
+        job_creation_payload_json: str = Form(...),
+        successful_analysis_payloads_json: str = Form(...),
+        flagged_analysis_payloads_json: str = Form(...),
+        user_time_zone: str = Form("UTC"),
+        files: List[UploadFile] = File(...),
+        selected_filenames_for_overwrite_json: Optional[str] = Form(None, alias="selected_filenames")
+):
+    """Create job after both AI and duplicate confirmations"""
+    try:
+        job_create_payload = JobCreate.model_validate_json(job_creation_payload_json)
+        successful_payloads = json.loads(successful_analysis_payloads_json)
+        flagged_payloads = json.loads(flagged_analysis_payloads_json)
+        uploaded_files_content = {file.filename: await file.read() for file in files}
+        
+        selected_filenames_to_override_list = []
+        if selected_filenames_for_overwrite_json:
+            try:
+                selected_filenames_to_override_list = json.loads(selected_filenames_for_overwrite_json)
+            except json.JSONDecodeError:
+                selected_filenames_to_override_list = []
+
+        actual_job_id = JobService.create_job(job_create_payload)
+        if not actual_job_id:
+            raise HTTPException(status_code=500, detail="Failed to create job entry.")
+
+        # Clear any existing relevance cache entries that might conflict with new job analysis
+        # This ensures fresh relevance analysis for the new job
+        logger.info(f"Clearing relevance cache for new job creation: {actual_job_id}")
+        file_cache_service.clear_relevance_cache_for_job(actual_job_id)
+
+        all_payloads_for_creation = successful_payloads + flagged_payloads
+        error_files = []
+        sequentially_generated_ids = [firebase_client.generate_counter_id("cand") for _ in all_payloads_for_creation]
+
+        creation_tasks = []
+        for i, payload in enumerate(all_payloads_for_creation):
+            file_name = payload.get("fileName")
+            file_content_bytes = uploaded_files_content.get(file_name)
+            if not file_content_bytes:
+                error_files.append({"fileName": file_name, "message": "File content missing."})
+                continue
+
+            # Skip files that were marked as duplicates but not selected for overwrite
+            document_ai_results = payload.get("document_ai_results")
+            if document_ai_results:
+                duplicate_check_result = CandidateService.check_duplicate_candidate(actual_job_id, document_ai_results)
+                if duplicate_check_result.get("is_duplicate") and file_name not in selected_filenames_to_override_list:
+                    logger.info(f"Skipping duplicate file not selected for overwrite: {file_name}")
+                    continue
+
+            task = asyncio.to_thread(
+                candidate_service_instance.create_candidate_from_data,
+                job_id=actual_job_id, file_content=file_content_bytes, file_name=payload["fileName"],
+                content_type=payload["content_type"], extracted_data_from_doc_ai=payload["document_ai_results"],
+                authenticity_analysis_result=payload["authenticity_analysis_result"],
+                cross_referencing_result=payload["cross_referencing_result"],
+                final_assessment_data=payload["final_assessment_data"],
+                external_ai_detection_data=payload["external_ai_detection_data"],
+                user_time_zone=user_time_zone, candidate_id_override=sequentially_generated_ids[i]
+            )
+            creation_tasks.append(task)
+
+        successful_candidates = []
+        created_results = await asyncio.gather(*creation_tasks, return_exceptions=True)
+        for i, res in enumerate(created_results):
+            if isinstance(res, Exception) or (isinstance(res, dict) and res.get("error")):
+                error_files.append({"fileName": all_payloads_for_creation[i]["fileName"], "message": str(res)})
+            else:
+                successful_candidates.append(res)
+
+        applications_info = CandidateService.process_applications(actual_job_id, successful_candidates)
+        profile_tasks = [generate_and_save_profile(cand, gemini_service_global_instance) for cand in
+                         successful_candidates]
+        await asyncio.gather(*profile_tasks)
+
+        return JSONResponse(status_code=201, content=jsonable_encoder({
+            "jobId": actual_job_id, "jobTitle": job_create_payload.jobTitle,
+            "applicationCount": len(applications_info), "applications": applications_info,
+            "successfulCandidates": [c['candidateId'] for c in successful_candidates],
+            "errors": error_files, "message": "Job created successfully after all confirmations."
+        }))
+    except Exception as e:
+        logger.error(f"Error in /create-job-with-all-confirmations: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to process confirmed submission: {str(e)}")

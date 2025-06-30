@@ -179,12 +179,26 @@ For scores where data might be insufficient (e.g. achievement_specificity_score 
                 "ai_stylistic_indicators": response_json.get("ai_stylistic_indicators", []),
                 "overall_content_plausibility_score": response_json.get("overall_content_plausibility_score", 0.5),
                 "implausible_claims": response_json.get("implausible_claims", []),
-                "authenticity_assessment_score_by_content_module": response_json.get(
-                    "authenticity_assessment_score_by_content_module", 0.5),
-                "authenticity_summary_explanation_by_content_module": response_json.get(
-                    "authenticity_summary_explanation_by_content_module",
-                    "AI analysis did not provide a specific summary for content module.")
             }
+
+            # Handle authenticity_assessment_score_by_content_module - it might be a dict or float
+            auth_score_raw = response_json.get("authenticity_assessment_score_by_content_module", 0.5)
+            if isinstance(auth_score_raw, dict):
+                # If it's a dict, calculate the average score
+                scores = [v for v in auth_score_raw.values() if isinstance(v, (int, float))]
+                analysis_data["authenticity_assessment_score_by_content_module"] = sum(scores) / len(scores) if scores else 0.5
+            else:
+                analysis_data["authenticity_assessment_score_by_content_module"] = auth_score_raw
+
+            # Handle authenticity_summary_explanation_by_content_module - it might be a dict or string
+            auth_summary_raw = response_json.get("authenticity_summary_explanation_by_content_module", 
+                                                "AI analysis did not provide a specific summary for content module.")
+            if isinstance(auth_summary_raw, dict):
+                # If it's a dict, combine the explanations
+                explanations = [f"{k}: {v}" for k, v in auth_summary_raw.items() if isinstance(v, str)]
+                analysis_data["authenticity_summary_explanation_by_content_module"] = "; ".join(explanations) if explanations else "Module-specific analysis completed."
+            else:
+                analysis_data["authenticity_summary_explanation_by_content_module"] = auth_summary_raw
 
             if "aligned" in response_json.get("skill_experience_education_alignment", {}):
                 alignment_data = response_json.get("skill_experience_education_alignment")

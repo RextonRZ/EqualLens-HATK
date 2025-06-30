@@ -1977,7 +1977,11 @@ circle {
 }
 
 /* Progress bar container consistency */
-.progress-bar-container {
+.progress-bar-container,
+.skills-progress-bar-container,
+.experience-progress-bar-container,
+.education-progress-bar-container,
+.cultural-fit-progress-bar-container {
     height: 6px;
     background-color: #eee;
     border-radius: 3px;
@@ -2202,6 +2206,63 @@ circle {
     background-color: #eee;
     border-radius: 3px;
     overflow: hidden;
+}
+
+/* Category-specific progress bar containers */
+.skills-progress-bar-container {
+    height: 6px;
+    background-color: #eee;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.skills-progress-bar-container .progress-bar {
+    background: linear-gradient(90deg, rgb(181, 130, 252),rgb(130, 80, 200)) !important;
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease-in-out;
+}
+
+.experience-progress-bar-container {
+    height: 6px;
+    background-color: #eee;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.experience-progress-bar-container .progress-bar {
+    background: linear-gradient(90deg, rgb(255, 104, 232),rgb(221, 32, 193)) !important;
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease-in-out;
+}
+
+.education-progress-bar-container {
+    height: 6px;
+    background-color: #eee;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.education-progress-bar-container .progress-bar {
+    background: linear-gradient(90deg, #3b82f6, #2563eb) !important;
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease-in-out;
+}
+
+.cultural-fit-progress-bar-container {
+    height: 6px;
+    background-color: #eee;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.cultural-fit-progress-bar-container .progress-bar {
+    background: linear-gradient(90deg, rgb(255, 196, 93), rgb(255, 160, 0)) !important;
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease-in-out;
 }
 
 /* Combined container styles for summary and assessment */

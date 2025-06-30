@@ -931,7 +931,7 @@
     height: 1rem;
 }
 
-.progress-bar-container {
+.upload-progress .progress-bar-container {
     width: 100%;
     background-color: #e5e7eb;
     border-radius: 9999px;
@@ -940,7 +940,7 @@
     position: relative;
 }
 
-.progress-bar {
+.upload-progress .progress-bar {
     background-color: #ff6d6d;
     height: 0.375rem;
     border-radius: 9999px;
