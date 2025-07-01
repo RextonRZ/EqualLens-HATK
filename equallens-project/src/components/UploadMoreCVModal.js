@@ -599,6 +599,11 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
 
     // MODIFIED: These handlers now pass the current consent state.
     const handleUploadNonDuplicatesFromModal = async () => {
+        console.log("UploadMoreCVModal - handleUploadNonDuplicatesFromModal:", {
+            nonDuplicateFilesCount: fileState.nonDuplicateFiles?.length || 0,
+            nonDuplicateFiles: fileState.nonDuplicateFiles?.map(f => f.name) || []
+        });
+
         fileDispatch({ type: 'CLOSE_DUPLICATES_MODAL' });
         // Only upload non-duplicate files
         if (!fileState.nonDuplicateFiles || fileState.nonDuplicateFiles.length === 0) {
@@ -620,6 +625,12 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
     };
 
     const handleProceedWithDuplicatesFromModal = async (selectedDuplicateNamesToOverwrite = []) => {
+        console.log("UploadMoreCVModal - handleProceedWithDuplicatesFromModal:", {
+            selectedDuplicateNamesToOverwrite,
+            duplicateFilesCount: fileState.duplicateFiles?.length || 0,
+            selectedFilesCount: fileState.selectedFiles.length
+        });
+
         fileDispatch({ type: 'CLOSE_DUPLICATES_MODAL' });
         setPendingDuplicateModal(false); // <-- This will now be defined
         let filesToSubmitForOverwrite;
@@ -650,6 +661,12 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
 
     // Update: Add a handler for "Overwrite With Selected + Upload Non-Duplicates" button
     const handleOverwriteWithSelectedAndNonDuplicates = (selectedDuplicateNames = []) => {
+        console.log("UploadMoreCVModal - handleOverwriteWithSelectedAndNonDuplicates:", {
+            selectedDuplicateNames,
+            nonDuplicateFilesCount: fileState.nonDuplicateFiles?.length || 0,
+            selectedFilesCount: fileState.selectedFiles.length
+        });
+
         fileDispatch({ type: 'CLOSE_DUPLICATES_MODAL' });
         // Get selected files for overwrite
         const selectedFilesForOverwrite = fileState.selectedFiles.filter(f =>
@@ -665,6 +682,13 @@ const UploadMoreCVModal = ({ isOpen, onClose, jobId, jobTitle, onUploadComplete 
             ...nonDuplicateFiles.filter(f => !selectedDuplicateNames.includes(f.name))
         ];
         const namesToOverwrite = selectedDuplicateNames;
+
+        console.log("UploadMoreCVModal - Combined files for upload:", {
+            selectedFilesForOverwrite: selectedFilesForOverwrite.map(f => f.name),
+            nonDuplicateFiles: nonDuplicateFiles.map(f => f.name),
+            filesToUpload: filesToUpload.map(f => f.name),
+            namesToOverwrite
+        });
 
         if (filesToUpload.length === 0) {
             setErrorMessage("No files selected for upload.");

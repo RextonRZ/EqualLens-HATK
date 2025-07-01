@@ -126,11 +126,13 @@ async def _process_single_file_for_candidate_creation(
             logger.info(f"Using cached relevance analysis for job {job_id_for_analysis}, file: {file_name_val}")
             is_irrelevant_flag = cached_relevance.is_irrelevant
             irrelevance_payload_for_modal = cached_relevance.irrelevance_payload
+            relevance_analysis_result = cached_relevance.relevance_data
         else:
             logger.info(f"Running fresh relevance analysis for cached file: {file_name_val} (job: {job_id_for_analysis})")
             # Will run relevance analysis below in common section
             is_irrelevant_flag = None  # Will be set in relevance analysis section
             irrelevance_payload_for_modal = None
+            relevance_analysis_result = None
     else:
         # If not in cache, proceed with full analysis
         logger.info(f"Running full analysis for file: {file_name_val}")
@@ -138,6 +140,7 @@ async def _process_single_file_for_candidate_creation(
         # Reset relevance variables - will be set in relevance analysis section
         is_irrelevant_flag = None
         irrelevance_payload_for_modal = None
+        relevance_analysis_result = None
 
         temp_candidate_service = CandidateService(gemini_service_instance=gemini_service_global_instance)
         document_ai_results, authenticity_analysis, cross_referencing_analysis, external_ai_detection_data = \
@@ -189,6 +192,7 @@ async def _process_single_file_for_candidate_creation(
                     job_description=job_description_text_for_relevance
                 )
                 logger.info(f"Relevance analysis result for {file_name_val}: {relevant_info}")
+                relevance_analysis_result = relevant_info  # Store the full relevance analysis result
                 if relevant_info and relevant_info.get("relevance_label") == "Irrelevant":
                     is_irrelevant_flag = True
                     reason = relevant_info.get("irrelevant_reason")
@@ -336,6 +340,7 @@ async def _process_single_file_for_candidate_creation(
         "status": current_status,
         "ai_detection_payload": ai_detection_payload_for_modal,
         "irrelevance_payload": irrelevance_payload_for_modal,
+        "relevance_analysis_result": relevance_analysis_result,  # Add full relevance analysis
         "duplicate_info_raw": duplicate_check_result,  # Include duplicate info for all files
         "file_content_bytes": file_content_bytes, 
         "content_type": content_type_val,
@@ -355,7 +360,7 @@ async def _process_single_file_for_candidate_creation(
     return result
 
 
-async def generate_and_save_profile(candidate_info: Dict[str, Any], gemini_srv: GeminiService) -> bool:
+async def generate_and_save_profile(candidate_info: Dict[str, Any], gemini_srv: GeminiService, job_description: str = "", relevance_analysis_result: Optional[Dict[str, Any]] = None) -> bool:
     candidate_id = candidate_info.get('candidateId')
     if not candidate_id:
         logger.warning("Missing candidateId in candidate_info for profile generation.")
@@ -372,11 +377,35 @@ async def generate_and_save_profile(candidate_info: Dict[str, Any], gemini_srv: 
     if not entities_for_profile_gen or not isinstance(entities_for_profile_gen, dict):
         return False
 
-    applicant_data_for_gemini = {"candidateId": candidate_id, "extractedText": entities_for_profile_gen}
+    applicant_data_for_gemini = {
+        "candidateId": candidate_id, 
+        "extractedText": entities_for_profile_gen,
+        "job_description": job_description
+    }
     try:
         detailed_profile = await gemini_srv.generate_candidate_profile(applicant_data_for_gemini)
         if not detailed_profile or not isinstance(detailed_profile, dict) or "summary" not in detailed_profile:
             return False
+
+        # Add relevance analysis to detailed_profile if available
+        if relevance_analysis_result:
+            detailed_profile["relevance_analysis"] = relevance_analysis_result
+            # Add per-item relevance_score for star logic
+            for cat, items in relevance_analysis_result.items():
+                if isinstance(items, list):
+                    for item in items:
+                        if isinstance(item, dict) and "relevance" in item:
+                            item["relevance_score"] = item.get("relevance", 0)
+
+        # IMPORTANT FIX: Process per_item_relevance data if it exists
+        if "per_item_relevance" in detailed_profile and isinstance(detailed_profile["per_item_relevance"], dict):
+            for cat, items in detailed_profile["per_item_relevance"].items():
+                if isinstance(items, list):
+                    for item in items:
+                        if isinstance(item, dict) and "relevance" in item:
+                            item["relevance_score"] = item.get("relevance", 0)
+                            # Also ensure the "relevant" flag is set based on relevance threshold
+                            item["relevant"] = item.get("relevance", 0) >= 8
 
         profile_update_model = CandidateUpdate(detailed_profile=detailed_profile)
         success = CandidateService.update_candidate(candidate_id, profile_update_model)
@@ -482,8 +511,14 @@ async def upload_job_and_cvs(
         for res in processed_analysis_results:
             file_status = res.get("status")
             if file_status == "duplicate_detected_error":
-                duplicate_info = res["duplicate_info_raw"]
+                duplicate_info = res["duplicate_info_raw"].copy()  # Make a copy to avoid modifying original
                 duplicate_info['fileName'] = res.get('fileName')
+                
+                # If this duplicate file also has irrelevance information, include it
+                if res.get("irrelevance_payload"):
+                    duplicate_info['irrelevance_payload'] = res["irrelevance_payload"]
+                    logger.info(f"Including irrelevance info in duplicate modal for {res.get('fileName')}: {res['irrelevance_payload']}")
+                
                 duplicate_files_needing_confirmation.append(duplicate_info)
         
         # If there are duplicate files (and no AI flagged files), show duplicate modal
@@ -544,8 +579,21 @@ async def upload_job_and_cvs(
                 error_files.append({"message": str(res)})
 
         applications_info = CandidateService.process_applications(actual_job_id, successful_candidates)
-        profile_tasks = [generate_and_save_profile(cand, gemini_service_global_instance) for cand in
-                         successful_candidates]
+        
+        # Create profile generation tasks with relevance analysis
+        profile_tasks = []
+        for i, cand in enumerate(successful_candidates):
+            # Match candidate with original payload to get relevance analysis
+            payload = all_files_to_create[i] if i < len(all_files_to_create) else {}
+            relevance_analysis = payload.get("relevance_analysis_result")
+            task = generate_and_save_profile(
+                cand, 
+                gemini_service_global_instance, 
+                job_description=job_create_payload.jobDescription,
+                relevance_analysis_result=relevance_analysis
+            )
+            profile_tasks.append(task)
+        
         await asyncio.gather(*profile_tasks)
 
         # Clear session after successful completion
@@ -648,15 +696,29 @@ async def create_job_with_confirmed_cvs(
                 successful_candidates.append(res)
 
         applications_info = CandidateService.process_applications(actual_job_id, successful_candidates)
-        profile_tasks = [generate_and_save_profile(cand, gemini_service_global_instance) for cand in
-                         successful_candidates]
+        
+        # Create profile generation tasks with relevance analysis
+        profile_tasks = []
+        for i, cand in enumerate(successful_candidates):
+            # Match candidate with original payload to get relevance analysis
+            payload = all_payloads_for_creation[i] if i < len(all_payloads_for_creation) else {}
+            relevance_analysis = payload.get("relevance_analysis_result")
+            task = generate_and_save_profile(
+                cand, 
+                gemini_service_global_instance, 
+                job_description=job_create_payload.jobDescription,
+                relevance_analysis_result=relevance_analysis
+            )
+            profile_tasks.append(task)
+        
         await asyncio.gather(*profile_tasks)
 
         return JSONResponse(status_code=201, content=jsonable_encoder({
             "jobId": actual_job_id, "jobTitle": job_create_payload.jobTitle,
             "applicationCount": len(applications_info), "applications": applications_info,
             "successfulCandidates": [c['candidateId'] for c in successful_candidates],
-            "errors": error_files, "message": "Job created successfully."
+            "errors": error_files,
+            "cache_stats": file_cache_service.get_cache_stats()
         }))
     except Exception as e:
         logger.error(f"Error in /create-job-with-confirmed-cvs: {e}", exc_info=True)
@@ -709,7 +771,7 @@ async def upload_more_cv_for_job(
                 job_description_text_for_relevance=job.get("jobDescription", ""),
                 file_obj=file_obj,
                 user_time_zone=user_time_zone,
-                override_duplicates_from_form=is_overriding_duplicates_general,
+                override_duplicates_from_form=False,  # Always run duplicate check
                 force_upload_problematic_from_form=is_forcing_problematic_upload_consent,
                 force_upload_irrelevant_from_form=is_forcing_irrelevant_upload_consent,
                 session_id=session_id
@@ -720,12 +782,20 @@ async def upload_more_cv_for_job(
         # Rest of the function logic - prioritize AI/irrelevance detection over duplicates
         files_to_create, files_to_overwrite, unresolved_duplicates, flagged_files, error_files = [], [], [], [], []
 
+        logger.info(f"Processing analysis results for {len(analysis_results)} files. is_overriding_duplicates_general={is_overriding_duplicates_general}")
+
         for res in analysis_results:
             file_status = res.get("status")
+            file_name = res.get("fileName", "unknown")
+            is_duplicate = res.get("duplicate_info_raw", {}).get("is_duplicate", False)
+            
+            logger.info(f"File {file_name}: status={file_status}, is_duplicate={is_duplicate}")
+            
             if file_status == "error_analysis":
                 error_files.append(res)
             elif file_status == "duplicate_detected_error":
                 if res["fileName"] in selected_filenames_to_override_list or is_overriding_duplicates_general:
+                    logger.info(f"Adding {file_name} to files_to_overwrite (duplicate_detected_error)")
                     files_to_overwrite.append(res)
                 else:
                     duplicate_info = res["duplicate_info_raw"]
@@ -740,13 +810,17 @@ async def upload_more_cv_for_job(
                 # Check for duplicates in success files too (they may have duplicates but not be flagged if override_duplicates is false)
                 if res.get("duplicate_info_raw") and res["duplicate_info_raw"].get("is_duplicate"):
                     if res["fileName"] in selected_filenames_to_override_list or is_overriding_duplicates_general:
+                        logger.info(f"Adding {file_name} to files_to_overwrite (success_analysis with duplicate)")
                         files_to_overwrite.append(res)
                     else:
                         duplicate_info = res["duplicate_info_raw"]
                         duplicate_info['fileName'] = res.get('fileName')
                         unresolved_duplicates.append(duplicate_info)
                 else:
+                    logger.info(f"Adding {file_name} to files_to_create (success_analysis)")
                     files_to_create.append(res)
+
+        logger.info(f"Final categorization - to_create: {len(files_to_create)}, to_overwrite: {len(files_to_overwrite)}, unresolved_duplicates: {len(unresolved_duplicates)}, flagged: {len(flagged_files)}, errors: {len(error_files)}")
 
         # Show AI/irrelevance flagged files first (higher priority)
         if flagged_files:
@@ -783,6 +857,7 @@ async def upload_more_cv_for_job(
         # Continue with candidate creation/overwrite logic...
         successful_candidates_app_data = []
         processed_candidate_ids_for_response = []
+        new_candidates_for_applications = []  # Only for new candidates that need applications
 
         if files_to_create:
             new_candidate_ids = [firebase_client.generate_counter_id("cand") for _ in files_to_create]
@@ -796,7 +871,8 @@ async def upload_more_cv_for_job(
                     cross_referencing_result=payload["cross_referencing_result"],
                     final_assessment_data=payload["final_assessment_data"],
                     external_ai_detection_data=payload["external_ai_detection_data"],
-                    user_time_zone=user_time_zone, candidate_id_override=new_candidate_ids[i]
+                    user_time_zone=user_time_zone, candidate_id_override=new_candidate_ids[i],
+                    relevance_analysis_result=payload.get("relevance_analysis_result")
                 )
                 creation_tasks.append(task)
 
@@ -804,66 +880,90 @@ async def upload_more_cv_for_job(
             for res in created_results:
                 if res and not res.get("error"):
                     successful_candidates_app_data.append(res)
+                    new_candidates_for_applications.append(res)  # New candidates need applications
                     processed_candidate_ids_for_response.append(res["candidateId"])
                 else:
                     error_files.append(res)
 
-        for payload in files_to_overwrite:
-            dup_info = payload.get("duplicate_info_raw", {})
-            existing_candidate_id = dup_info.get("duplicate_candidate", {}).get("candidateId")
-            if not existing_candidate_id:
-                error_files.append(
-                    {"fileName": payload["fileName"], "message": "Could not find existing candidate ID to overwrite."})
-                continue
+        # Handle overwriting duplicates using the new overwrite method
+        if files_to_overwrite:
+            overwrite_tasks = []
+            for payload in files_to_overwrite:
+                dup_info = payload.get("duplicate_info_raw", {})
+                existing_candidate_id = dup_info.get("duplicate_candidate", {}).get("candidateId")
+                if not existing_candidate_id:
+                    error_files.append(
+                        {"fileName": payload["fileName"], "message": "Could not find existing candidate ID to overwrite."})
+                    continue
 
-            new_file_id = str(uuid.uuid4())
-            new_file_ext = payload["fileName"].split('.')[-1] if '.' in payload["fileName"] else 'pdf'
-            new_storage_path = f"resumes/{job_id}/{existing_candidate_id}/{new_file_id}.{new_file_ext}"
-            new_resume_url = firebase_client.upload_file(payload["file_content_bytes"], new_storage_path,
-                                                         payload["content_type"])
+                task = asyncio.to_thread(
+                    candidate_service_instance.overwrite_candidate_from_data,
+                    job_id=job_id,
+                    existing_candidate_id=existing_candidate_id,
+                    file_content=payload["file_content_bytes"],
+                    file_name=payload["fileName"],
+                    content_type=payload["content_type"],
+                    extracted_data_from_doc_ai=payload["document_ai_results"],
+                    authenticity_analysis_result=payload["authenticity_analysis_result"],
+                    cross_referencing_result=payload["cross_referencing_result"],
+                    final_assessment_data=payload["final_assessment_data"],
+                    external_ai_detection_data=payload["external_ai_detection_data"],
+                    user_time_zone=user_time_zone,
+                    relevance_analysis_result=payload.get("relevance_analysis_result")
+                )
+                overwrite_tasks.append(task)
 
-            if not new_resume_url:
-                error_files.append({"fileName": payload['fileName'], "message": "Overwrite file upload failed"})
-                continue
+            overwrite_results = await asyncio.gather(*overwrite_tasks, return_exceptions=True)
+            for i, res in enumerate(overwrite_results):
+                if isinstance(res, Exception) or (isinstance(res, dict) and res.get("error")):
+                    error_files.append({"fileName": files_to_overwrite[i]["fileName"], "message": str(res)})
+                else:
+                    successful_candidates_app_data.append(res)
+                    processed_candidate_ids_for_response.append(res["candidateId"])
+                    # Note: Do NOT add overwritten candidates to new_candidates_for_applications
 
-            try:
-                tz = ZoneInfo(user_time_zone)
-                overwrite_at_iso = datetime.now(tz).isoformat()
-            except (ZoneInfoNotFoundError, TypeError):
-                overwrite_at_iso = datetime.now(timezone.utc).isoformat()
-
-            update_data = CandidateUpdate(
-                extractedText=payload["document_ai_results"].get("extractedText", {}),
-                fullTextFromDocAI=payload["document_ai_results"].get("full_text", ""),
-                resumeUrl=new_resume_url, storagePath=new_storage_path, originalFileName=payload["fileName"],
-                overwriteAt=overwrite_at_iso,
-                authenticityAnalysis=AuthenticityAnalysisResult(**payload["authenticity_analysis_result"]),
-                crossReferencingAnalysis=CrossReferencingResult(**payload["cross_referencing_result"]),
-                externalAIDetectionResult=payload.get("external_ai_detection_data"),
-                overallAuthenticityScore=payload.get("final_assessment_data", {}).get(
-                    "final_overall_authenticity_score"),
-                spamLikelihoodScore=payload.get("final_assessment_data", {}).get("final_spam_likelihood_score"),
-                finalXAISummary=payload.get("final_assessment_data", {}).get("final_xai_summary"),
-                detailed_profile=None
-            )
-            if CandidateService.update_candidate(existing_candidate_id, update_data):
-                candidate_data = CandidateService.get_candidate(existing_candidate_id)
-                if candidate_data:
-                    successful_candidates_app_data.append(candidate_data)
-                    processed_candidate_ids_for_response.append(existing_candidate_id)
-            else:
-                error_files.append({"fileName": payload['fileName'], "message": "Overwrite DB update failed"})
-
+        # Create applications only for new candidates (not overwritten ones)
+        if new_candidates_for_applications:
+            applications_created_info = candidate_service_instance.process_applications(job_id, new_candidates_for_applications)
+            logger.info(f"Created {len(new_candidates_for_applications)} new applications for job {job_id}")
+        
+        # Generate profiles for all candidates (both new and overwritten)
         if successful_candidates_app_data:
-            applications_created_info = candidate_service_instance.process_applications(job_id,
-                                                                                        successful_candidates_app_data)
-            profile_gen_tasks = [generate_and_save_profile(cand_info, gemini_service_global_instance) for cand_info in
-                                 successful_candidates_app_data]
+            job_data = JobService.get_job(job_id)
+            job_description = job_data.get("jobDescription", "") if job_data else ""
+            
+            profile_gen_tasks = []
+            for cand_info in successful_candidates_app_data:
+                # Find the relevance analysis from the original payload
+                candidate_file_name = cand_info.get("originalFileName", "")
+                relevance_analysis = None
+                
+                # Look for the relevance analysis in the processed files
+                for payload in files_to_create + files_to_overwrite:
+                    if payload.get("fileName") == candidate_file_name:
+                        relevance_analysis = payload.get("relevance_analysis_result")
+                        break
+                
+                task = generate_and_save_profile(
+                    cand_info, 
+                    gemini_service_global_instance,
+                    job_description=job_description,
+                    relevance_analysis_result=relevance_analysis
+                )
+                profile_gen_tasks.append(task)
+            
             await asyncio.gather(*profile_gen_tasks)
 
         updated_job = JobService.get_job(job_id)
 
         file_cache_service.clear_session(session_id)
+
+        # Log final summary
+        logger.info(f"Upload-more-cv completed for job {job_id}:")
+        logger.info(f"  - New candidates created: {len(files_to_create)}")
+        logger.info(f"  - Existing candidates overwritten: {len(files_to_overwrite)}")
+        logger.info(f"  - Total successful operations: {len(successful_candidates_app_data)}")
+        logger.info(f"  - Errors: {len(error_files)}")
 
         updated_job = JobService.get_job(job_id)
         return JSONResponse(status_code=200, content=jsonable_encoder({
@@ -931,8 +1031,12 @@ async def create_job_with_all_confirmations(
         if selected_filenames_for_overwrite_json:
             try:
                 selected_filenames_to_override_list = json.loads(selected_filenames_for_overwrite_json)
+                logger.info(f"Selected filenames for overwrite: {selected_filenames_to_override_list}")
             except json.JSONDecodeError:
                 selected_filenames_to_override_list = []
+
+        logger.info(f"Creating job with all confirmations. Selected for overwrite: {len(selected_filenames_to_override_list)} files: {selected_filenames_to_override_list}")
+        logger.info(f"Total payloads to process: {len(all_payloads_for_creation)}")
 
         actual_job_id = JobService.create_job(job_create_payload)
         if not actual_job_id:
@@ -948,6 +1052,9 @@ async def create_job_with_all_confirmations(
         sequentially_generated_ids = [firebase_client.generate_counter_id("cand") for _ in all_payloads_for_creation]
 
         creation_tasks = []
+        overwrite_tasks = []
+        new_candidates_for_applications = []  # Track which candidates will need new applications
+        
         for i, payload in enumerate(all_payloads_for_creation):
             file_name = payload.get("fileName")
             file_content_bytes = uploaded_files_content.get(file_name)
@@ -955,14 +1062,45 @@ async def create_job_with_all_confirmations(
                 error_files.append({"fileName": file_name, "message": "File content missing."})
                 continue
 
-            # Skip files that were marked as duplicates but not selected for overwrite
+            # Check for duplicates and handle appropriately
             document_ai_results = payload.get("document_ai_results")
             if document_ai_results:
                 duplicate_check_result = CandidateService.check_duplicate_candidate(actual_job_id, document_ai_results)
-                if duplicate_check_result.get("is_duplicate") and file_name not in selected_filenames_to_override_list:
+                is_duplicate = duplicate_check_result.get("is_duplicate", False)
+                is_selected_for_overwrite = file_name in selected_filenames_to_override_list
+                
+                if is_duplicate and not is_selected_for_overwrite:
+                    # Skip duplicates not selected for overwrite
                     logger.info(f"Skipping duplicate file not selected for overwrite: {file_name}")
                     continue
+                elif is_duplicate and is_selected_for_overwrite:
+                    # Overwrite existing candidate for selected duplicates
+                    existing_candidate_id = duplicate_check_result.get("duplicate_candidate", {}).get("candidateId")
+                    if existing_candidate_id:
+                        logger.info(f"Overwriting existing candidate {existing_candidate_id} for file: {file_name}")
+                        task = asyncio.to_thread(
+                            candidate_service_instance.overwrite_candidate_from_data,
+                            job_id=actual_job_id, 
+                            existing_candidate_id=existing_candidate_id,
+                            file_content=file_content_bytes, 
+                            file_name=payload["fileName"],
+                            content_type=payload["content_type"], 
+                            extracted_data_from_doc_ai=payload["document_ai_results"],
+                            authenticity_analysis_result=payload["authenticity_analysis_result"],
+                            cross_referencing_result=payload["cross_referencing_result"],
+                            final_assessment_data=payload["final_assessment_data"],
+                            external_ai_detection_data=payload["external_ai_detection_data"],
+                            user_time_zone=user_time_zone,
+                            relevance_analysis_result=payload.get("relevance_analysis_result")
+                        )
+                        overwrite_tasks.append(task)
+                    else:
+                        logger.error(f"Cannot overwrite candidate for {file_name}: existing candidate ID not found")
+                        error_files.append({"fileName": file_name, "message": "Cannot overwrite: existing candidate ID not found"})
+                    continue
 
+            # Create new candidate for non-duplicates
+            logger.info(f"Creating new candidate for file: {file_name}")
             task = asyncio.to_thread(
                 candidate_service_instance.create_candidate_from_data,
                 job_id=actual_job_id, file_content=file_content_bytes, file_name=payload["fileName"],
@@ -974,23 +1112,78 @@ async def create_job_with_all_confirmations(
                 user_time_zone=user_time_zone, candidate_id_override=sequentially_generated_ids[i]
             )
             creation_tasks.append(task)
+            new_candidates_for_applications.append(i)  # Track index for new applications
 
         successful_candidates = []
-        created_results = await asyncio.gather(*creation_tasks, return_exceptions=True)
-        for i, res in enumerate(created_results):
-            if isinstance(res, Exception) or (isinstance(res, dict) and res.get("error")):
-                error_files.append({"fileName": all_payloads_for_creation[i]["fileName"], "message": str(res)})
-            else:
-                successful_candidates.append(res)
+        overwritten_candidates = []  # Track overwritten candidates separately
+        
+        # Process new candidate creations
+        if creation_tasks:
+            created_results = await asyncio.gather(*creation_tasks, return_exceptions=True)
+            for i, res in enumerate(created_results):
+                if isinstance(res, Exception) or (isinstance(res, dict) and res.get("error")):
+                    # Find the corresponding payload for error reporting
+                    payload_index = new_candidates_for_applications[i] if i < len(new_candidates_for_applications) else i
+                    file_name = all_payloads_for_creation[payload_index]["fileName"] if payload_index < len(all_payloads_for_creation) else "unknown"
+                    error_files.append({"fileName": file_name, "message": str(res)})
+                else:
+                    successful_candidates.append(res)
 
-        applications_info = CandidateService.process_applications(actual_job_id, successful_candidates)
-        profile_tasks = [generate_and_save_profile(cand, gemini_service_global_instance) for cand in
-                         successful_candidates]
+        # Process candidate overwrites (no new applications needed)
+        if overwrite_tasks:
+            overwrite_results = await asyncio.gather(*overwrite_tasks, return_exceptions=True)
+            for res in overwrite_results:
+                if isinstance(res, Exception) or (isinstance(res, dict) and res.get("error")):
+                    error_files.append({"fileName": "overwrite_operation", "message": str(res)})
+                else:
+                    overwritten_candidates.append(res)
+                    successful_candidates.append(res)  # Add to total successful list
+
+        # Create applications only for new candidates (not overwritten ones)
+        if successful_candidates and not overwritten_candidates:
+            # All candidates are new, create applications for all
+            applications_info = CandidateService.process_applications(actual_job_id, successful_candidates)
+            logger.info(f"Created {len(successful_candidates)} new applications for job {actual_job_id}")
+        elif successful_candidates and overwritten_candidates:
+            # Mix of new and overwritten candidates, only create applications for new ones
+            new_candidates_only = [cand for cand in successful_candidates if cand not in overwritten_candidates]
+            if new_candidates_only:
+                applications_info = CandidateService.process_applications(actual_job_id, new_candidates_only)
+                logger.info(f"Created {len(new_candidates_only)} new applications for job {actual_job_id}")
+            logger.info(f"Skipped application creation for {len(overwritten_candidates)} overwritten candidates")
+        
+        # Generate profiles for all candidates (both new and overwritten)
+        profile_tasks = []
+        for cand in successful_candidates:
+            # Find the relevance analysis from the original payload
+            candidate_file_name = cand.get("originalFileName", "")
+            relevance_analysis = None
+            
+            # Look for the relevance analysis in the processed payloads
+            for payload in all_payloads_for_creation:
+                if payload.get("fileName") == candidate_file_name:
+                    relevance_analysis = payload.get("relevance_analysis_result")
+                    break
+            
+            task = generate_and_save_profile(
+                cand, 
+                gemini_service_global_instance,
+                job_description=job_create_payload.jobDescription,
+                relevance_analysis_result=relevance_analysis
+            )
+            profile_tasks.append(task)
+        
         await asyncio.gather(*profile_tasks)
+
+        # Log summary of operations for debugging
+        overwritten_count = len(overwritten_candidates)
+        new_candidates_count = len(successful_candidates) - overwritten_count
+        
+        logger.info(f"Job creation summary - Overwritten: {overwritten_count}, New candidates: {new_candidates_count}, Total successful: {len(successful_candidates)}, Errors: {len(error_files)}")
 
         return JSONResponse(status_code=201, content=jsonable_encoder({
             "jobId": actual_job_id, "jobTitle": job_create_payload.jobTitle,
-            "applicationCount": len(applications_info), "applications": applications_info,
+            "applicationCount": len(successful_candidates),  # Total candidates (new + overwritten)
             "successfulCandidates": [c['candidateId'] for c in successful_candidates],
             "errors": error_files, "message": "Job created successfully after all confirmations."
         }))

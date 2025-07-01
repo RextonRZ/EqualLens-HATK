@@ -188,6 +188,12 @@ const DuplicateFilesModal = ({ isOpen, duplicates, onClose, onProceed, onUploadN
   }, [groupedDuplicates]);
 
   const handleToggleSelection = (fileNameToToggle, groupKey) => {
+    console.log("DuplicateFilesModal - handleToggleSelection:", {
+      fileNameToToggle,
+      groupKey,
+      currentSelectedState: selectedDuplicates[fileNameToToggle]
+    });
+
     setSelectedDuplicates(prevSelected => {
       const newSelectedState = { ...prevSelected };
       const targetGroup = groupedDuplicates.find(g => (g.candidateId || groupedDuplicates.indexOf(g)) === groupKey);
@@ -205,6 +211,8 @@ const DuplicateFilesModal = ({ isOpen, duplicates, onClose, onProceed, onUploadN
       } else {
         newSelectedState[fileNameToToggle] = false;
       }
+
+      console.log("DuplicateFilesModal - new selection state:", newSelectedState);
       return newSelectedState;
     });
   };
@@ -213,6 +221,13 @@ const DuplicateFilesModal = ({ isOpen, duplicates, onClose, onProceed, onUploadN
     const selectedFiles = Object.keys(selectedDuplicates).filter(
       fileName => selectedDuplicates[fileName]
     );
+
+    console.log("DuplicateFilesModal - handleOverwriteWithSelected:", {
+      selectedFiles,
+      nonDuplicateCount,
+      hasOverwriteHandler: !!onOverwriteWithSelectedAndNonDuplicates,
+      willCallOverwriteHandler: nonDuplicateCount > 0 && onOverwriteWithSelectedAndNonDuplicates
+    });
 
     // FIX: Call the correct handler based on whether there are also non-duplicates to upload.
     if (nonDuplicateCount > 0 && onOverwriteWithSelectedAndNonDuplicates) {
@@ -334,6 +349,16 @@ const DuplicateFilesModal = ({ isOpen, duplicates, onClose, onProceed, onUploadN
 
   const selectedTypes = getSelectedDuplicateTypes();
   const allSelectedAreCopied = selectedTypes.size === 1 && selectedTypes.has('COPIED_RESUME');
+
+  // Debug logging to help with troubleshooting
+  console.log("DuplicateFilesModal Debug:", {
+    anySelected,
+    selectedCount: Object.values(selectedDuplicates).filter(Boolean).length,
+    nonDuplicateCount,
+    allSelectedAreCopied,
+    selectedTypes: Array.from(selectedTypes),
+    duplicatesLength: duplicates?.length || 0
+  });
 
   if (!isOpen) return null;
 
@@ -490,6 +515,31 @@ const DuplicateFilesModal = ({ isOpen, duplicates, onClose, onProceed, onUploadN
                                 </span>
                               </div>
 
+                              {/* Display irrelevance information if present */}
+                              {dupe.irrelevance_payload && (
+                                <div className="irrelevance-section">
+                                  <div className="irrelevance-header">
+                                    <span className="irrelevance-icon">⚠️</span>
+                                    <span className="irrelevance-title">Job Relevance Issue Detected</span>
+                                    {dupe.irrelevance_payload.relevance_score !== undefined && (
+                                      <span className="irrelevance-score">
+                                        Score: {Math.round(dupe.irrelevance_payload.relevance_score * 100)}%
+                                      </span>
+                                    )}
+                                  </div>
+                                  {dupe.irrelevance_payload.irrelevant_reason && (
+                                    <div className="irrelevance-reason">
+                                      <strong>Reason:</strong> {dupe.irrelevance_payload.irrelevant_reason}
+                                    </div>
+                                  )}
+                                  {dupe.irrelevance_payload.job_type && (
+                                    <div className="irrelevance-job-type">
+                                      <strong>Expected Job Type:</strong> {dupe.irrelevance_payload.job_type}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
                               {backendType === 'MODIFIED_RESUME' && resumeChanges && (
                                 <div className="resume-changes-section">
                                   <div
@@ -579,11 +629,16 @@ const DuplicateFilesModal = ({ isOpen, duplicates, onClose, onProceed, onUploadN
             onClick={handleOverwriteWithSelected}
             disabled={!anySelected && duplicates && duplicates.length > 0}
           >
-            {duplicates && duplicates.length > 0
-              ? allSelectedAreCopied 
-                ? `Continue to Upload (${Object.values(selectedDuplicates).filter(Boolean).length})${nonDuplicateCount > 0 ? ' + Non-Duplicates' : ''}`
-                : `Overwrite With Selected (${Object.values(selectedDuplicates).filter(Boolean).length})${nonDuplicateCount > 0 ? ' + Non-Duplicates' : ''}`
-              : 'Continue'}
+            {(() => {
+              if (!duplicates || duplicates.length === 0) return 'Continue';
+              
+              const selectedCount = Object.values(selectedDuplicates).filter(Boolean).length;
+              const baseText = allSelectedAreCopied ? 'Continue to Upload' : 'Overwrite With Selected';
+              const countText = `(${selectedCount})`;
+              const nonDupeText = nonDuplicateCount > 0 ? ' + Non-Duplicates' : '';
+              
+              return `${baseText} ${countText}${nonDupeText}`;
+            })()}
           </button>
         </div>
       </div>

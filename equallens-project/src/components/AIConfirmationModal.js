@@ -413,7 +413,7 @@ const AIConfirmationModal = ({
                                             <div className="analysis-content">
                                                 <div className="analysis-section spam-section colored-section">
                                                     <div className="section-header collapsible-header spam-header">
-                                                        <h3 className="section-title" style={{ width: "100%", margin: 0 }}>
+                                                        <h3 className="section-title" style={{ width: "100%", margin: 0,fontSize: "1.1rem" }}>
                                                             Reason for Irrelevance
                                                         </h3>
                                                     </div>

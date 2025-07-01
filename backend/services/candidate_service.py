@@ -103,7 +103,7 @@ class CandidateService:
                 if field_diffs and (field_diffs.get("added") or field_diffs.get("removed")):
                     changes["field_changes"][field] = field_diffs
             elif isinstance(new_value, list) and isinstance(existing_value, list):
-                field_diffs = extract_list_differences(new_value, existing_list)
+                field_diffs = extract_list_differences(new_value, existing_value)
                 if field_diffs["added"] or field_diffs["removed"]:
                     changes["field_changes"][field] = field_diffs
                     if field_diffs["added"]: changes["enriched_fields"].append(field)
@@ -420,7 +420,8 @@ class CandidateService:
             final_assessment_data: Dict[str, Any],
             external_ai_detection_data: Optional[Dict[str, Any]],
             user_time_zone: str,
-            candidate_id_override: Optional[str] = None
+            candidate_id_override: Optional[str] = None,
+            relevance_analysis_result: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Creates a candidate document in Firestore from pre-processed and pre-serialized data.
@@ -472,10 +473,10 @@ class CandidateService:
                 "crossReferencingAnalysis": cross_referencing_result,
                 "finalAssessmentData": final_assessment_data,
                 "externalAIDetectionData": external_ai_detection_data,
+                "relevanceAnalysis": relevance_analysis_result,  # Store overall relevance for filtering/modal
                 "userTimeZone": user_time_zone,
                 'extractedText': entities_to_store,
                 'fullTextFromDocAI': full_text_to_store,
-                'rawOCRResponse': raw_ocr_response_to_store,
                 'rawOCRResponse': raw_ocr_response_to_store
             }
 
@@ -725,3 +726,89 @@ class CandidateService:
         except Exception as e:
             logger.error(f"Error retrieving overwrite target for job {job_id}: {e}", exc_info=True)
             return None
+
+    @staticmethod
+    def overwrite_candidate_from_data(
+            job_id: str,
+            existing_candidate_id: str,
+            file_content: bytes,
+            file_name: str,
+            content_type: str,
+            extracted_data_from_doc_ai: Dict[str, Any],
+            authenticity_analysis_result: Optional[Dict[str, Any]],
+            cross_referencing_result: Optional[Dict[str, Any]],
+            final_assessment_data: Dict[str, Any],
+            external_ai_detection_data: Optional[Dict[str, Any]],
+            user_time_zone: str,
+            relevance_analysis_result: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Overwrites an existing candidate document in Firestore with new data.
+        This function is synchronous and designed to be run in a separate thread.
+        """
+        try:
+            # Set up timezone and current time first
+            from pytz import timezone as pytz_timezone, UnknownTimeZoneError
+            try:
+                tz = pytz_timezone(user_time_zone if user_time_zone else "UTC")
+            except UnknownTimeZoneError:
+                tz = timezone.utc
+            current_time_iso = datetime.now(tz).isoformat()
+            
+            logger.info(f"[overwrite_candidate_from_data] Overwriting candidate {existing_candidate_id} for file {file_name}")
+            logger.info(f"[overwrite_candidate_from_data] Setting overwriteAt timestamp: {current_time_iso}")
+
+            file_uuid_for_storage = str(uuid.uuid4())
+            storage_file_name = f"{file_uuid_for_storage}_{file_name}"
+            storage_path = f"resumes/{job_id}/{existing_candidate_id}/{storage_file_name}"
+
+            resume_url = firebase_client.upload_file(file_content, storage_path, content_type)
+            if not resume_url:
+                raise Exception(f"Failed to upload resume to Firebase Storage for candidate {existing_candidate_id}")
+
+            logger.info(f"File {file_name} uploaded successfully to {resume_url} for candidate {existing_candidate_id}")
+
+            entities_to_store = extracted_data_from_doc_ai.get("extractedText", {})
+            full_text_to_store = extracted_data_from_doc_ai.get("full_text", "")
+            raw_ocr_response_to_store = extracted_data_from_doc_ai.get("raw_ocr_response", {})
+
+            # Update data - preserve candidateId and jobId, update everything else
+            update_data = {
+                "originalFileName": file_name,
+                "resumeUrl": resume_url,
+                "storagePath": storage_path,
+                "uploadedAt": current_time_iso,  # Keep original upload time logic
+                "overwriteAt": current_time_iso,  # Add overwrite timestamp for dashboard
+                "status": "new",  # Reset status
+                'rank_score': None,  # Reset ranking
+                'reasoning': None,   # Reset reasoning
+                'detailed_profile': None,  # Reset profile
+                "authenticityAnalysis": authenticity_analysis_result,
+                "crossReferencingAnalysis": cross_referencing_result,
+                "finalAssessmentData": final_assessment_data,
+                "externalAIDetectionData": external_ai_detection_data,
+                "relevanceAnalysis": relevance_analysis_result,  # Store overall relevance for filtering/modal
+                "userTimeZone": user_time_zone,
+                'extractedText': entities_to_store,
+                'fullTextFromDocAI': full_text_to_store,
+                'rawOCRResponse': raw_ocr_response_to_store
+            }
+
+            success = firebase_client.update_document('candidates', existing_candidate_id, update_data)
+
+            if not success:
+                raise Exception(f"firebase_client.update_document returned False for candidate {existing_candidate_id}")
+
+            logger.info(f"Successfully overwritten candidate document for {existing_candidate_id}")
+            logger.info(f"Candidate {existing_candidate_id} now has overwriteAt: {current_time_iso}")
+            
+            # Return the complete candidate data including the preserved ID
+            return_data = update_data.copy()
+            return_data["candidateId"] = existing_candidate_id
+            return_data["jobId"] = job_id
+            return_data["extractedDataFromDocAI"] = extracted_data_from_doc_ai
+            return return_data
+
+        except Exception as e:
+            logger.error(f"Error in overwrite_candidate_from_data for {file_name}: {e}", exc_info=True)
+            return {"error": str(e), "fileName": file_name}
