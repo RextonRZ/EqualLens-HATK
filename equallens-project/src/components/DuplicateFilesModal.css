@@ -449,6 +449,56 @@
   }
 }
 
+/* Irrelevance Section Styles */
+.irrelevance-section {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: #fef3e2;
+  border: 1px solid #f59e0b;
+  border-radius: 0.375rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.irrelevance-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.irrelevance-icon {
+  font-size: 1rem;
+}
+
+.irrelevance-title {
+  flex: 1;
+  font-size: 0.875rem;
+}
+
+.irrelevance-score {
+  background-color: #f59e0b;
+  color: white;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.irrelevance-reason,
+.irrelevance-job-type {
+  font-size: 0.875rem;
+  color: #92400e;
+  line-height: 1.4;
+}
+
+.irrelevance-reason strong,
+.irrelevance-job-type strong {
+  font-weight: 600;
+}
+
 /* Resume Changes Section - Improved alignment and styling */
 .resume-changes-section {
   margin-top: 0.75rem;
@@ -927,4 +977,59 @@
 }
 .new-file-external-ai-details .error-text {
     color: #c00;
+}
+
+/* Irrelevance Information Styles */
+.irrelevance-info-section {
+    margin: 12px 0;
+    padding: 12px;
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+}
+
+.irrelevance-warning {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.irrelevance-icon {
+    font-size: 16px;
+    margin-right: 8px;
+    color: #dc2626;
+}
+
+.irrelevance-title {
+    font-weight: 600;
+    color: #dc2626;
+    font-size: 0.9rem;
+}
+
+.irrelevance-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.irrelevance-score,
+.irrelevance-reason {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.irrelevance-label {
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.85rem;
+    min-width: fit-content;
+}
+
+.irrelevance-value {
+    color: #6b7280;
+    font-size: 0.85rem;
+    flex: 1;
+    word-break: break-word;
 }

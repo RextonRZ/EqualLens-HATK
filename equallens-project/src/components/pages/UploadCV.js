@@ -481,16 +481,38 @@ const UploadCV = () => {
             });
 
             if (!response.ok) {
-                // === FIX: Improved error handling to show detailed messages ===
                 const errorData = await response.json().catch(() => ({ detail: "Confirmed upload failed with a non-JSON error." }));
-                let errorMessage = errorData.detail;
+                
+                // Handle duplicate detection after AI confirmation
+                if (response.status === 409 && errorData.error_type === "DUPLICATE_FILES_DETECTED_AFTER_AI_CONFIRMATION") {
+                    // Store the duplicate information and show duplicate modal
+                    const nonDuplicateFileNames = fileState.selectedFiles
+                        .filter(file => !errorData.duplicates.some(dup => dup.fileName === file.name))
+                        .map(file => file.name);
+                    
+                    const nonDuplicateFiles = fileState.selectedFiles.filter(file => 
+                        nonDuplicateFileNames.includes(file.name)
+                    );
 
+                    fileDispatch({ 
+                        type: 'FOUND_DUPLICATES', 
+                        payload: { 
+                            duplicates: errorData.duplicates, 
+                            nonDuplicateFiles: nonDuplicateFiles 
+                        } 
+                    });
+                    
+                    setApiStatus("idle");
+                    setSubmitProgress(0);
+                    return;
+                }
+
+                let errorMessage = errorData.detail;
                 // FastAPI validation errors are often in a nested 'detail' array
                 if (Array.isArray(errorData.detail)) {
                     errorMessage = errorData.detail.map(err => `${err.loc.join(' -> ')}: ${err.msg}`).join('; ');
                 }
                 throw new Error(errorMessage || 'An unknown error occurred during the confirmed upload.');
-                // ================================================================
             }
 
             const responseData = await response.json();
@@ -517,6 +539,11 @@ const UploadCV = () => {
     };
 
     const handleUploadNonDuplicatesFromModal = async () => {
+        console.log("UploadCV - handleUploadNonDuplicatesFromModal:", {
+            nonDuplicateFilesCount: fileState.nonDuplicateFiles?.length || 0,
+            nonDuplicateFiles: fileState.nonDuplicateFiles?.map(f => f.name) || []
+        });
+
         fileDispatch({ type: 'CLOSE_DUPLICATES_MODAL' });
         if (!fileState.nonDuplicateFiles || fileState.nonDuplicateFiles.length === 0) {
             handleCreateMoreJob(); // No files left to upload, just reset
@@ -524,6 +551,70 @@ const UploadCV = () => {
         }
         // Re-trigger the submission process with only the non-duplicate files
         handleFinalSubmit(false, fileState.nonDuplicateFiles);
+    };
+
+    const handleOverwriteWithSelectedAndNonDuplicates = async (selectedFilenames) => {
+        console.log("UploadCV - handleOverwriteWithSelectedAndNonDuplicates:", {
+            selectedFilenames,
+            nonDuplicateFilesCount: fileState.nonDuplicateFiles?.length || 0,
+            pendingAnalysisPayloads
+        });
+
+        fileDispatch({ type: 'CLOSE_DUPLICATES_MODAL' });
+        
+        // Call the final confirmations endpoint with selected filenames for overwrite
+        setApiStatus("loading");
+        setSubmitProgress(0);
+
+        const formData = new FormData();
+
+        // Append the stored JSON payloads
+        formData.append("job_creation_payload_json", pendingJobPayload);
+        formData.append("successful_analysis_payloads_json", JSON.stringify(pendingAnalysisPayloads.successful));
+        formData.append("flagged_analysis_payloads_json", JSON.stringify(pendingAnalysisPayloads.flagged));
+        formData.append("user_time_zone", pendingUserTimeZone);
+        formData.append("selected_filenames", JSON.stringify(selectedFilenames));
+
+        // Add session ID if available
+        if (fileState.sessionId) {
+            formData.append("session_id", fileState.sessionId);
+        }
+
+        // Re-append all the original File objects (both selected for overwrite and non-duplicates)
+        const allPayloads = [...pendingAnalysisPayloads.successful, ...pendingAnalysisPayloads.flagged];
+        const filesToUpload = fileState.selectedFiles.filter(file =>
+            allPayloads.some(payload => payload.fileName === file.name)
+        );
+
+        filesToUpload.forEach(file => {
+            formData.append("files", file);
+        });
+
+        try {
+            const response = await fetch(`${API_URL}/api/jobs/create-job-with-all-confirmations`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: "Final confirmation upload failed." }));
+                let errorMessage = errorData.detail;
+
+                if (Array.isArray(errorData.detail)) {
+                    errorMessage = errorData.detail.map(err => `${err.loc.join(' -> ')}: ${err.msg}`).join('; ');
+                }
+                throw new Error(errorMessage || 'An unknown error occurred during the final confirmation upload.');
+            }
+
+            const responseData = await response.json();
+            setSubmitProgress(100);
+            setTimeout(() => { setApiStatus("success"); setShowSuccessModal(true); }, 1000);
+
+        } catch (error) {
+            setApiStatus("error");
+            setErrorMessage(error.message);
+            setShowErrorModal(true);
+        }
     };
 
 
@@ -706,6 +797,7 @@ return (
             onClose={(action) => handleCloseDuplicatesModal(action)}
             onProceed={() => { /* "Proceed" is disabled for new job creation flow */ }}
             onUploadNonDuplicates={handleUploadNonDuplicatesFromModal}
+            onOverwriteWithSelectedAndNonDuplicates={handleOverwriteWithSelectedAndNonDuplicates}
             nonDuplicateCount={fileState.nonDuplicateFiles ? fileState.nonDuplicateFiles.length : 0}
         />
 

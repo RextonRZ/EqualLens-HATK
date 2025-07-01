@@ -151,13 +151,12 @@ const renderHTMLContentWithStructure = (content) => {
 };
 
 // Helper function to sort and filter items based on relevance
-const sortItemsByRelevance = (items, relevanceData) => {
-    if (!relevanceData || !Array.isArray(relevanceData)) { // Check if relevanceData itself is an array
-        // If items is already structured, just sort by existing relevance or default to 0
-        if (items && Array.isArray(items) && items.every(item => typeof item === 'object' && 'content' in item)) {
-            return items.sort((a, b) => (b.relevance || 0) - (a.relevance || 0));
-        }
-        // If items are simple strings or other, map them to the default structure
+const sortItemsByRelevance = (items, relevanceData, perItemRelevanceData = null) => {
+    // Use per-item relevance data if available, otherwise fall back to the older analysis
+    const dataToUse = perItemRelevanceData || relevanceData;
+
+    if (!dataToUse || !Array.isArray(dataToUse)) {
+        // If no relevance data, just return the items structured correctly
         return (items || []).map(item => ({
             content: typeof item === 'object' && item !== null && 'content' in item ? item.content : String(item),
             inferred: typeof item === 'object' && item !== null && 'inferred' in item ? item.inferred : false,
@@ -166,24 +165,33 @@ const sortItemsByRelevance = (items, relevanceData) => {
         }));
     }
 
+    // Create a map for quick lookups: { "Skill Name": { relevance: 9, relevant: true } }
     const relevanceMap = {};
-    relevanceData.forEach(data => {
-        if (data.item) { // Assuming relevanceData items have an "item" string key that matches skillObj.content
+    dataToUse.forEach(data => {
+        if (data && data.item) {
             relevanceMap[data.item] = {
                 relevance: data.relevance || 0,
-                relevant: data.relevant || false
+                // Ensure 'relevant' is true if score is 8+
+                relevant: (data.relevance >= 8) || data.relevant || false
             };
         }
     });
 
+    // Map over the original items, find their relevance data, and structure them
     return items
-        .map(itemObj => { // Expects items to be like [{content: "SkillA", inferred: false}, {content: "SkillB", inferred: true}]
-            const contentKey = typeof itemObj === 'object' && itemObj !== null && typeof itemObj.content === 'string' ? itemObj.content : String(itemObj);
+        .map(itemObj => {
+            // FIX: Handle both string items and object items ({ content: '...', inferred: ... })
+            const contentKey = typeof itemObj === 'object' && itemObj !== null && typeof itemObj.content === 'string' 
+                ? itemObj.content 
+                : String(itemObj);
+            
+            const isinferred = typeof itemObj === 'object' && itemObj !== null ? itemObj.inferred : false;
+
             const mappedRelevance = relevanceMap[contentKey] || { relevance: 0, relevant: false };
 
             return {
                 content: contentKey,
-                inferred: typeof itemObj === 'object' && itemObj !== null ? itemObj.inferred : false, // Preserve inferred status
+                inferred: isinferred,
                 relevance: mappedRelevance.relevance,
                 relevant: mappedRelevance.relevant
             };
@@ -206,24 +214,25 @@ const EmptyStateMessage = ({ type, icon }) => (
 // Render Skills Tab Content with relevance indicators and debugging
 const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkillModal }) => {
     const relevanceAnalysis = detail?.detailed_profile?.relevance_analysis || {};
+    const perItemRelevance = detail?.detailed_profile?.per_item_relevance || {};
 
     const combinedSoftSkills = [
         ...(detail?.detailed_profile?.soft_skills || []).map(s => ({ content: s, inferred: false })),
         ...(detail?.detailed_profile?.inferred_soft_skills || []).map(s => ({ content: s, inferred: true }))
     ];
-    const softSkills = sortItemsByRelevance(combinedSoftSkills, relevanceAnalysis.soft_skills);
+    const softSkills = sortItemsByRelevance(combinedSoftSkills, relevanceAnalysis.soft_skills, perItemRelevance.soft_skills);
 
     const combinedTechnicalSkills = [
         ...(detail?.detailed_profile?.technical_skills || []).map(s => ({ content: s, inferred: false })),
         ...(detail?.detailed_profile?.inferred_technical_skills || []).map(s => ({ content: s, inferred: true }))
     ];
-    const technicalSkills = sortItemsByRelevance(combinedTechnicalSkills, relevanceAnalysis.technical_skills);
+    const technicalSkills = sortItemsByRelevance(combinedTechnicalSkills, relevanceAnalysis.technical_skills, perItemRelevance.technical_skills);
 
     const combinedLanguages = [
         ...(detail?.detailed_profile?.languages || []).map(s => ({ content: s, inferred: false })),
         ...(detail?.detailed_profile?.inferred_languages || []).map(s => ({ content: s, inferred: true }))
     ];
-    const languages = sortItemsByRelevance(combinedLanguages, relevanceAnalysis.languages);
+    const languages = sortItemsByRelevance(combinedLanguages, relevanceAnalysis.languages, perItemRelevance.languages);
 
     const hasRelevantItems = softSkills.some(s => s.relevant) ||
         technicalSkills.some(s => s.relevant) ||
@@ -364,21 +373,25 @@ const SkillsTabContent = ({ detail, handleRegenerateProfile, onOpenInferredSkill
 // Education Tab Content with relevance indicators
 const EducationTabContent = ({ detail }) => {
     const relevanceAnalysis = detail?.detailed_profile?.relevance_analysis || {};
+    const perItemRelevance = detail?.detailed_profile?.per_item_relevance || {};
 
-    // Sort educational items by relevance
+    // Sort educational items by relevance using per-item data
     const education = sortItemsByRelevance(
         detail.detailed_profile.education || [],
-        relevanceAnalysis.education || []
+        relevanceAnalysis.education || [],
+        perItemRelevance.education || []
     );
 
     const certifications = sortItemsByRelevance(
         detail.detailed_profile.certifications || [],
-        relevanceAnalysis.certifications || []
+        relevanceAnalysis.certifications || [],
+        perItemRelevance.certifications || []
     );
 
     const awards = sortItemsByRelevance(
         detail.detailed_profile.awards || [],
-        relevanceAnalysis.awards || []
+        relevanceAnalysis.awards || [],
+        perItemRelevance.awards || []
     );
 
     const hasNoEducation = education.length === 0 && certifications.length === 0 && awards.length === 0;
@@ -469,21 +482,25 @@ const EducationTabContent = ({ detail }) => {
 // Experience Tab Content with relevance indicators
 const ExperienceTabContent = ({ detail }) => {
     const relevanceAnalysis = detail?.detailed_profile?.relevance_analysis || {};
+    const perItemRelevance = detail?.detailed_profile?.per_item_relevance || {};
 
-    // Sort experience items by relevance
+    // Sort experience items by relevance using per-item data
     const workExperience = sortItemsByRelevance(
         detail.detailed_profile.work_experience || [],
-        relevanceAnalysis.work_experience || []
+        relevanceAnalysis.work_experience || [],
+        perItemRelevance.work_experience || []
     );
 
     const projects = sortItemsByRelevance(
         detail.detailed_profile.projects || [],
-        relevanceAnalysis.projects || []
+        relevanceAnalysis.projects || [],
+        perItemRelevance.projects || []
     );
 
     const coCurricular = sortItemsByRelevance(
         detail.detailed_profile.co_curricular_activities || [],
-        relevanceAnalysis.co_curricular_activities || []
+        relevanceAnalysis.co_curricular_activities || [],
+        perItemRelevance.co_curricular_activities || []
     );
 
     const hasNoExperience = workExperience.length === 0 && projects.length === 0 && coCurricular.length === 0;
@@ -1384,9 +1401,8 @@ export default function ApplicantDetails() {
         setProcessingAction(true);
 
         try {
-            const applicantEmail = applicant?.extractedText?.entities?.applicant_mail ||
-                applicant?.extractedText?.applicant_mail ||
-                detail?.detailed_profile?.extractedText?.entities?.applicant_mail ||
+            const applicantEmail = applicant?.extractedText?.applicant_mail ||
+                detail?.detailed_profile?.extractedText?.applicant_mail ||
                 null;
 
             if (confirmAction === 'accept') {
@@ -2055,7 +2071,7 @@ export default function ApplicantDetails() {
                                 </div>
                                 <div className="assessment-breakdown">
                                     <div className="assessment-breakdown-header">
-                                        <p className="info-label">Score Breakdown:</p>
+                                        <p className="info-label">Job Fit Score Breakdown:</p>
                                         <div className="scoring-info-panel" onClick={() => setShowScoringStandardModal(true)} >
                                             <div className="scoring-info-left">
                                                 <div className="scoring-icon">

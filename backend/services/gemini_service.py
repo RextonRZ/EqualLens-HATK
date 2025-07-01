@@ -654,7 +654,7 @@ class GeminiService:
         2.  **Extract and Structure Categorical Information:** Populate the following fields in the JSON output. If the corresponding information is not available in the input, OMIT the field entirely from the JSON.
             * **`soft_skills`**: If a list of soft skills is provided in the input, use that list directly. Otherwise, extract from relevant text. Output as a list of strings.
             * **`technical_skills`**: If a list of technical skills is provided, use it directly. Otherwise, extract from relevant text. Output as a list of strings.
-            * **`languages`**: If a list of languages is provided, use it directly. Otherwise, extract from relevant text. Output as a list of strings.
+            * **`languages`**: If a list of languages is provided, use that list directly. Otherwise, extract from relevant text. Output as a list of strings.
             * **`education`**: Process the `education_paragraph`. For each education entry:
                 * Format as:
                     - First line: `<strong>Degree/Program</strong>` (bold) on the left, `<strong>Date</strong>` (bold) on the right (use "DNS" if date not specified).
@@ -779,38 +779,40 @@ class GeminiService:
                     profile_data['inferred_soft_skills'] = inferred_skills.get('soft_skills', [])
                     profile_data['inferred_languages'] = inferred_skills.get('languages', [])
 
-                if inferred_skills and any(s_list for s_list in inferred_skills.values() if s_list): # Check if any inferred skill list is non-empty
-                    # Re-create contextual_info if not readily available
-                    # This should be the same context used for inferring skills.
+                if inferred_skills and any(inferred_skills.values()): # Check if any skill list is non-empty
+                    # The context for explanation should be the same text used for inference.
                     contextual_info_for_explanation = ""
-                    for key, value in resume_data.items(): # resume_data was prepared earlier in this method
-                        if key in ["work_experience_paragraph", "projects_paragraph", "education_paragraph",
-                                  "certifications_paragraph", "co_curricular_activities_paragraph", "bio"]: # Added bio as potential context
+                    for key, value in resume_data.items():
+                        # Use a broader set of keys to build a rich context
+                        if key in ["work_experience_paragraph", "projects_paragraph", "education_paragraph", 
+                                "certifications_paragraph", "co_curricular_activities_paragraph", 
+                                "bio", "full_text", "extractedText"]:
                             if isinstance(value, str) and value.strip():
-                                contextual_info_for_explanation += f"{value}\n\n"
+                                # Handle extractedText being a dict
+                                if key == "extractedText" and isinstance(value, dict):
+                                    contextual_info_for_explanation += value.get("full_text", "") + "\n\n"
+                                else:
+                                    contextual_info_for_explanation += f"{value}\n\n"
                     
                     if contextual_info_for_explanation.strip():
                         try:
                             from .inferred_skills_explanation_service import InferredSkillsExplanationService 
                             explanation_service = InferredSkillsExplanationService(gemini_service=self) 
-                            explanations = await explanation_service.generate_explanations( # This is the call
-                                inferred_skills, # This is Dict[str, List[str]]
+                            explanations = await explanation_service.generate_explanations(
+                                inferred_skills,
                                 contextual_info_for_explanation
                             )
-                            # 'explanations' will now be Dict[str, Dict[str, str]]
-                            if explanations and any(cat_explanations for cat_explanations in explanations.values() if cat_explanations):
-                                profile_data['inferred_skills_explanations'] = explanations # Store the new structure
-                                logger.info("Successfully generated and added individual inferred skills explanations.")
+                            if explanations and any(explanations.values()):
+                                profile_data['inferred_skills_explanations'] = explanations
+                                logger.info("Successfully generated and added inferred skills explanations.")
                             else:
-                                logger.info("Explanation service returned empty or no valid explanations.")
+                                logger.info("Explanation service returned no valid explanations.")
                         except ImportError:
                             logger.error("Could not import InferredSkillsExplanationService. Explanations not generated.")
                         except Exception as ex_gen_e:
                             logger.error(f"Error generating inferred skills explanations: {ex_gen_e}", exc_info=True)
                     else:
-                        logger.info("No contextual info available; skipping inferred skills explanation generation.")
-                else:
-                    logger.info("No skills were inferred; skipping explanation generation.")
+                        logger.warning("No contextual info found in resume_data; skipping inferred skills explanation generation.")
 
                 # Validate minimum required fields (e.g., summary)
                 if 'summary' not in profile_data or not profile_data['summary']:
@@ -820,9 +822,33 @@ class GeminiService:
 
                 # If job info is available in the applicant data, analyze relevance
                 if "job_description" in applicant and applicant["job_description"]:
+                    # Use original function for overall relevance (modal display)
                     relevance_data = await self.analyze_job_relevance(profile_data, applicant["job_description"])
                     if relevance_data:
                         profile_data["relevance_analysis"] = relevance_data
+                    
+                    # Use new function for per-item relevance (star display)
+                    logger.info("About to call analyze_per_item_relevance")
+                    per_item_relevance = await self.analyze_per_item_relevance(profile_data, applicant["job_description"])
+                    logger.info(f"analyze_per_item_relevance returned: {per_item_relevance}")
+                    if per_item_relevance:
+                        profile_data["per_item_relevance"] = per_item_relevance
+                        logger.info("Successfully set per_item_relevance in profile_data")
+                    else:
+                        logger.warning("analyze_per_item_relevance returned empty/falsy result")
+                else:
+                    # Even without job description, add empty per_item_relevance structure for frontend compatibility
+                    profile_data["per_item_relevance"] = {
+                        "technical_skills": [],
+                        "soft_skills": [],
+                        "languages": [],
+                        "education": [],
+                        "certifications": [],
+                        "awards": [],
+                        "work_experience": [],
+                        "projects": [],
+                        "co_curricular_activities": []
+                    }
 
                 logging.info(f"Successfully generated candidate profile: {list(profile_data.keys())}")
                 return profile_data
@@ -932,24 +958,36 @@ class GeminiService:
         logger.info(f"[analyze_job_relevance] candidate_profile received: {candidate_profile}")
 
         tech_skills = candidate_profile.get("technical_skills", [])
-        if isinstance(tech_skills, str):
+        if tech_skills is None:
+            tech_skills = []
+        elif isinstance(tech_skills, str):
             tech_skills = [tech_skills]
+        # Split technical skills if they contain delimiters
+        tech_skills = self.clean_and_split_skills(tech_skills)
 
         soft_skills = candidate_profile.get("soft_skills", [])
-        if isinstance(soft_skills, str):
+        if soft_skills is None:
+            soft_skills = []
+        elif isinstance(soft_skills, str):
             soft_skills = [soft_skills]
+        # Split soft skills if they contain delimiters
+        soft_skills = self.clean_and_split_skills(soft_skills)
 
         languages = candidate_profile.get("languages", [])
-        if isinstance(languages, str):
+        if languages is None:
+            languages = []
+        elif isinstance(languages, str):
             languages = [languages]
+        # Split languages if they contain delimiters
+        languages = self.clean_and_split_skills(languages)
 
         profile_data = {            
             "technical_skills": tech_skills + 
-                               candidate_profile.get("inferred_technical_skills", []),
+                               (candidate_profile.get("inferred_technical_skills", []) or []),
             "soft_skills": soft_skills + 
-                          candidate_profile.get("inferred_soft_skills", []),
+                          (candidate_profile.get("inferred_soft_skills", []) or []),
             "languages": languages + 
-                        candidate_profile.get("inferred_languages", []),
+                        (candidate_profile.get("inferred_languages", []) or []),
             "education": candidate_profile.get("education", []),
             "certifications": candidate_profile.get("certifications", []),
             "awards": candidate_profile.get("awards", []),
@@ -1164,20 +1202,24 @@ class GeminiService:
                     if skill_type in inferred_data and isinstance(inferred_data[skill_type], list):
                         # Clean and filter out already existing skills again, just in case LLM included them
                         cleaned_and_new_skills = []
-                        existing_for_type = set()
-                        if skill_type == 'technical_skills': existing_for_type = existing_technical
-                        elif skill_type == 'soft_skills': existing_for_type = existing_soft
-                        elif skill_type == 'languages': existing_for_type = existing_languages
+                        # FIX: Create a simplified set of existing skills for comparison (lowercase, no parentheses)
+                        existing_for_type_simplified = set()
+                        if skill_type == 'technical_skills': 
+                            existing_for_type_simplified = {s.lower().split('(')[0].strip() for s in existing_technical}
+                        elif skill_type == 'soft_skills': 
+                            existing_for_type_simplified = {s.lower().split('(')[0].strip() for s in existing_soft}
+                        elif skill_type == 'languages': 
+                            existing_for_type_simplified = {s.lower().split('(')[0].strip() for s in existing_languages}
                         
                         for skill in self.clean_and_split_skills(inferred_data[skill_type]):
-                            if skill.lower() not in (s.lower() for s in existing_for_type): # Case-insensitive check
+                            # FIX: Compare against the simplified set
+                            if skill.lower().split('(')[0].strip() not in existing_for_type_simplified:
                                 cleaned_and_new_skills.append(skill)
-                        final_inferred_data[skill_type] = list(dict.fromkeys(cleaned_and_new_skills)) # Deduplicate while preserving order
+                        final_inferred_data[skill_type] = list(dict.fromkeys(cleaned_and_new_skills)) # Deduplicate
 
-                # Specific check for English if it wasn't inferred by LLM but resume implies it
-                # This is a heuristic fallback.
-                is_english_present = any('english' == lang.lower() for lang in final_inferred_data['languages']) or \
-                                     any('english' == lang.lower() for lang in existing_languages)
+                # FIX: More robust check for English presence before adding it heuristically
+                is_english_present = any('english' in lang.lower() for lang in final_inferred_data['languages']) or \
+                                     any('english' in lang.lower() for lang in existing_languages)
                 
                 if not is_english_present:
                     # Basic heuristic: if context contains common English words and is of reasonable length.
@@ -1216,7 +1258,7 @@ class GeminiService:
             return []
 
         if isinstance(skills_input, str):
-            skills_list = [skills_input] # Treat a single string as a list with one item
+            skills_list = [skills_input]
         elif isinstance(skills_input, list):
             skills_list = skills_input
         else:
@@ -1224,67 +1266,34 @@ class GeminiService:
             return []
 
         cleaned_skills = []
-        # Define a more comprehensive set of delimiters using regex
-        # This pattern will split by ',', '•', ' and ', '/', '|', and also handle surrounding spaces.
-        # It uses lookarounds to keep delimiters like 'C++' or 'Node.js' intact.
-        # Simpler approach: split by common characters then refine.
-        
-        delimiters = [",", "•", "/", "|", " and "] # Common explicit delimiters
+        delimiters = re.compile(r'\s*[,•/|]\s*|\s+and\s+')
 
         for skill_entry in skills_list:
-            if not isinstance(skill_entry, str): # Skip if an item in the list is not a string
-                if skill_entry is not None: # Log if it's not None but also not a string
+            if not isinstance(skill_entry, str):
+                if skill_entry is not None:
                     logger.warning(f"Non-string item found in skills list: {skill_entry}. Skipping.")
                 continue
 
-            # Normalize multiple spaces to single space first
-            processed_skill_entry = ' '.join(skill_entry.split())
-
-            # Iteratively replace delimiters with a standard one (e.g., comma)
-            # Be careful with " and " to not split words like "Branding and Marketing" incorrectly if "and" is part of a skill.
-            # This is tricky. Let's prioritize clear delimiters first.
+            # Replace newlines with a standard delimiter (comma) before splitting
+            processed_skill_entry = skill_entry.replace('\n', ',')
             
-            processed_skill_entry = processed_skill_entry.replace(' & ', ', ')
-            processed_skill_entry = processed_skill_entry.replace('&', ', ')
-            processed_skill_entry = processed_skill_entry.replace(' • ', ', ')
-            processed_skill_entry = processed_skill_entry.replace('•', ', ')
-            processed_skill_entry = processed_skill_entry.replace(' / ', ', ')
-            processed_skill_entry = processed_skill_entry.replace('/', ', ')
-            processed_skill_entry = processed_skill_entry.replace(' | ', ', ')
-            processed_skill_entry = processed_skill_entry.replace('|', ', ')
-            # For "and", we need to be more careful. Only split if it's likely a separator.
-            # This heuristic is imperfect. A more advanced NLP approach might be needed for perfect "and" splitting.
-            # For now, let's assume "and" used with spaces around it between distinct skill terms is a separator.
-            parts = processed_skill_entry.split(',') # Initial split by comma
+            # Use regex to split by multiple delimiters
+            parts = delimiters.split(processed_skill_entry)
+            cleaned_skills.extend([p.strip() for p in parts if p.strip()])
 
-            temp_parts = []
-            for part in parts:
-                # Further split parts that might contain "and" as a separator
-                # but try to preserve "Branding and Identity" or similar phrases
-                # A simple heuristic: if " and " is present and words on both sides are capitalized or common skill terms.
-                # This is complex to get right with simple string ops.
-                sub_parts = [p.strip() for p in part.split(' and ') if p.strip()] # Basic split by 'and'
-                
-                # If splitting by 'and' resulted in multiple parts, and the original part was likely a list
-                # (e.g., "SkillA and SkillB" rather than "Research and Development"), add them.
-                # Otherwise, keep the part as is.
-                # This logic is still heuristic.
-                if len(sub_parts) > 1 and len(part) < 50 : # Arbitrary length to guess if it's a list vs. a single skill name
-                    temp_parts.extend(sub_parts)
-                else:
-                    temp_parts.append(part.strip())
-            
-            cleaned_skills.extend([p for p in temp_parts if p])
-
-
-        # Final pass: Remove duplicates while preserving order and ensure proper trimming
+        # Final pass: Remove duplicates and clean up trailing/leading punctuation carefully
         unique_skills_set = set()
         final_unique_skills = []
         for skill in cleaned_skills:
             trimmed_skill = skill.strip()
-            # Further common cleanup: e.g., remove trailing punctuation if not part of skill name like C++
-            if trimmed_skill.endswith(('.', ';')) and not trimmed_skill.lower() in ['c++', 'node.js']: # Add other exceptions
+            
+            # FIX: Only remove trailing punctuation if it's not part of a balanced parenthesis
+            if trimmed_skill.endswith(('.', ',')) and not trimmed_skill.endswith('..'):
                  trimmed_skill = trimmed_skill[:-1].strip()
+
+            # Specifically handle the case of a trailing parenthesis from a parsing error
+            if trimmed_skill.endswith(')') and not trimmed_skill.count('(') == trimmed_skill.count(')'):
+                trimmed_skill = trimmed_skill[:-1].strip()
 
             if trimmed_skill and trimmed_skill.lower() not in unique_skills_set:
                 final_unique_skills.append(trimmed_skill)
@@ -1353,7 +1362,7 @@ class GeminiService:
         # --- Updated Prompt for Gemini ---
         # --- Updated Prompt for Gemini ---
         prompt = f"""
-           You are interpreting facial expression indicators derived from video analysis for an HR professional reviewing an interview response. Your goal is to provide a brief, easily understandable summary based *only* on the detected facial movements.
+           You are interpreting facial expression indicators derived from video analysis for an HR professional reviewing an interview response. Your goal is to provide a brief, easily understandable summary based *only on the detected facial movements.
 
            **Instructions:**
            1. Review the key facial movement indicators below (scores 0.0-1.0 indicate activation level).
@@ -1422,7 +1431,7 @@ class GeminiService:
 
         system_prompt = f"""
                 You are a **critical**, objective HR Interview evaluator assessing a candidate's response.
-                Your goal is to provide strict, fair, unbiased scores based *only* on the substance of the answer provided, its direct relevance to the question, and its alignment with the job context.
+                Your goal is to provide strict, fair, unbiased scores based *only on the substance of the answer provided, its direct relevance to the question, and its alignment with the job context.
                 Provide concise, point-form justifications (max 1-2 points) AND extract relevant supporting keywords/short phrases (max 3-5 words each) from the Candidate's Answer for each score.
 
                 Evaluate the Candidate's Answer objectively based ONLY on content, logic, and job alignment provided below. Ignore style/grammar/tone/demographics. 
@@ -1500,6 +1509,7 @@ class GeminiService:
             else:
                 logger.error(
                     f"Failed to extract JSON from Gemini substance/job fit response. Raw text: {response_text}")
+
                 raise ValueError("Failed to extract JSON from Gemini response")
 
         except json.JSONDecodeError as e:
@@ -1744,3 +1754,181 @@ Example for a single finding:
         except Exception as e:
             logger.error(f"Error occurred while calling GemmaService for job details: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"An unexpected error occurred with the AI suggestion service: {e}")
+
+    async def analyze_per_item_relevance(self, candidate_profile, job_description):
+        """
+        Analyzes each individual item in all candidate profile fields against the job description.
+        Returns relevance scores (1-10) for every item (no top-3 limitation).
+        This is used for frontend star label display on individual items.
+        Frontend shows stars for items with relevance >= 8.
+        """
+        if not candidate_profile or not job_description:
+            logger.warning("Missing candidate profile or job description for per-item relevance analysis")
+            return {}
+
+        logger.info("Starting per-item relevance analysis for star display")
+        
+        # Debug: Log what data we received
+        logger.debug(f"Candidate profile keys: {list(candidate_profile.keys()) if candidate_profile else 'None'}")
+        if candidate_profile:
+            for key in ["technical_skills", "soft_skills", "languages"]:
+                if key in candidate_profile:
+                    logger.debug(f"{key}: {candidate_profile[key]}")
+
+        # Check if we have actual data to analyze
+        has_data = False
+        data_sources = [
+            "technical_skills", "soft_skills", "languages", 
+            "education", "certifications", "awards",
+            "work_experience", "projects", "co_curricular_activities"
+        ]
+
+        for source in data_sources:
+            if source in candidate_profile and candidate_profile[source]:
+                has_data = True
+                break
+
+        if not has_data:
+            logger.warning("No analyzable data found in candidate profile for per-item analysis")
+            return {}
+
+        # Prepare all profile data including inferred skills
+        tech_skills = candidate_profile.get("technical_skills", [])
+        if tech_skills is None:
+            tech_skills = []
+        elif isinstance(tech_skills, str):
+            tech_skills = [tech_skills]
+        # Split technical skills if they contain delimiters
+        tech_skills = self.clean_and_split_skills(tech_skills)
+
+        soft_skills = candidate_profile.get("soft_skills", [])
+        if soft_skills is None:
+            soft_skills = []
+        elif isinstance(soft_skills, str):
+            soft_skills = [soft_skills]
+        # Split soft skills if they contain delimiters
+        soft_skills = self.clean_and_split_skills(soft_skills)
+
+        languages = candidate_profile.get("languages", [])
+        if languages is None:
+            languages = []
+        elif isinstance(languages, str):
+            languages = [languages]
+        # Split languages if they contain delimiters
+        languages = self.clean_and_split_skills(languages)
+
+        # Include inferred skills in the analysis
+        profile_data = {            
+            "technical_skills": tech_skills + 
+                               (candidate_profile.get("inferred_technical_skills", []) or []),
+            "soft_skills": soft_skills + 
+                          (candidate_profile.get("inferred_soft_skills", []) or []),
+            "languages": languages + 
+                        (candidate_profile.get("inferred_languages", []) or []),
+            "education": candidate_profile.get("education", []),
+            "certifications": candidate_profile.get("certifications", []),
+            "awards": candidate_profile.get("awards", []),
+            "work_experience": candidate_profile.get("work_experience", []),
+            "projects": candidate_profile.get("projects", []),
+            "co_curricular_activities": candidate_profile.get("co_curricular_activities", [])
+        }
+
+        # Debug: Log the prepared profile data
+        logger.debug(f"Prepared profile data for per-item analysis:")
+        for category, items in profile_data.items():
+            if items:
+                logger.debug(f"  {category}: {len(items)} items - {items[:3]}{'...' if len(items) > 3 else ''}")
+
+        # System prompt for per-item analysis
+        system_prompt = f"""
+        You are an expert talent evaluator. Analyze each individual item in the candidate's profile 
+        against the job description and provide a relevance score for EVERY item.
+
+        For each item in each category:
+        1. Evaluate the item's direct relevance to the job description on a scale of 1-10
+        2. Include ALL items (do not limit to top items)
+        3. Be selective with high scores (8+) - only award them for items with strong, direct relevance
+
+        IMPORTANT RULES:
+        - Analyze EVERY item provided, not just the most relevant ones
+        - Be consistent in scoring across similar items
+        - Focus on direct job relevance, not general value
+        - Maintain original item text/descriptions exactly
+        - Only 10-20% of items should score 8 or above
+
+        Return a JSON object with the following structure:
+        {{
+          "technical_skills": [
+            {{ "item": "exact skill name", "relevance": score }},
+            ...
+          ],
+          "soft_skills": [ ... ],
+          "languages": [ ... ],
+          "education": [ ... ],
+          "certifications": [ ... ],
+          "awards": [ ... ],
+          "work_experience": [ ... ],
+          "projects": [ ... ],
+          "co_curricular_activities": [ ... ]
+        }}
+
+        Respond ONLY with valid JSON and no additional text.
+        """
+
+        profile_summary = "Candidate Profile:\n"
+        for category, items in profile_data.items():
+            if items:
+                profile_summary += f"\n{category.replace('_', ' ').title()}:\n"
+                for item in items:
+                    profile_summary += f"- {item}\n"
+
+        try:
+            logger.info("Sending per-item relevance analysis request to Gemini")
+            response = await self.model.generate_content_async([
+                system_prompt, 
+                f"Job Description:\n{job_description}\n\n{profile_summary}"
+            ])
+            response_text = response.text
+            logger.debug(f"Raw response from per-item relevance analysis: {response_text[:200]}...")
+
+            start_idx = response_text.find('{')
+            end_idx = response_text.rfind('}') + 1
+
+            if start_idx != -1 and end_idx != -1:
+                json_str = response_text[start_idx:end_idx]
+                per_item_relevance = json.loads(json_str)
+
+                # Ensure all expected categories exist
+                for category in profile_data.keys():
+                    if category not in per_item_relevance:
+                        per_item_relevance[category] = []
+
+                # Log summary of per-item analysis
+                total_items = 0
+                high_relevance_items = 0
+                for category, items in per_item_relevance.items():
+                    if isinstance(items, list):
+                        total_items += len(items)
+                        for item in items:
+                            if item.get("relevance", 0) >= 8:  # 8+ relevance considered highly relevant
+                                high_relevance_items += 1
+
+                logger.info(f"Per-item relevance analysis complete: {high_relevance_items} items with 8+ relevance out of {total_items} total items")
+                
+                # Debug: Log sample of the final result
+                logger.debug(f"Sample per-item relevance result:")
+                for category, items in per_item_relevance.items():
+                    if items:
+                        logger.debug(f"  {category}: {len(items)} items, first few: {items[:2]}")
+                    else:
+                        logger.debug(f"  {category}: empty")
+                
+                return per_item_relevance
+            else:
+                logger.error("Failed to extract JSON from Gemini response for per-item relevance analysis")
+                logger.error(f"Response text: {response_text}")
+                return {}
+
+        except Exception as e:
+            logger.error(f"Error analyzing per-item relevance: {str(e)}")
+            return {}
