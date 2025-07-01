@@ -286,13 +286,20 @@ async def _process_single_file_for_candidate_creation(
     # Determine final status - prioritize AI/irrelevance over duplicates
     current_status = "success_analysis"
     logger.info(f"[{file_name_val}] Status determination: is_externally_flagged_ai={is_externally_flagged_ai}, is_irrelevant_flag={is_irrelevant_flag}, force_upload_irrelevant_from_form={force_upload_irrelevant_from_form}")
+    
+    # First check for AI content
     if is_externally_flagged_ai and not force_upload_problematic_from_form:
         current_status = "ai_content_detected"
+    
+    # Then check for irrelevance (this can override duplicate status)
     if is_irrelevant_flag and not force_upload_irrelevant_from_form:
-        current_status = "irrelevant_content" if current_status != "ai_content_detected" else "ai_and_irrelevant_content"
+        if current_status == "ai_content_detected":
+            current_status = "ai_and_irrelevant_content"
+        else:
+            current_status = "irrelevant_content"
         logger.info(f"[{file_name_val}] Set status to {current_status} due to irrelevance")
     
-    # If no AI/irrelevance issues but duplicate found, set duplicate status
+    # Only if no AI/irrelevance issues, then check for duplicates
     if current_status == "success_analysis" and is_duplicate_flag:
         current_status = "duplicate_detected_error"
 
