@@ -870,149 +870,85 @@ class GeminiService:
 
     async def analyze_job_relevance(self, candidate_profile, job_description):
         """
-        Analyzes candidate profile items against job description to identify relevant matches and overall fit.
-        Determines if the job is "technical" or "managerial" and calculates an overall relevance score.
-        Only the top 3 items (by score) in each category are used for scoring.
-        If the result is Irrelevant, uses Gemini to generate a brief explanation.
+        Analyzes candidate profile items against job description for a holistic initial judgment.
+        This version is more robust and considers the entire profile.
         """
         if not candidate_profile or not job_description:
             logger.warning("Missing candidate profile or job description for relevance analysis")
             return {}
 
-        logger.info(f"Starting job relevance analysis with job description length: {len(job_description)}")
+        logger.info(f"Starting holistic job relevance analysis with job description length: {len(job_description)}")
 
-        # Check if we have actual data to analyze
-        has_data = False
-        data_sources = [
-            "technical_skills", "soft_skills", "languages", 
-            "education", "certifications", "awards",
-            "work_experience", "projects", "co_curricular_activities"
-        ]
+        # Prepare a comprehensive summary of the candidate's profile for the AI
+        profile_summary = "Candidate Profile:\n"
+        # Ensure we check for 'extractedText' if candidate_profile is nested
+        profile_to_scan = candidate_profile.get("extractedText", candidate_profile)
 
-        for source in data_sources:
-            if source in candidate_profile and candidate_profile[source]:
-                has_data = True
-                break
+        for category, items in profile_to_scan.items():
+            if items:
+                # Format category name for readability
+                formatted_category = category.replace('_', ' ').title()
+                profile_summary += f"\n{formatted_category}:\n"
+                if isinstance(items, list):
+                    for item in items:
+                        profile_summary += f"- {str(item).strip()}\n"
+                else:
+                    profile_summary += f"- {str(items).strip()}\n"
+        
+        if len(profile_summary) < 100: # Check if there's any meaningful content
+             logger.warning("Not enough content in profile to perform relevance analysis.")
+             return {}
 
-        if not has_data:
-            logger.warning("No analyzable data found in candidate profile")
-            return {}
-
-        # --- Step 1: Determine job type (technical or managerial) using Gemini ---
-        job_type_prompt = f"""
-        You are an expert HR analyst. Based on the following job description, determine if the job is primarily "technical" or "managerial".
-        Respond with ONLY one word: "technical" or "managerial". Do not include any explanation or extra text.
-
-        Job Description:
-        {job_description}
-        """
-        try:
-            job_type_response = await self.model.generate_content_async([job_type_prompt])
-            job_type_text = job_type_response.text.strip().lower()
-            if "technical" in job_type_text:
-                job_type = "technical"
-            elif "managerial" in job_type_text:
-                job_type = "managerial"
-            else:
-                job_type = "technical"
-            logger.info(f"Determined job type as: {job_type}")
-        except Exception as e:
-            logger.error(f"Error determining job type: {e}")
-            job_type = "technical"
-
-        # --- Step 2: Prepare context for Gemini for relevance analysis ---
+        # System prompt for a holistic relevance judgment
         system_prompt = f"""
-        You are an expert talent evaluator. Analyze the candidate's profile against the job description 
-        and identify which specific skills, experiences, and qualifications are most relevant to the job.
+        You are an expert HR analyst. Your task is to provide a holistic judgment on a candidate's relevance for a specific job.
+        Based on the **entire candidate profile** and the **job description**, you will determine:
+        1. A `relevance_label`: Either "Relevant" or "Irrelevant".
+        2. An `overall_relevance_score`: An integer from 0 to 100, representing the percentage of match.
+        3. A brief `irrelevant_reason` if the label is "Irrelevant".
+        4. The `job_type` you inferred: Either "technical" or "managerial".
 
-        For each category below:
-        1. Evaluate each item's direct relevance to the job description on a scale of 1-10
-        2. Add a "relevant" flag (true/false) ONLY to items scoring 8 or higher
-        3. Sort items by relevance score (highest to lowest)
+        **CRITICAL INSTRUCTIONS:**
+        - A score below 50 means the candidate is "Irrelevant".
+        - Base your judgment on the **combination of skills, projects, and work experience**. Do not just match keywords.
+        - A candidate with strong, relevant project experience should be considered highly relevant for a technical role, even if their skills list is short.
+        - A candidate with only generic skills and no specific, matching projects or work experience is likely a poor fit.
+        
+        **Job Description:**
+        {job_description}
 
-        IMPORTANT RULES:
-        - Be extremely selective with high scores (8+)
-        - Only 10-20% of items should be marked as "relevant: true"
-        - Focus on specific, direct matches to job requirements
-        - Don't mark generic or common skills/experiences as highly relevant
-        - Always maintain original item text/descriptions
+        **Candidate Profile:**
+        {profile_summary}
 
-        Return a JSON object with the following structure:
+        **Output Format (Strict JSON ONLY):**
+        Respond ONLY with a valid JSON object. Do not include any other text or markdown.
+
+        If Relevant:
         {{
-          "technical_skills": [
-            {{ "item": "skill name", "relevance": score, "relevant": boolean }},
-            ...
-          ],
-          "soft_skills": [ ... ],
-          "languages": [ ... ],
-          "education": [ ... ],
-          "certifications": [ ... ],
-          "awards": [ ... ],
-          "work_experience": [ ... ],
-          "projects": [ ... ],
-          "co_curricular_activities": [ ... ]
+          "relevance_label": "Relevant",
+          "overall_relevance_score": <integer_from_50_to_100>,
+          "job_type": "<technical_or_managerial>"
         }}
 
-        Respond ONLY with valid JSON and no additional text.
+        If Irrelevant:
+        {{
+          "relevance_label": "Irrelevant",
+          "overall_relevance_score": <integer_from_0_to_49>,
+          "irrelevant_reason": "<brief, clear explanation of the mismatch>",
+          "job_type": "<technical_or_managerial>"
+        }}
         """
-        logger.info(f"[analyze_job_relevance] candidate_profile received: {candidate_profile}")
-
-        tech_skills = candidate_profile.get("technical_skills", [])
-        if tech_skills is None:
-            tech_skills = []
-        elif isinstance(tech_skills, str):
-            tech_skills = [tech_skills]
-        # Split technical skills if they contain delimiters
-        tech_skills = self.clean_and_split_skills(tech_skills)
-
-        soft_skills = candidate_profile.get("soft_skills", [])
-        if soft_skills is None:
-            soft_skills = []
-        elif isinstance(soft_skills, str):
-            soft_skills = [soft_skills]
-        # Split soft skills if they contain delimiters
-        soft_skills = self.clean_and_split_skills(soft_skills)
-
-        languages = candidate_profile.get("languages", [])
-        if languages is None:
-            languages = []
-        elif isinstance(languages, str):
-            languages = [languages]
-        # Split languages if they contain delimiters
-        languages = self.clean_and_split_skills(languages)
-
-        profile_data = {            
-            "technical_skills": tech_skills + 
-                               (candidate_profile.get("inferred_technical_skills", []) or []),
-            "soft_skills": soft_skills + 
-                          (candidate_profile.get("inferred_soft_skills", []) or []),
-            "languages": languages + 
-                        (candidate_profile.get("inferred_languages", []) or []),
-            "education": candidate_profile.get("education", []),
-            "certifications": candidate_profile.get("certifications", []),
-            "awards": candidate_profile.get("awards", []),
-            "work_experience": candidate_profile.get("work_experience", []),
-            "projects": candidate_profile.get("projects", []),
-            "co_curricular_activities": candidate_profile.get("co_curricular_activities", [])
-        }
-
-        logger.info(f"[analyze_job_relevance] profile_data constructed: {profile_data}")
-
-        profile_summary = "Candidate Profile:\n"
-        for category, items in profile_data.items():
-            if items:
-                profile_summary += f"\n{category.replace('_', ' ').title()}:\n"
-                for item in items:
-                    profile_summary += f"- {item}\n"
 
         try:
-            logger.info("Sending job relevance analysis request to Gemini")
-            response = await self.model.generate_content_async([
-                system_prompt, 
-                f"Job Description:\n{job_description}\n\n{profile_summary}"
-            ])
-            response_text = response.text
-            logger.debug(f"Raw response from job relevance analysis: {response_text[:200]}...")
+            logger.info("Sending holistic job relevance analysis request to Gemini.")
+            response = await self.model.generate_content_async([system_prompt])
+            response_text = response.text.strip()
+            
+            # Clean and parse JSON
+            if response_text.startswith("```json"):
+                response_text = response_text.split("```json")[1].strip()
+            if response_text.endswith("```"):
+                response_text = response_text.split("```")[0].strip()
 
             start_idx = response_text.find('{')
             end_idx = response_text.rfind('}') + 1
@@ -1020,99 +956,14 @@ class GeminiService:
             if start_idx != -1 and end_idx != -1:
                 json_str = response_text[start_idx:end_idx]
                 relevance_data = json.loads(json_str)
-
-                # Ensure all expected categories exist
-                for category in profile_data.keys():
-                    if category not in relevance_data:
-                        relevance_data[category] = []
-
-                # --- Only keep top 3 items by score in each category ---
-                for cat in relevance_data:
-                    items = relevance_data[cat]
-                    if isinstance(items, list) and items and isinstance(items[0], dict) and "relevance" in items[0]:
-                        # Sort by relevance descending, keep top 3
-                        relevance_data[cat] = sorted(items, key=lambda x: x.get("relevance", 0), reverse=True)[:3]
-                        # Add per-item relevance_score for star logic
-                        for item in relevance_data[cat]:
-                            if isinstance(item, dict) and "relevance" in item:
-                                item["relevance_score"] = item.get("relevance", 0)
-
-                # --- Step 3: Calculate overall relevance score based on job type ---
-                if job_type == "technical":
-                    weights = {
-                        "soft_skills": 0.3,
-                        "technical_skills": 0.6,
-                        "languages": 0.1
-                    }
-                else:  # managerial
-                    weights = {
-                        "soft_skills": 0.5,
-                        "technical_skills": 0.3,
-                        "languages": 0.2
-                    }
-
-                def avg_relevance(items):
-                    if not items:
-                        return 0.0
-                    scores = [item.get("relevance", 0) for item in items if isinstance(item, dict)]
-                    return sum(scores) / len(scores) / 10.0 if scores else 0.0
-
-                total_score = 0.0
-                # Log average scores for each category before calculating total
-                for cat, weight in weights.items():
-                    avg_score = avg_relevance(relevance_data.get(cat, []))
-                    logger.info(f"Category '{cat}': avg_score={avg_score*10:.2f} (weight={weight*100:.0f}%)")
-                    total_score += avg_score * weight
-
-                total_score_percent = round(total_score * 100, 2)
-                label = "Relevant" if total_score_percent >= 50 else "Irrelevant"
-
-                # Log results summary
-                relevant_count = 0
-                for category, items in relevance_data.items():
-                    if isinstance(items, list):
-                        for item in items:
-                            if item.get("relevant") == True:
-                                relevant_count += 1
-
-                logger.info(f"Job relevance analysis complete: {relevant_count} items marked as relevant out of {sum(len(cat) for cat in relevance_data.values() if isinstance(cat, list))} total items")
-                logger.info(f"Overall relevance score: {total_score_percent}%, Label: {label}")
-
-                relevance_data["job_type"] = job_type
-                relevance_data["overall_relevance_score"] = total_score_percent
-                relevance_data["relevance_label"] = label
-
-                # If label is Irrelevant, use Gemini to generate a reason
-                if label == "Irrelevant":
-                    try:
-                        explanation_prompt = f"""
-                        You are an expert HR analyst. The following candidate profile was analyzed against the job description, and the overall relevance score was below 50%, so the candidate is labeled as "Irrelevant".
-                        Please provide a brief, clear explanation (3-4 sentences) for a non-technical user, summarizing the main reasons why this candidate is not a good fit for the job. Focus on the most important gaps or mismatches.
-                        Respond with ONLY the explanation text, no JSON, no extra formatting.
-
-                        Job Description:
-                        {job_description}
-
-                        Candidate Profile Summary:
-                        {profile_summary}
-                        """
-                        explanation_response = await self.model.generate_content_async([explanation_prompt])
-                        explanation_text = explanation_response.text.strip()
-                        relevance_data["irrelevant_reason"] = explanation_text
-                        logger.info(f"Generated irrelevance explanation: {explanation_text}")
-                    except Exception as e:
-                        logger.error(f"Error generating irrelevance explanation: {e}")
-                        relevance_data["irrelevant_reason"] = "Candidate profile does not sufficiently match the job requirements."
-
-                logger.info(f"Returning relevance_data to orchestrator: {json.dumps(relevance_data, indent=2)}")
+                logger.info(f"Holistic relevance analysis result: {relevance_data}")
                 return relevance_data
             else:
-                logger.error("Failed to extract JSON from Gemini response for job relevance analysis")
-                logger.error(f"Response text: {response_text}")
+                logger.error(f"Failed to extract JSON from Gemini response for holistic relevance. Raw: {response_text}")
                 return {}
 
         except Exception as e:
-            logger.error(f"Error analyzing job relevance: {str(e)}")
+            logger.error(f"Error in holistic analyze_job_relevance: {e}", exc_info=True)
             return {}
         
     async def infer_additional_skills(self, resume_data: Dict[str, Any], profile_data: Dict[str, Any]) -> Dict[str, List[str]]:
@@ -1245,62 +1096,45 @@ class GeminiService:
 
     def clean_and_split_skills(self, skills_input: Union[List[str], str, None]) -> List[str]:
         """
-        Clean and split skills that may contain various separators.
-        Handles input that is a list of strings or a single string.
-        
-        Args:
-            skills_input: Original list of skills or a single string of skills.
-            
-        Returns:
-            List of individual skills properly separated and cleaned.
+        Cleans and splits a string or list of strings into individual skills.
+        This version is robust against missing delimiters and complex grouping.
         """
         if not skills_input:
             return []
 
-        if isinstance(skills_input, str):
-            skills_list = [skills_input]
-        elif isinstance(skills_input, list):
-            skills_list = skills_input
+        # Ensure we are working with a single string
+        if isinstance(skills_input, list):
+            # Join list items with a comma to handle them uniformly
+            text_to_process = ', '.join(filter(None, skills_input))
         else:
-            logger.warning(f"Unexpected type for skills_input: {type(skills_input)}. Returning empty list.")
-            return []
+            text_to_process = skills_input
 
-        cleaned_skills = []
-        delimiters = re.compile(r'\s*[,•/|]\s*|\s+and\s+')
+        # Pre-processing: Standardize delimiters and spacing
+        # Replace newlines, bullets, slashes, and pipes with commas
+        text_to_process = re.sub(r'[\n•/|]', ',', text_to_process)
+        # Add a comma before an opening parenthesis if it follows a word,
+        # to handle cases like "SkillA (Detail)SkillB"
+        text_to_process = re.sub(r'([a-zA-Z0-9])\(', r'\1, (', text_to_process)
+        # Add a comma after a closing parenthesis if it's followed by a word
+        text_to_process = re.sub(r'\)([a-zA-Z0-9])', r'), \1', text_to_process)
+        # Consolidate multiple spaces
+        text_to_process = re.sub(r'\s+', ' ', text_to_process).strip()
 
-        for skill_entry in skills_list:
-            if not isinstance(skill_entry, str):
-                if skill_entry is not None:
-                    logger.warning(f"Non-string item found in skills list: {skill_entry}. Skipping.")
-                continue
+        # Regex to split by commas, but NOT commas inside parentheses
+        # This is the key to keeping "Speech-to-Text, Translate" together.
+        parts = re.split(r',\s*(?![^()]*\))', text_to_process)
 
-            # Replace newlines with a standard delimiter (comma) before splitting
-            processed_skill_entry = skill_entry.replace('\n', ',')
+        final_skills = set()
+        for part in parts:
+            part = part.strip()
+            # Clean up residual colons or "and" at the start/end of a part
+            part = re.sub(r'^(and|:)\s*|\s*(:)$', '', part, flags=re.IGNORECASE).strip()
             
-            # Use regex to split by multiple delimiters
-            parts = delimiters.split(processed_skill_entry)
-            cleaned_skills.extend([p.strip() for p in parts if p.strip()])
+            if part:
+                final_skills.add(part)
 
-        # Final pass: Remove duplicates and clean up trailing/leading punctuation carefully
-        unique_skills_set = set()
-        final_unique_skills = []
-        for skill in cleaned_skills:
-            trimmed_skill = skill.strip()
-            
-            # FIX: Only remove trailing punctuation if it's not part of a balanced parenthesis
-            if trimmed_skill.endswith(('.', ',')) and not trimmed_skill.endswith('..'):
-                 trimmed_skill = trimmed_skill[:-1].strip()
-
-            # Specifically handle the case of a trailing parenthesis from a parsing error
-            if trimmed_skill.endswith(')') and not trimmed_skill.count('(') == trimmed_skill.count(')'):
-                trimmed_skill = trimmed_skill[:-1].strip()
-
-            if trimmed_skill and trimmed_skill.lower() not in unique_skills_set:
-                final_unique_skills.append(trimmed_skill)
-                unique_skills_set.add(trimmed_skill.lower())
-        
-        logger.debug(f"Original skills input: {skills_input}, Cleaned and split skills: {final_unique_skills}")
-        return final_unique_skills
+        logger.debug(f"Original skills: {skills_input}, Cleaned skills: {list(final_skills)}")
+        return sorted(list(final_skills))
 
     async def interpret_facial_expressions(
             self,
