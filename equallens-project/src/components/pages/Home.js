@@ -363,7 +363,7 @@ export default function Home() {
                 <div className="hero-overlay"></div>
                 <div className="hero-content">
                     <div className="left-content">
-                        <h1>AI-Powered<br />Unbiased Hiring</h1>
+                        <h1>AI-Powered<br />Efficient Hiring</h1>
                         <p>Transforming recruitment through fairness,<br />transparency, and merit-based decisions.</p>
                         <div className="hero-btns">
                             <Link to="/upload-cv">
