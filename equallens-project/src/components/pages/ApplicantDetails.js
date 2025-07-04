@@ -44,8 +44,37 @@ const renderHTMLContentWithStructure = (content) => {
     if (!content) return null;
 
     const lines = content.split('\n');
-    let title = lines[0] || '';
-    const descriptionLines = lines.slice(1);
+
+    // --- JOIN lines until we find </strong> ---
+    let title = '';
+    let i = 0;
+    while (i < lines.length) {
+        title += lines[i].trim() + ' ';
+        if (lines[i].includes('</strong>')) {
+            i++; // move to the next line after </strong>
+            break;
+        }
+        i++;
+    }
+    title = title.trim();
+
+    let descriptionLines = lines.slice(i);
+
+    // --- LOGIC TO HANDLE COMPANY NAME ---
+    const isWorkExperience = title.toLowerCase().includes('intern') ||
+                             title.toLowerCase().includes('developer') ||
+                             title.toLowerCase().includes('engineer');
+
+    if (isWorkExperience && descriptionLines.length > 0) {
+        const companyNamePattern = /(LLM|Sdn Bhd|Solutions|Limited|Group)$/i;
+        const potentialCompanyName = descriptionLines[0].split('During')[0].trim();
+
+        if (companyNamePattern.test(potentialCompanyName) || potentialCompanyName.length < 30) {
+            title += ` at <strong>${potentialCompanyName}</strong>`;
+            descriptionLines[0] = descriptionLines[0].substring(potentialCompanyName.length).trim();
+        }
+    }
+    // --- END OF NEW LOGIC ---
 
     // Extract date pattern [Month Year - Year] and put it on the right
     let displayTitle = title;
@@ -142,9 +171,7 @@ const renderHTMLContentWithStructure = (content) => {
                 </div>
             )}
             {groupedDescriptions.map((para, index) => (
-                <div key={index} className="description">
-                    {para}
-                </div>
+                <div key={index} className="description" dangerouslySetInnerHTML={{ __html: para }} />
             ))}
         </div>
     );
@@ -460,7 +487,7 @@ const EducationTabContent = ({ detail }) => {
                 {/* Awards */}
                 {awards.length > 0 && (
                     <div className="info-group">
-                        <p className="info-label">Awards:</p>
+                        <p className="info-label">Awards / Achievements:</p>
                         <ul className="education-display">
                             {awards.map((item, index) => (
                                 <li

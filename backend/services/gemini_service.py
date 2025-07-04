@@ -638,7 +638,7 @@ class GeminiService:
 
 
         system_prompt = """
-        You are an expert resume analyzer. Review the provided candidate information and generate a structured profile in JSON format.
+        You are an expert resume analyzer. Review the provided candidate information and generate a structured profile into a clean, professional JSON profile.
 
         **Input Data:** The input contains various sections extracted or parsed from a resume. This might include lists (like soft_skills, technical_skills, languages) or text paragraphs (like education_paragraph, work_experience_paragraph, projects_paragraph, etc.).
 
@@ -647,7 +647,7 @@ class GeminiService:
         1.  **Generate a `summary`:** 
             * Provide a concise paragraph (around 3-5 sentences) highlighting the candidate's key strengths, notable experiences/projects, and potentially areas for development or missing information.
             * Synthesize information from *all* relevant input fields (skills, experience, education, projects, etc.).
-            * Use `<strong>` tags to emphasize truly significant points (e.g., key skills, major achievements).
+            * Use `<strong>` tags to emphasize truly significant points (e.g., key skills, major achievements).**Ensure all HTML tags are correctly opened and closed.**
             * **IMPORTANT:** Always use "he/she" pronouns rather than "they/them" when referring to the candidate.
             * **Crucially, OMIT any Personal Identifying Information (PII)** like name, email, phone number, or explicit bio text from the summary.
 
@@ -696,7 +696,12 @@ class GeminiService:
         * **Strictly EXCLUDE PII:** Do not include applicant_contactNum, applicant_mail, applicant_name, specific bio text, or any other directly identifying information in the output JSON.
         * **Omit Empty Fields:** If a category (e.g., `awards`) has no information in the input resume data, do not include the corresponding key in the output JSON.
         * **Preserve Structure in Lists:** Each item in a list should correspond to one distinct entry from the resume.
-
+        *   **CRITICAL CLEANING STEP:** Before creating the string for an entry, examine each line of text. **You MUST remove any leading bullet point characters** like 'O ', '■ ', '• ', or '- ' from the start of every line.
+        *   **`soft_skills`**, **`technical_skills`**, **`languages`**:
+                *   **Normalize:** From descriptive phrases, extract only the core technology or skill name. (e.g., "Used Java for mobile application development" -> "Java"; "Familiar with GitHub" -> "GitHub"; "Applied knowledge in MongoDB" -> "MongoDB").   
+                *   **Split:** If a single line contains multiple distinct skills (e.g., joined by 'and', '/', or ','), split them into separate items in the list (e.g., "Wix Studio and Microsoft Office" -> ["Wix Studio", "Microsoft Office"]). "Used SQL for creating database in Oracle APEX" -> ["SQL", "Oracle APEX"].
+         *   **Ensure all HTML tags like `<strong>` are properly closed with `</strong>`.**
+                
         **Output JSON Format Example:**
         ```json
         {
@@ -865,8 +870,8 @@ class GeminiService:
             return {"summary": f"Error generating profile: {e}"}
             
         except Exception as e:
-            logger.error(f"Error generating candidate profile: {str(e)}")
-            raise HTTPException(status_code=500, detail="An error occurred while generating the candidate profile. Please try again later.")
+            logger.error(f"Error inferring additional skills: {e}", exc_info=True)
+            return {"technical_skills": [], "soft_skills": [], "languages": []}
 
     async def analyze_job_relevance(self, candidate_profile, job_description):
         """
@@ -905,7 +910,7 @@ class GeminiService:
         Based on the **entire candidate profile** and the **job description**, you will determine:
         1. A `relevance_label`: Either "Relevant" or "Irrelevant".
         2. An `overall_relevance_score`: An integer from 0 to 100, representing the percentage of match.
-        3. A brief `irrelevant_reason` if the label is "Irrelevant".
+        3. The `irrelevant_reason`in at least 3 sentences if the label is "Irrelevant".
         4. The `job_type` you inferred: Either "technical" or "managerial".
 
         **CRITICAL INSTRUCTIONS:**
@@ -934,7 +939,7 @@ class GeminiService:
         {{
           "relevance_label": "Irrelevant",
           "overall_relevance_score": <integer_from_0_to_49>,
-          "irrelevant_reason": "<brief, clear explanation of the mismatch>",
+          "irrelevant_reason": "<clear explanation of the mismatch in at least 3 sentences>",
           "job_type": "<technical_or_managerial>"
         }}
         """
@@ -1096,45 +1101,48 @@ class GeminiService:
 
     def clean_and_split_skills(self, skills_input: Union[List[str], str, None]) -> List[str]:
         """
-        Cleans and splits a string or list of strings into individual skills.
-        This version is robust against missing delimiters and complex grouping.
+        Cleans, corrects, and splits a string or list of strings into individual skills.
+        This is a robust, programmatic way to enforce data quality.
         """
         if not skills_input:
             return []
 
         # Ensure we are working with a single string
         if isinstance(skills_input, list):
-            # Join list items with a comma to handle them uniformly
             text_to_process = ', '.join(filter(None, skills_input))
         else:
-            text_to_process = skills_input
+            text_to_process = str(skills_input)
 
-        # Pre-processing: Standardize delimiters and spacing
-        # Replace newlines, bullets, slashes, and pipes with commas
-        text_to_process = re.sub(r'[\n•/|]', ',', text_to_process)
-        # Add a comma before an opening parenthesis if it follows a word,
-        # to handle cases like "SkillA (Detail)SkillB"
-        text_to_process = re.sub(r'([a-zA-Z0-9])\(', r'\1, (', text_to_process)
-        # Add a comma after a closing parenthesis if it's followed by a word
-        text_to_process = re.sub(r'\)([a-zA-Z0-9])', r'), \1', text_to_process)
-        # Consolidate multiple spaces
+        # --- Programmatic Corrections and Cleaning ---
+        # 1. Correct specific, known OCR errors.
+        # Use case-insensitive replacement for robustness.
+        text_to_process = re.sub(r'roid Studio', 'Android Studio', text_to_process, flags=re.IGNORECASE)
+
+        # 2. Pre-processing: Standardize delimiters and spacing.
+        # Replace bullets, slashes, pipes, and ' and ' with commas.
+        text_to_process = re.sub(r'[\n•/|]|\s+and\s+', ',', text_to_process, flags=re.IGNORECASE)
         text_to_process = re.sub(r'\s+', ' ', text_to_process).strip()
 
-        # Regex to split by commas, but NOT commas inside parentheses
-        # This is the key to keeping "Speech-to-Text, Translate" together.
+        # 3. Split by commas, but NOT commas inside parentheses.
         parts = re.split(r',\s*(?![^()]*\))', text_to_process)
 
         final_skills = set()
         for part in parts:
+            # 4. Clean up each individual part.
+            # Remove residual colons, "and", and other noise from the start/end of a part.
+            # This also removes unwanted labels like "Language", "Mobile Development", etc.
             part = part.strip()
-            # Clean up residual colons or "and" at the start/end of a part
+            # Remove common non-skill prefixes and suffixes
+            part = re.sub(r'^(Language|Mobile Development|Backend Development|Frontend Development|Skills)[:\s]*', '', part, flags=re.IGNORECASE).strip()
             part = re.sub(r'^(and|:)\s*|\s*(:)$', '', part, flags=re.IGNORECASE).strip()
-            
+
             if part:
                 final_skills.add(part)
 
-        logger.debug(f"Original skills: {skills_input}, Cleaned skills: {list(final_skills)}")
-        return sorted(list(final_skills))
+        # 5. Return the cleaned, sorted, unique list of skills.
+        cleaned_list = sorted(list(final_skills))
+        logger.debug(f"Original skills: {skills_input}, Cleaned skills: {cleaned_list}")
+        return cleaned_list
 
     async def interpret_facial_expressions(
             self,
@@ -1468,6 +1476,8 @@ class GeminiService:
         """
         Detects PII and potentially biased terms in a transcript using Gemini.
 
+       
+
         Args:
             transcript: The interview transcript text.
 
@@ -1523,9 +1533,9 @@ Example for a single finding:
 
             # Clean and parse JSON
             if response_text.startswith("```json"):
-                response_text = response_text[7:]
+                response_text = response_text.split("```json")[1].strip()
             if response_text.endswith("```"):
-                response_text = response_text[:-3]
+                response_text = response_text.split("```")[0].strip()
             response_text = response_text.strip()
 
             if not response_text:
@@ -1756,6 +1766,33 @@ Example for a single finding:
                         logger.debug(f"  {category}: {len(items)} items, first few: {items[:2]}")
                     else:
                         logger.debug(f"  {category}: empty")
+                
+                # Extract and sort the top 10 inferred technical skills by relevance score
+                inferred_tech_skills = []
+                inferred_skills_list = candidate_profile.get("inferred_technical_skills", [])
+                
+                if inferred_skills_list and isinstance(inferred_skills_list, list) and "technical_skills" in per_item_relevance:
+                    # Create a set of inferred skill names for fast lookup
+                    inferred_skill_names = set(inferred_skills_list)
+                    
+                    # Find all inferred skills with their relevance scores
+                    for skill_item in per_item_relevance["technical_skills"]:
+                        if skill_item.get("item") in inferred_skill_names:
+                            inferred_tech_skills.append(skill_item)
+                    
+                    # Sort by relevance score in descending order
+                    inferred_tech_skills.sort(key=lambda x: x.get("relevance", 0), reverse=True)
+                    
+                    # Take only the top 10 most relevant
+                    top_inferred_tech_skills = inferred_tech_skills[:10]
+                    
+                    # Add the top 10 most relevant inferred technical skills to the result
+                    per_item_relevance["top_inferred_technical_skills"] = top_inferred_tech_skills
+                    
+                    logger.info(f"Extracted top {len(top_inferred_tech_skills)} most relevant inferred technical skills")
+                else:
+                    per_item_relevance["top_inferred_technical_skills"] = []
+                    logger.info("No inferred technical skills found or no relevance scores available")
                 
                 return per_item_relevance
             else:
